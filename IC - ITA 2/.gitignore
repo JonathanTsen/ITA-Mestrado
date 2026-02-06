@@ -1,0 +1,26 @@
+# Ignore environment variable files
+.env
+.env.local
+.env.*.local
+
+# Virtual environment folders (common names)
+venv/
+env/
+.venv/
+ENV/
+venv_*/
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+
+# Ignore large files in Project 2 (PDFs and large media)
+# Matches PDFs anywhere under the Project 2 - Code Compliance 2 folder
+Project\ 2\ -\ Code\ Compliance\ 2/**/*.pdf
+# Meeting transcripts (large video files)
+Project\ 2\ -\ Code\ Compliance\ 2/Meeting\ Transcripts/*.mp4
+

@@ -1,0 +1,54 @@
+# Features recomendadas para remoção
+# Gerado por analyze_features.py
+
+# ESTATÍSTICAS:
+X0_iqr
+X0_kurtosis
+X0_max
+X0_min
+X0_obs_mean_deviation
+X0_obs_position_corr
+X0_obs_skew_mnar
+X0_q50_deviation
+X0_q75_deviation
+X0_range
+X0_std
+X1_mannwhitney_pval
+X1_mannwhitney_stat
+X1_ttest_pval
+X1_ttest_stat
+avg_burst_size
+coef_X2_abs
+coef_X3_abs
+coef_X4_abs
+corr_X1_mask
+corr_mask_X2
+corr_mask_X3
+corr_mask_X4
+mask_autocorr_1
+max_burst_size
+mi_mask_X2
+mi_mask_X3
+mi_mask_X4
+missing_first_quarter
+missing_last_quarter
+missing_pos_mean
+missing_pos_std
+missing_rate
+n_bursts
+n_missing
+n_observed
+n_runs
+position_entropy
+position_uniformity_chi2
+runs_z_score
+
+# LLM:
+llm_dep_X1
+llm_dep_self
+llm_extreme
+llm_mar_conf
+llm_mcar_conf
+llm_mnar_conf
+llm_randomness
+llm_temporal
