@@ -1,0 +1,3 @@
+# Feature extraction module
+from features.statistical import extract_statistical_features
+from features.discriminative import extract_discriminative_features
