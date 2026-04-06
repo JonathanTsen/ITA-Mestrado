@@ -61,9 +61,9 @@ SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
 
 DATASET_PATHS = {
-    "MCAR": os.path.join(BASE_DIR, "Dataset", "MCAR"),
-    "MAR": os.path.join(BASE_DIR, "Dataset", "MAR"),
-    "MNAR": os.path.join(BASE_DIR, "Dataset", "MNAR"),
+    "MCAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MCAR"),
+    "MAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MAR"),
+    "MNAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MNAR"),
 }
 
 # Output organizado por versão e modelo

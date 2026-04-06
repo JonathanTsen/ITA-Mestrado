@@ -78,7 +78,7 @@ def _apply_fallback_manual(X: pd.DataFrame, mech: str, missing_rate_pct: int, rn
 # CONFIG
 # ======================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(os.path.dirname(BASE_DIR), "Dataset")
+OUT = os.path.join(os.path.dirname(BASE_DIR), "Dataset", "synthetic_data")
 
 paths = {
     "MCAR": os.path.join(OUT, "MCAR"),
