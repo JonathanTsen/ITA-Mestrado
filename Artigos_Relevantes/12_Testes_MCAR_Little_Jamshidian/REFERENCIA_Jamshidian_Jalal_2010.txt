@@ -1,0 +1,17 @@
+ARTIGO NAO DISPONIVEL PARA DOWNLOAD LIVRE - REQUER ACESSO INSTITUCIONAL
+(O pacote R MissMech dos mesmos autores esta disponivel como PDF nesta pasta)
+
+Titulo: Tests of Homoscedasticity, Normality, and Missing Completely at Random for Incomplete Multivariate Data
+Autores: Jamshidian, M. & Jalal, S.
+Ano: 2010
+Journal: Psychometrika, Vol. 75, No. 4, pp. 649-674
+DOI: 10.1007/s11336-010-9175-3
+
+Acesso:
+- Springer: https://link.springer.com/article/10.1007/s11336-010-9175-3
+- PMC: https://pmc.ncbi.nlm.nih.gov/articles/PMC3124223/
+- ResearchGate: https://www.researchgate.net/publication/51458889
+
+Resumo: Propoe testes nao-parametricos para homocedasticidade e MCAR que nao
+dependem da suposicao de normalidade multivariada, superando limitacoes do teste
+de Little (1988). Implementado no pacote R MissMech.

@@ -1,0 +1,15 @@
+ARTIGO NAO DISPONIVEL PARA DOWNLOAD LIVRE - REQUER ACESSO INSTITUCIONAL
+
+Titulo: A Test of Missing Completely at Random for Multivariate Data with Missing Values
+Autor: Little, R. J. A.
+Ano: 1988
+Journal: Journal of the American Statistical Association, Vol. 83, No. 404, pp. 1198-1202
+DOI: 10.1080/01621459.1988.10478722
+
+Acesso:
+- Taylor & Francis: https://www.tandfonline.com/doi/abs/10.1080/01621459.1988.10478722
+- Semantic Scholar: https://www.semanticscholar.org/paper/414d80bf57b0b07c490e1c7f5e765e3b271c2512
+
+Resumo: Propoe um teste global unico para MCAR que usa todos os dados disponiveis.
+A distribuicao nula assintotica e apresentada, e a distribuicao para amostras pequenas
+e derivada para dados normais multivariados com padrao monotono de dados faltantes.
