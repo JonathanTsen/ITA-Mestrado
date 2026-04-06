@@ -8,7 +8,14 @@ Formato de saída (mesmo do gerador.py):
   - Colunas: X0, X1, X2, X3, X4 (tab-separated)
   - X0 contém os valores missing
   - X1-X4 são completas (sem missing)
-  - 1 arquivo .txt por dataset, salvo em Dataset/real/{MECANISMO}/
+  - 1 arquivo .txt por dataset
+
+Melhorias v2:
+  - Imputação de preditoras por amostragem da distribuição observada
+    (preserva variância, ao contrário de fillna(mean))
+  - Cap de taxa de missing para o range do treino sintético (≤10%)
+  - Jitter gaussiano em variáveis ordinais (Mammographic) para
+    simular continuidade compatível com os dados sintéticos
 
 Uso:
   cd "IC - ITA 2/Scripts"
@@ -20,60 +27,124 @@ import numpy as np
 import pandas as pd
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATASET_DIR = os.path.join(os.path.dirname(BASE_DIR), "Dataset", "real")
+DATASET_DIR = os.path.join(os.path.dirname(BASE_DIR), "Dataset", "real_data")
 OUTPUT_DIR = os.path.join(DATASET_DIR, "processado")
 
-os.makedirs(os.path.join(OUTPUT_DIR, "MCAR"), exist_ok=True)
-os.makedirs(os.path.join(OUTPUT_DIR, "MAR"), exist_ok=True)
-os.makedirs(os.path.join(OUTPUT_DIR, "MNAR"), exist_ok=True)
+TARGET_MISSING_RATE = 0.10
+JITTER_SCALE = 0.02
+
+RNG = np.random.default_rng(42)
+
+for mech in ["MCAR", "MAR", "MNAR"]:
+    os.makedirs(os.path.join(OUTPUT_DIR, mech), exist_ok=True)
 
 
-def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Normaliza cada coluna para [0, 1] (min-max scaling)."""
-    for col in df.columns:
-        cmin, cmax = df[col].min(), df[col].max()
-        if cmax - cmin > 1e-12:
-            df[col] = (df[col] - cmin) / (cmax - cmin)
-        else:
-            df[col] = 0.5
+# ======================================================================
+# Funções auxiliares
+# ======================================================================
+
+def impute_with_sample(series: pd.Series) -> pd.Series:
+    """Replace NaN with random samples from observed values (preserves variance)."""
+    observed = series.dropna().values
+    mask = series.isna()
+    n_missing = mask.sum()
+    if n_missing == 0 or len(observed) == 0:
+        return series
+    series = series.copy()
+    series[mask] = RNG.choice(observed, size=n_missing)
+    return series
+
+
+def cap_missing_rate(df: pd.DataFrame,
+                     target: float = TARGET_MISSING_RATE) -> pd.DataFrame:
+    """Reduce X0 missing rate to target by imputing excess NaN with observed samples.
+
+    A random subset of NaN positions is kept, preserving the original mechanism
+    pattern (MCAR/MAR/MNAR) in the remaining missing values.
+    """
+    current = df["X0"].isna().mean()
+    if current <= target:
+        return df
+
+    df = df.copy()
+    nan_idx = df.index[df["X0"].isna()].tolist()
+    n_keep = max(1, int(target * len(df)))
+    n_impute = len(nan_idx) - n_keep
+
+    if n_impute <= 0:
+        return df
+
+    to_impute = RNG.choice(nan_idx, size=n_impute, replace=False)
+    observed = df["X0"].dropna().values
+    df.loc[to_impute, "X0"] = RNG.choice(observed, size=n_impute)
+
+    new_rate = df["X0"].isna().mean()
+    print(f"    Cap missing: {current*100:.1f}% → {new_rate*100:.1f}%")
     return df
+
+
+def add_jitter(df: pd.DataFrame, columns: list[str],
+               scale: float = JITTER_SCALE) -> pd.DataFrame:
+    """Add small Gaussian noise to ordinal columns to simulate continuity."""
+    df = df.copy()
+    for col in columns:
+        mask = df[col].notna()
+        n = mask.sum()
+        noise = RNG.normal(0, scale, size=n)
+        df.loc[mask, col] = np.clip(df.loc[mask, col].values + noise, 0.0, 1.0)
+    return df
+
+
+def normalize_col(df: pd.DataFrame, col: str, observed_only: bool = False):
+    """Min-max normalize a single column in-place."""
+    vals = df[col].dropna() if observed_only else df[col]
+    cmin, cmax = vals.min(), vals.max()
+    if cmax - cmin > 1e-12:
+        df[col] = (df[col] - cmin) / (cmax - cmin)
+    else:
+        df.loc[df[col].notna(), col] = 0.5
 
 
 def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str],
                       pad_to: int = 5) -> pd.DataFrame:
-    """
-    Seleciona colunas, renomeia para X0..XN, e preenche com colunas
-    aleatórias se necessário para chegar a pad_to colunas.
-    X0 = coluna com missing. X1..X4 = completas.
-    """
+    """Select columns, rename to X0..X4, impute predictor NaN with samples."""
     out = pd.DataFrame()
     out["X0"] = df[x0_col].values
 
     for i, col in enumerate(other_cols, start=1):
         out[f"X{i}"] = df[col].values
 
-    # Preenche colunas restantes com ruído uniforme (se tiver menos de 5)
-    rng = np.random.default_rng(42)
     n = len(out)
     current = len(out.columns)
     for i in range(current, pad_to):
-        out[f"X{i}"] = rng.uniform(0, 1, n)
+        out[f"X{i}"] = RNG.uniform(0, 1, n)
 
-    # Garante que X1..X4 não tenham missing (preenche com média)
     for col in [f"X{i}" for i in range(1, pad_to)]:
         if col in out.columns and out[col].isna().any():
-            out[col] = out[col].fillna(out[col].mean())
+            n_missing = out[col].isna().sum()
+            print(f"    Imputing {col}: {n_missing} NaN → sample from observed")
+            out[col] = impute_with_sample(out[col])
 
     return out
 
 
-def save_dataset(df: pd.DataFrame, mechanism: str, name: str):
-    """Salva no formato tab-separated com o nome padronizado."""
+def process_and_save(df: pd.DataFrame, mechanism: str, name: str,
+                     jitter_cols: list[str] | None = None):
+    """Cap missing rate → normalize → jitter (optional) → save."""
+    df = cap_missing_rate(df)
+
+    normalize_col(df, "X0", observed_only=True)
+    for col in ["X1", "X2", "X3", "X4"]:
+        normalize_col(df, col)
+
+    if jitter_cols:
+        df = add_jitter(df, jitter_cols)
+
     fname = f"{mechanism}_{name}.txt"
     path = os.path.join(OUTPUT_DIR, mechanism, fname)
     df.to_csv(path, sep="\t", index=False)
     miss_rate = df["X0"].isna().mean() * 100
-    print(f"  {fname}: {len(df)} rows, {miss_rate:.1f}% missing em X0")
+    print(f"  ✓ {fname}: {len(df)} rows, {miss_rate:.1f}% missing em X0")
 
 
 # ======================================================================
@@ -83,56 +154,21 @@ print("\n=== MCAR: Oceanbuoys (TAO) ===")
 tao_path = os.path.join(DATASET_DIR, "MCAR", "oceanbuoys_tao.csv")
 tao = pd.read_csv(tao_path)
 
-# humidity tem 93 missing (MCAR por falha de equipamento)
-# Usamos humidity como X0, e sea.surface.temp, air.temp, uwind, vwind como X1-X4
-# Primeiro: preencher air.temp missing (81 NaN) para que sirva como X1 completa
-tao_clean = tao.copy()
-tao_clean["air.temp"] = tao_clean["air.temp"].fillna(tao_clean["air.temp"].mean())
-tao_clean["sea.surface.temp"] = tao_clean["sea.surface.temp"].fillna(
-    tao_clean["sea.surface.temp"].mean()
-)
-
+# Variante 1: humidity como X0 (93 NaN, 12.6%)
+print("  Variante: humidity")
 df_mcar = select_and_rename(
-    tao_clean,
-    x0_col="humidity",
+    tao, x0_col="humidity",
     other_cols=["sea.surface.temp", "air.temp", "uwind", "vwind"],
 )
-# Normaliza colunas completas (X1-X4) para [0,1]. X0 normaliza só os observados.
-for col in ["X1", "X2", "X3", "X4"]:
-    cmin, cmax = df_mcar[col].min(), df_mcar[col].max()
-    if cmax - cmin > 1e-12:
-        df_mcar[col] = (df_mcar[col] - cmin) / (cmax - cmin)
+process_and_save(df_mcar, "MCAR", "oceanbuoys_humidity")
 
-# Normaliza X0 mantendo NaN
-x0_obs = df_mcar["X0"].dropna()
-x0_min, x0_max = x0_obs.min(), x0_obs.max()
-if x0_max - x0_min > 1e-12:
-    df_mcar["X0"] = (df_mcar["X0"] - x0_min) / (x0_max - x0_min)
-
-save_dataset(df_mcar, "MCAR", "oceanbuoys_humidity")
-
-# Variante: air.temp como X0 (81 missing)
-tao_clean2 = tao.copy()
-tao_clean2["humidity"] = tao_clean2["humidity"].fillna(tao_clean2["humidity"].mean())
-tao_clean2["sea.surface.temp"] = tao_clean2["sea.surface.temp"].fillna(
-    tao_clean2["sea.surface.temp"].mean()
-)
-
+# Variante 2: air.temp como X0 (81 NaN, 11.0%)
+print("  Variante: air.temp")
 df_mcar2 = select_and_rename(
-    tao_clean2,
-    x0_col="air.temp",
+    tao, x0_col="air.temp",
     other_cols=["sea.surface.temp", "humidity", "uwind", "vwind"],
 )
-for col in ["X1", "X2", "X3", "X4"]:
-    cmin, cmax = df_mcar2[col].min(), df_mcar2[col].max()
-    if cmax - cmin > 1e-12:
-        df_mcar2[col] = (df_mcar2[col] - cmin) / (cmax - cmin)
-x0_obs2 = df_mcar2["X0"].dropna()
-x0_min2, x0_max2 = x0_obs2.min(), x0_obs2.max()
-if x0_max2 - x0_min2 > 1e-12:
-    df_mcar2["X0"] = (df_mcar2["X0"] - x0_min2) / (x0_max2 - x0_min2)
-
-save_dataset(df_mcar2, "MCAR", "oceanbuoys_airtemp")
+process_and_save(df_mcar2, "MCAR", "oceanbuoys_airtemp")
 
 
 # ======================================================================
@@ -142,61 +178,37 @@ print("\n=== MAR: Airquality ===")
 aq_path = os.path.join(DATASET_DIR, "MAR", "airquality.csv")
 aq = pd.read_csv(aq_path)
 
-# Ozone tem 37 missing (~24%). Missingness correlaciona com Temp e Wind (MAR)
-# Solar.R tem 7 missing - preencher para usar como preditora
-aq_clean = aq.copy()
-aq_clean["Solar.R"] = aq_clean["Solar.R"].fillna(aq_clean["Solar.R"].mean())
-
+# Ozone: 37 NaN (24.2%), missingness correlaciona com Wind e Temp (MAR)
 df_mar = select_and_rename(
-    aq_clean,
-    x0_col="Ozone",
+    aq, x0_col="Ozone",
     other_cols=["Wind", "Temp", "Solar.R", "Month"],
 )
-for col in ["X1", "X2", "X3", "X4"]:
-    cmin, cmax = df_mar[col].min(), df_mar[col].max()
-    if cmax - cmin > 1e-12:
-        df_mar[col] = (df_mar[col] - cmin) / (cmax - cmin)
-x0_obs_mar = df_mar["X0"].dropna()
-x0_min_m, x0_max_m = x0_obs_mar.min(), x0_obs_mar.max()
-if x0_max_m - x0_min_m > 1e-12:
-    df_mar["X0"] = (df_mar["X0"] - x0_min_m) / (x0_max_m - x0_min_m)
-
-save_dataset(df_mar, "MAR", "airquality_ozone")
+process_and_save(df_mar, "MAR", "airquality_ozone")
 
 
+# ======================================================================
 # MAR — Mammographic Mass
+# ======================================================================
 print("\n=== MAR: Mammographic Mass ===")
 mammo_path = os.path.join(DATASET_DIR, "MAR", "mammographic_mass_raw.csv")
 mammo = pd.read_csv(
-    mammo_path,
-    header=None,
+    mammo_path, header=None,
     names=["BIRADS", "Age", "Shape", "Margin", "Density", "Severity"],
     na_values="?",
 )
-# Density tem 76 missing. Missingness depende de BIRADS e Age (MAR)
+for col in ["BIRADS", "Age", "Shape", "Margin", "Density"]:
+    mammo[col] = pd.to_numeric(mammo[col], errors="coerce")
 mammo_clean = mammo.dropna(subset=["BIRADS", "Age", "Shape", "Margin"]).copy()
-mammo_clean["BIRADS"] = pd.to_numeric(mammo_clean["BIRADS"], errors="coerce")
-mammo_clean["Age"] = pd.to_numeric(mammo_clean["Age"], errors="coerce")
-mammo_clean["Shape"] = pd.to_numeric(mammo_clean["Shape"], errors="coerce")
-mammo_clean["Margin"] = pd.to_numeric(mammo_clean["Margin"], errors="coerce")
-mammo_clean["Density"] = pd.to_numeric(mammo_clean["Density"], errors="coerce")
-mammo_clean = mammo_clean.dropna(subset=["BIRADS", "Age", "Shape", "Margin"])
 
+# Density: 56 NaN (6.3%), missingness depende de BIRADS e Age (MAR)
 df_mar2 = select_and_rename(
-    mammo_clean,
-    x0_col="Density",
+    mammo_clean, x0_col="Density",
     other_cols=["BIRADS", "Age", "Shape", "Margin"],
 )
-for col in ["X1", "X2", "X3", "X4"]:
-    cmin, cmax = df_mar2[col].min(), df_mar2[col].max()
-    if cmax - cmin > 1e-12:
-        df_mar2[col] = (df_mar2[col] - cmin) / (cmax - cmin)
-x0_obs_m2 = df_mar2["X0"].dropna()
-x0_min_m2, x0_max_m2 = x0_obs_m2.min(), x0_obs_m2.max()
-if x0_max_m2 - x0_min_m2 > 1e-12:
-    df_mar2["X0"] = (df_mar2["X0"] - x0_min_m2) / (x0_max_m2 - x0_min_m2)
-
-save_dataset(df_mar2, "MAR", "mammographic_density")
+# Jitter em variáveis ordinais (X0=Density, X1=BIRADS, X3=Shape, X4=Margin)
+# X2=Age é contínua, não precisa de jitter
+process_and_save(df_mar2, "MAR", "mammographic_density",
+                 jitter_cols=["X0", "X1", "X3", "X4"])
 
 
 # ======================================================================
@@ -205,73 +217,44 @@ save_dataset(df_mar2, "MAR", "mammographic_density")
 print("\n=== MNAR: Pima Diabetes (Insulin) ===")
 pima_path = os.path.join(DATASET_DIR, "MNAR", "pima_diabetes_raw.csv")
 pima = pd.read_csv(
-    pima_path,
-    header=None,
-    names=[
-        "Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
-        "Insulin", "BMI", "DiabetesPedigree", "Age", "Outcome",
-    ],
+    pima_path, header=None,
+    names=["Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
+           "Insulin", "BMI", "DiabetesPedigree", "Age", "Outcome"],
 )
-# Insulin: 374 zeros (48.7%) = missing (MNAR: não medido quando médico
-# não suspeita diabetes, que depende do próprio nível de insulina)
+# Zeros biologicamente impossíveis → NaN
 pima_proc = pima.copy()
 pima_proc["Insulin"] = pima_proc["Insulin"].replace(0, np.nan)
-# Glucose zeros também são missing biológico - preencher
 pima_proc["Glucose"] = pima_proc["Glucose"].replace(0, np.nan)
-pima_proc["Glucose"] = pima_proc["Glucose"].fillna(pima_proc["Glucose"].mean())
 pima_proc["BloodPressure"] = pima_proc["BloodPressure"].replace(0, np.nan)
-pima_proc["BloodPressure"] = pima_proc["BloodPressure"].fillna(
-    pima_proc["BloodPressure"].mean()
-)
 pima_proc["BMI"] = pima_proc["BMI"].replace(0, np.nan)
-pima_proc["BMI"] = pima_proc["BMI"].fillna(pima_proc["BMI"].mean())
 
+# Insulin: 374 NaN (48.7%) → será capped para ~10%
 df_mnar = select_and_rename(
-    pima_proc,
-    x0_col="Insulin",
+    pima_proc, x0_col="Insulin",
     other_cols=["Glucose", "BloodPressure", "BMI", "Age"],
 )
-for col in ["X1", "X2", "X3", "X4"]:
-    cmin, cmax = df_mnar[col].min(), df_mnar[col].max()
-    if cmax - cmin > 1e-12:
-        df_mnar[col] = (df_mnar[col] - cmin) / (cmax - cmin)
-x0_obs_mn = df_mnar["X0"].dropna()
-x0_min_mn, x0_max_mn = x0_obs_mn.min(), x0_obs_mn.max()
-if x0_max_mn - x0_min_mn > 1e-12:
-    df_mnar["X0"] = (df_mnar["X0"] - x0_min_mn) / (x0_max_mn - x0_min_mn)
-
-save_dataset(df_mnar, "MNAR", "pima_insulin")
+process_and_save(df_mnar, "MNAR", "pima_insulin")
 
 
+# ======================================================================
 # MNAR — Mroz Wages
+# ======================================================================
 print("\n=== MNAR: Mroz Wages ===")
 mroz_path = os.path.join(DATASET_DIR, "MNAR", "mroz_wages.csv")
 mroz = pd.read_csv(mroz_path)
 
-# lwg (log wage) = NaN quando lfp="no" (mulher não trabalha)
-# A decisão de não trabalhar depende do próprio salário potencial → MNAR
+# lwg = NaN para mulheres fora da força de trabalho (lfp="no")
+# Valores no CSV para lfp="no" são salários estimados (Heckman), não observados
 mroz_proc = mroz.copy()
 mroz_proc.loc[mroz_proc["lfp"] == "no", "lwg"] = np.nan
-
-# Converter variáveis categóricas
 mroz_proc["wc_num"] = (mroz_proc["wc"] == "yes").astype(float)
-mroz_proc["hc_num"] = (mroz_proc["hc"] == "yes").astype(float)
 
+# lwg: 325 NaN (43.2%) → será capped para ~10%
 df_mnar2 = select_and_rename(
-    mroz_proc,
-    x0_col="lwg",
+    mroz_proc, x0_col="lwg",
     other_cols=["age", "inc", "k5", "wc_num"],
 )
-for col in ["X1", "X2", "X3", "X4"]:
-    cmin, cmax = df_mnar2[col].min(), df_mnar2[col].max()
-    if cmax - cmin > 1e-12:
-        df_mnar2[col] = (df_mnar2[col] - cmin) / (cmax - cmin)
-x0_obs_mn2 = df_mnar2["X0"].dropna()
-x0_min_mn2, x0_max_mn2 = x0_obs_mn2.min(), x0_obs_mn2.max()
-if x0_max_mn2 - x0_min_mn2 > 1e-12:
-    df_mnar2["X0"] = (df_mnar2["X0"] - x0_min_mn2) / (x0_max_mn2 - x0_min_mn2)
-
-save_dataset(df_mnar2, "MNAR", "mroz_wages")
+process_and_save(df_mnar2, "MNAR", "mroz_wages")
 
 
 # ======================================================================
@@ -288,6 +271,7 @@ for mech in ["MCAR", "MAR", "MNAR"]:
     for f in files:
         df = pd.read_csv(os.path.join(mech_dir, f), sep="\t")
         miss = df["X0"].isna().mean() * 100
-        complete_cols = sum(1 for c in df.columns if c != "X0" and df[c].isna().sum() == 0)
-        print(f"  {f}: {df.shape[0]} rows x {df.shape[1]} cols, "
-              f"X0 missing={miss:.1f}%, {complete_cols} colunas completas")
+        x0_unique = df["X0"].dropna().nunique()
+        complete = sum(1 for c in df.columns if c != "X0" and df[c].isna().sum() == 0)
+        print(f"  {f}: {df.shape[0]} rows, X0 missing={miss:.1f}%, "
+              f"X0 unique={x0_unique}, {complete} preditoras completas")

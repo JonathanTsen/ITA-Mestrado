@@ -70,33 +70,278 @@ Validar se o classificador de mecanismos de missing data (treinado em dados sint
 
 ---
 
-## 3. Dificuldades e Desafios
+## 3. Pipeline de Pré-processamento (raw → processado)
 
-### 3.1 Ausência de Ground Truth
+O script `Scripts/preparar_dados_reais.py` converte cada dataset bruto para o formato esperado pelo pipeline de classificação. As etapas abaixo são aplicadas a todos os datasets.
+
+### 3.1 Visão geral do fluxo
+
+```
+Dataset/real_data/{MECANISMO}/{arquivo_original}
+        │
+        ▼
+   [1] Seleção da variável com missing → X0
+   [2] Seleção das variáveis preditoras → X1, X2, X3, X4
+   [3] Preenchimento de missing nas preditoras (amostragem da distribuição observada)
+   [4] Cap da taxa de missing em X0 para ≤10% (subsampling aleatório dos NaN)
+   [5] Normalização min-max para [0, 1]
+   [6] Jitter gaussiano em variáveis ordinais (apenas Mammographic)
+   [7] Salvamento como .txt tab-separated
+        │
+        ▼
+Dataset/real_data/processado/{MECANISMO}/{arquivo_processado}.txt
+```
+
+### 3.2 Etapas detalhadas
+
+#### Etapa 1 — Seleção da variável alvo (X0)
+
+Para cada dataset, é escolhida a variável que concentra os valores missing e que tem justificativa de domínio para o mecanismo de interesse. Ela se torna **X0** no arquivo de saída e é a única coluna que mantém os `NaN`.
+
+| Dataset | Variável original → X0 | Motivo |
+|---------|------------------------|--------|
+| Oceanbuoys (variante 1) | `humidity` | 93 NaN por falha de sensor (MCAR) |
+| Oceanbuoys (variante 2) | `air.temp` | 81 NaN por falha de sensor (MCAR) |
+| Airquality | `Ozone` | 37 NaN correlacionados com Wind/Temp (MAR) |
+| Mammographic Mass | `Density` | 56 NaN dependentes de BI-RADS e Age (MAR) |
+| Pima Diabetes | `Insulin` | 374 zeros convertidos em NaN (MNAR) |
+| Mroz Wages | `lwg` (log wage) | 325 NaN para mulheres fora da força de trabalho (MNAR) |
+
+#### Etapa 2 — Seleção das variáveis preditoras (X1–X4)
+
+São escolhidas as variáveis observadas mais relevantes para o mecanismo de cada dataset. A ordem importa: **X1 é sempre a variável mais associada ao mecanismo MAR** (seguindo a convenção do pipeline sintético onde MAR depende de X1).
+
+| Dataset | X1 | X2 | X3 | X4 |
+|---------|----|----|----|----|
+| Oceanbuoys (humidity) | sea.surface.temp | air.temp | uwind | vwind |
+| Oceanbuoys (air.temp) | sea.surface.temp | humidity | uwind | vwind |
+| Airquality | Wind | Temp | Solar.R | Month |
+| Mammographic Mass | BI-RADS | Age | Shape | Margin |
+| Pima Diabetes | Glucose | BloodPressure | BMI | Age |
+| Mroz Wages | age | inc | k5 | wc (0/1) |
+
+#### Etapa 3 — Tratamento de missing nas preditoras
+
+As colunas X1–X4 devem estar completamente preenchidas (mesma convenção dos dados sintéticos). NaN residuais são preenchidos por **amostragem aleatória da distribuição observada** da coluna (em vez de média simples, para preservar a variância original). Casos específicos:
+
+- **Oceanbuoys**: `sea.surface.temp` (3 NaN) e `air.temp` (81 NaN) — imputados com amostras da distribuição observada.
+- **Airquality**: `Solar.R` (7 NaN) — imputado com amostras.
+- **Pima Diabetes**: `Glucose` (5 zeros), `BloodPressure` (35 zeros) e `BMI` (11 zeros) — zeros biologicamente impossíveis convertidos em NaN, depois imputados com amostras.
+- **Mammographic Mass**: linhas com NaN nas preditoras (BI-RADS, Age, Shape, Margin) são **removidas** (não imputadas), pois a remoção é mais conservadora quando há poucas ausências.
+- **Mroz Wages**: variável categórica `wc` (college education: yes/no) convertida para binária (1/0).
+
+> **Justificativa (amostragem vs média):** Imputar com a média cria um pico artificial na distribuição da variável, achatando a variância. Amostrar da distribuição observada preserva a forma original da distribuição e produz valores mais realistas para o classificador.
+
+#### Etapa 4 — Cap da taxa de missing (≤10%)
+
+Datasets com taxa de missing acima do range de treinamento sintético (1–10%) têm seus NaN em X0 reduzidos por **subsampling aleatório**:
+
+1. Calcula quantos NaN manter: `n_keep = 10% × n_total`
+2. Seleciona aleatoriamente quais posições NaN manter
+3. Imputa os NaN excedentes com amostras da distribuição observada de X0
+
+| Dataset | Taxa original | Após cap | NaN mantidos / originais |
+|---------|--------------|----------|--------------------------|
+| Oceanbuoys humidity | 12.6% (93) | 9.9% (73) | 73/93 (78%) |
+| Oceanbuoys airtemp | 11.0% (81) | 9.9% (73) | 73/81 (90%) |
+| Airquality ozone | 24.2% (37) | 9.8% (15) | 15/37 (41%) |
+| Mammographic density | 6.3% (56) | 6.3% (56) | sem alteração |
+| Pima insulin | 48.7% (374) | 9.9% (76) | 76/374 (20%) |
+| Mroz wages | 43.2% (325) | 10.0% (75) | 75/325 (23%) |
+
+> **Preservação do mecanismo:** O subsampling é puramente aleatório (uniforme sobre as posições NaN), portanto o subconjunto retido preserva o padrão original do mecanismo. Para MNAR: se P(NaN|X0) = f(X0), então P(NaN retido|X0) ∝ f(X0). Para MAR e MCAR, a mesma lógica se aplica.
+
+#### Etapa 5 — Normalização min-max para [0, 1]
+
+Aplicada separadamente em X0 e em X1–X4 para manter compatibilidade com os dados sintéticos (gerados como Uniform[0,1]):
+
+- **X1–X4**: normalizadas com min/max da coluna completa.
+- **X0**: normalizada com min/max calculado **apenas sobre os valores observados** (os NaN são preservados e não participam do cálculo).
+
+```
+X_normalizado = (X - min(X_observado)) / (max(X_observado) - min(X_observado))
+```
+
+#### Etapa 6 — Jitter gaussiano em variáveis ordinais
+
+Aplicado **apenas ao Mammographic Mass**, cujas variáveis são ordinais com poucos valores distintos (ex: Density ∈ {1,2,3,4} → normalizado para {0, 0.33, 0.67, 1.0}).
+
+Ruído gaussiano N(0, σ=0.02) é adicionado aos valores observados, com clipping em [0, 1]:
+
+```
+X_jittered = clip(X_normalizado + N(0, 0.02), 0, 1)
+```
+
+Colunas com jitter: X0 (Density), X1 (BIRADS), X3 (Shape), X4 (Margin).
+X2 (Age) é contínua por natureza e não recebe jitter.
+
+> **Justificativa:** O classificador foi treinado com dados contínuos Uniform[0,1]. Sem jitter, X0 com apenas 4 valores distintos gera features estatísticas (X0_mean, quartis) atípicas. O jitter (σ=0.02, ~6% do gap entre níveis ordinais) cria variação contínua sem alterar a semântica ordinal.
+
+#### Etapa 7 — Formato de saída
+
+Arquivo `.txt` tab-separated com cabeçalho, 5 colunas (`X0` a `X4`), mesmo formato gerado por `gerador.py`. Compatível diretamente com `extract_features.py`.
+
+### 3.3 Resumo dos arquivos gerados
+
+| Arquivo de saída | Obs | Missing X0 (original → final) | Valores únicos X0 | No range? |
+|------------------|-----|-------------------------------|--------------------|----|
+| `MCAR_oceanbuoys_humidity.txt` | 736 | 12.6% → 9.9% | 166 | **Sim** |
+| `MCAR_oceanbuoys_airtemp.txt` | 736 | 11.0% → 9.9% | 307 | **Sim** |
+| `MAR_airquality_ozone.txt` | 153 | 24.2% → 9.8% | 67 | **Sim** |
+| `MAR_mammographic_density.txt` | 886 | 6.3% (sem cap) | 823 (jitter) | **Sim** |
+| `MNAR_pima_insulin.txt` | 768 | 48.7% → 9.9% | 185 | **Sim** |
+| `MNAR_mroz_wages.txt` | 753 | 43.2% → 10.0% | 374 | **Sim** |
+
+> **Nota:** Todos os datasets agora estão dentro do range de treinamento (1–10%). O cap de missing preserva o padrão do mecanismo original (ver Etapa 4). O Mammographic ganhou valores contínuos via jitter (de 4 valores ordinais para 823 valores únicos).
+
+### 3.4 Detalhamento das Transformações por Dataset
+
+Abaixo, a transformação concreta aplicada a cada arquivo bruto pelo script `preparar_dados_reais.py`.
+
+#### 3.4.1 MCAR — Oceanbuoys / TAO → 2 arquivos
+
+**Arquivo de entrada:** `real_data/MCAR/oceanbuoys_tao.csv` (736 linhas, 8 colunas)
+
+```
+year, latitude, longitude, sea.surface.temp, air.temp, humidity, uwind, vwind
+```
+
+**Variante 1 — humidity como X0:**
+
+| Passo | Operação |
+|-------|----------|
+| 1 | `humidity` → X0 (93 NaN originais) |
+| 2 | Imputa NaN de `air.temp` (81) e `sea.surface.temp` (3) com amostras da distribuição observada |
+| 3 | Seleciona X1=`sea.surface.temp`, X2=`air.temp`, X3=`uwind`, X4=`vwind` |
+| 4 | Cap missing: 93 → 73 NaN (12.6% → 9.9%), 20 NaN imputados com amostras |
+| 5 | Normaliza X1–X4 com min-max; X0 com min-max sobre observados |
+| 6 | Salva como `processado/MCAR/MCAR_oceanbuoys_humidity.txt` (736 linhas, 9.9% missing) |
+
+**Variante 2 — air.temp como X0:**
+
+| Passo | Operação |
+|-------|----------|
+| 1 | `air.temp` → X0 (81 NaN originais) |
+| 2 | Imputa NaN de `humidity` (93) e `sea.surface.temp` (3) com amostras |
+| 3 | Seleciona X1=`sea.surface.temp`, X2=`humidity`, X3=`uwind`, X4=`vwind` |
+| 4 | Cap missing: 81 → 73 NaN (11.0% → 9.9%) |
+| 5–6 | Normalização min-max + salvamento (736 linhas, 9.9% missing) |
+
+#### 3.4.2 MAR — Airquality → 1 arquivo
+
+**Arquivo de entrada:** `real_data/MAR/airquality.csv` (153 linhas, 7 colunas incluindo `rownames`)
+
+```
+rownames, Ozone, Solar.R, Wind, Temp, Month, Day
+```
+
+| Passo | Operação |
+|-------|----------|
+| 1 | `Ozone` → X0 (37 NaN originais) |
+| 2 | Imputa NaN de `Solar.R` (7) com amostras da distribuição observada |
+| 3 | Seleciona X1=`Wind`, X2=`Temp`, X3=`Solar.R`, X4=`Month` |
+| 4 | Cap missing: 37 → 15 NaN (24.2% → 9.8%) |
+| 5 | Normalização min-max |
+| 6 | Salva como `processado/MAR/MAR_airquality_ozone.txt` (153 linhas, 9.8% missing) |
+
+> **Nota:** `Day` e `rownames` são descartados (não informativos para o mecanismo).
+
+#### 3.4.3 MAR — Mammographic Mass → 1 arquivo
+
+**Arquivo de entrada:** `real_data/MAR/mammographic_mass_raw.csv` (961 linhas, 6 colunas, sem cabeçalho)
+
+```
+BIRADS, Age, Shape, Margin, Density, Severity
+```
+
+| Passo | Operação |
+|-------|----------|
+| 1 | Leitura com `na_values="?"` (valores `?` no CSV tratados como NaN) |
+| 2 | Converte colunas para numérico (`pd.to_numeric`) |
+| 3 | **Remove** linhas com NaN em `BIRADS`, `Age`, `Shape` ou `Margin` (886 restam) |
+| 4 | `Density` → X0 (56 NaN, 6.3% — já dentro do range, sem cap) |
+| 5 | Seleciona X1=`BIRADS`, X2=`Age`, X3=`Shape`, X4=`Margin` |
+| 6 | Normalização min-max |
+| 7 | **Jitter gaussiano** N(0, 0.02) em X0, X1, X3, X4 (ordinais). X2 (Age) é contínua, sem jitter |
+| 8 | Salva como `processado/MAR/MAR_mammographic_density.txt` (886 linhas, 6.3% missing, 823 valores únicos em X0) |
+
+> **Nota:** Sem jitter, Density teria apenas 4 valores distintos {0, 0.33, 0.67, 1.0}. O jitter cria variação contínua (823 únicos) compatível com o treino sintético. Única operação de remoção de linhas — nos demais datasets, missing nas preditoras é imputado por amostragem.
+
+#### 3.4.4 MNAR — Pima Indians Diabetes → 1 arquivo
+
+**Arquivo de entrada:** `real_data/MNAR/pima_diabetes_raw.csv` (768 linhas, 9 colunas, sem cabeçalho)
+
+```
+Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigree, Age, Outcome
+```
+
+| Passo | Operação |
+|-------|----------|
+| 1 | Converte zeros de `Insulin` para NaN → X0 (374 NaN, 48.7%) |
+| 2 | Converte zeros biologicamente impossíveis para NaN: `Glucose` (5), `BloodPressure` (35), `BMI` (11) |
+| 3 | Imputa NaN de `Glucose`, `BloodPressure` e `BMI` com amostras da distribuição observada |
+| 4 | Seleciona X1=`Glucose`, X2=`BloodPressure`, X3=`BMI`, X4=`Age` |
+| 5 | Cap missing: 374 → 76 NaN (48.7% → 9.9%) |
+| 6 | Normalização min-max |
+| 7 | Salva como `processado/MNAR/MNAR_pima_insulin.txt` (768 linhas, 9.9% missing) |
+
+> **Nota:** Os zeros no Pima são uma convenção do dataset — valores 0 para Glucose, BloodPressure, BMI e Insulin são biologicamente impossíveis e representam dados não coletados. O subsampling retém 76 dos 374 NaN originais, preservando o padrão MNAR (exames não solicitados quando médico não suspeita diabetes).
+
+#### 3.4.5 MNAR — Mroz Wages → 1 arquivo
+
+**Arquivo de entrada:** `real_data/MNAR/mroz_wages.csv` (753 linhas, 9 colunas)
+
+```
+rownames, lfp, k5, k618, age, wc, hc, lwg, inc
+```
+
+| Passo | Operação |
+|-------|----------|
+| 1 | Define `lwg` como NaN onde `lfp == "no"` (mulheres fora da força de trabalho) → X0 (325 NaN, 43.2%) |
+| 2 | Converte `wc` ("yes"/"no") para numérico (1/0) |
+| 3 | Seleciona X1=`age`, X2=`inc`, X3=`k5`, X4=`wc_num` |
+| 4 | Cap missing: 325 → 75 NaN (43.2% → 10.0%) |
+| 5 | Normalização min-max |
+| 6 | Salva como `processado/MNAR/MNAR_mroz_wages.txt` (753 linhas, 10.0% missing) |
+
+> **Nota:** O CSV original contém valores estimados de `lwg` (salários do modelo de Heckman) para `lfp == "no"`. O script marca esses como NaN porque o salário real não foi observado. O subsampling retém 75 dos 325 NaN, preservando o padrão MNAR (seleção de Heckman).
+
+### 3.5 Reprodução
+
+Para regenerar todos os arquivos processados a partir dos originais:
+
+```bash
+cd "IC - ITA 2/Scripts"
+python preparar_dados_reais.py
+```
+
+---
+
+## 4. Dificuldades e Desafios
+
+### 4.1 Ausência de Ground Truth
 
 **O problema fundamental:** Em dados reais, **nunca sabemos com certeza** qual é o mecanismo de missing. O que temos são argumentos de domínio que sugerem fortemente um mecanismo. Isso significa que:
 
 - Se o classificador errar, pode ser porque: (a) o classificador falhou, ou (b) o mecanismo não é exatamente o que assumimos.
 - Não podemos calcular "acurácia" no sentido estrito — apenas avaliar **consistência** entre a predição e o conhecimento de domínio.
 
-### 3.2 Taxas de Missing Incompatíveis
+### 4.2 Taxas de Missing Incompatíveis
 
-| Dataset | Missing Rate | Range Sintético |
-|---------|-------------|-----------------|
-| Oceanbuoys (humidity) | 12.6% | 1-10% |
-| Airquality (Ozone) | 24.2% | 1-10% |
-| Mammographic (Density) | 6.3% | 1-10% ✅ |
-| Pima (Insulin) | 48.7% | 1-10% |
-| Mroz (Wages) | 43.2% | 1-10% |
+| Dataset | Missing original | Após cap | Range sintético |
+|---------|-----------------|----------|-----------------|
+| Oceanbuoys (humidity) | 12.6% | 9.9% ✅ | 1-10% |
+| Oceanbuoys (airtemp) | 11.0% | 9.9% ✅ | 1-10% |
+| Airquality (Ozone) | 24.2% | 9.8% ✅ | 1-10% |
+| Mammographic (Density) | 6.3% | 6.3% ✅ | 1-10% |
+| Pima (Insulin) | 48.7% | 9.9% ✅ | 1-10% |
+| Mroz (Wages) | 43.2% | 10.0% ✅ | 1-10% |
 
-**Problema:** Apenas 1 dos 6 datasets tem taxa de missing dentro do range de treinamento. O classificador foi treinado com 1-10% de missing e será testado em datasets com até 48.7%.
+**Mitigação aplicada:** Subsampling aleatório dos NaN em X0 (Etapa 4 do pipeline). Os NaN excedentes são imputados com amostras da distribuição observada. O subconjunto retido preserva o padrão do mecanismo original (ver justificativa na Seção 3.2, Etapa 4).
 
-**Estratégias de mitigação:**
-1. **Subsampling do missing**: Para datasets com taxa alta, remover aleatoriamente alguns NaN (substituindo pelo valor original, se disponível, ou pela média) para trazer a taxa para ~5-10%.
-2. **Retreinar com range expandido**: Gerar dados sintéticos com taxas de 1-50% e retreinar.
-3. **Aceitar a limitação**: Reportar os resultados como estão e discutir a sensibilidade à taxa de missing.
+**Limitação residual:** Para datasets com cap agressivo (Pima: 374→76, Mroz: 325→75), a quantidade absoluta de NaN é pequena, o que pode reduzir o poder estatístico das features discriminativas.
 
-### 3.3 Distribuições Diferentes
+### 4.3 Distribuições Diferentes
 
 Os dados sintéticos são gerados como **Uniform[0,1]**, mas os dados reais têm distribuições variadas (normal, skewed, discreta, etc.). Mesmo após normalização min-max para [0,1], as distribuições internas são diferentes.
 
@@ -107,7 +352,7 @@ Os dados sintéticos são gerados como **Uniform[0,1]**, mas os dados reais têm
 2. **Normalizar features, não dados**: Aplicar StandardScaler nas features extraídas, não nos dados brutos.
 3. **Treinar com distribuições mistas**: Gerar dados sintéticos com Normal, Log-normal, Exponencial além de Uniform.
 
-### 3.4 Poucas Amostras por Mecanismo
+### 4.4 Poucas Amostras por Mecanismo
 
 | Mecanismo | Datasets | Total no treino sintético |
 |-----------|----------|--------------------------|
@@ -122,13 +367,13 @@ Os dados sintéticos são gerados como **Uniform[0,1]**, mas os dados reais têm
 2. **Bootstrap**: Gerar múltiplas amostras de cada dataset real (subsampling com reposição) e classificar cada amostra.
 3. **Abordagem semi-sintética** (ver seção 5): Usar `pyampute` para criar centenas de variantes com mecanismo controlado.
 
-### 3.5 Variáveis Discretas vs Contínuas
+### 4.5 Variáveis Discretas vs Contínuas
 
 Mammographic Mass tem variáveis ordinais (1-5). Mroz tem variáveis binárias (wc, hc). Os dados sintéticos são puramente contínuos.
 
 **Impacto:** Features discriminativas (AUC, correlação, Mann-Whitney) podem se comportar diferentemente com dados discretos.
 
-### 3.6 Ambiguidade dos Mecanismos
+### 4.6 Ambiguidade dos Mecanismos
 
 Na realidade, os mecanismos raramente são "puros":
 - **Airquality**: Provavelmente MAR com componente MNAR (ozônio falta quando nível é baixo E quando tempo está ruim).
@@ -207,25 +452,25 @@ Testar como o classificador se comporta variando:
 ## 6. Estrutura de Pastas
 
 ```
-Dataset/real/
+Dataset/real_data/
 ├── MCAR/
-│   └── oceanbuoys_tao.csv           # Dataset original
+│   └── oceanbuoys_tao.csv           # Dataset original (736 linhas, 8 cols)
 ├── MAR/
-│   ├── airquality.csv               # Dataset original
-│   └── mammographic_mass_raw.csv    # Dataset original
+│   ├── airquality.csv               # Dataset original (153 linhas, 7 cols)
+│   └── mammographic_mass_raw.csv    # Dataset original (961 linhas, 6 cols, sem cabeçalho)
 ├── MNAR/
-│   ├── mroz_wages.csv               # Dataset original
-│   └── pima_diabetes_raw.csv        # Dataset original
+│   ├── pima_diabetes_raw.csv        # Dataset original (768 linhas, 9 cols, sem cabeçalho)
+│   └── mroz_wages.csv               # Dataset original (753 linhas, 9 cols)
 ├── processado/                       # Formato padronizado (X0-X4, tab-separated)
 │   ├── MCAR/
-│   │   ├── MCAR_oceanbuoys_humidity.txt
-│   │   └── MCAR_oceanbuoys_airtemp.txt
+│   │   ├── MCAR_oceanbuoys_humidity.txt   # 736 linhas, 9.9% missing ✅
+│   │   └── MCAR_oceanbuoys_airtemp.txt    # 736 linhas, 9.9% missing ✅
 │   ├── MAR/
-│   │   ├── MAR_airquality_ozone.txt
-│   │   └── MAR_mammographic_density.txt
+│   │   ├── MAR_airquality_ozone.txt       # 153 linhas, 9.8% missing ✅
+│   │   └── MAR_mammographic_density.txt   # 886 linhas, 6.3% missing ✅ (com jitter)
 │   └── MNAR/
-│       ├── MNAR_pima_insulin.txt
-│       └── MNAR_mroz_wages.txt
+│       ├── MNAR_pima_insulin.txt          # 768 linhas, 9.9% missing ✅
+│       └── MNAR_mroz_wages.txt            # 753 linhas, 10.0% missing ✅
 ├── semi_sintetico/                   # (futuro) Datasets via pyampute
 └── ESTRATEGIA_VALIDACAO_DADOS_REAIS.md  # Este documento
 ```
