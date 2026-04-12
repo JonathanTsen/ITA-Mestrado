@@ -1,6 +1,13 @@
 """
 Análise EXAUSTIVA de relevância de features para classificação MCAR/MAR/MNAR.
 
+Uso:
+    python analyze_feature_relevance.py --model <modelo> [--data sintetico|real]
+
+Exemplos:
+    python analyze_feature_relevance.py --model gemini-3-flash-preview
+    python analyze_feature_relevance.py --model gemini-3-pro-preview --data real
+
 Este script analisa:
 1. Importância via Random Forest
 2. Importância por Permutação
@@ -27,13 +34,17 @@ from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 import warnings
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.args import parse_common_args
+from utils.paths import get_output_dir
+
 warnings.filterwarnings("ignore")
 
 # ============================================================
 # CONFIGURAÇÃO
 # ============================================================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTPUT_DIR = os.path.join(BASE_DIR, "Output", "v2_improved", "gemini-3-pro-preview")
+MODEL_NAME, DATA_TYPE, _, EXPERIMENT = parse_common_args()
+OUTPUT_DIR = get_output_dir(DATA_TYPE, MODEL_NAME, EXPERIMENT)
 
 X_PATH = os.path.join(OUTPUT_DIR, "X_features.csv")
 Y_PATH = os.path.join(OUTPUT_DIR, "y_labels.csv")
@@ -83,6 +94,7 @@ for col in X.columns:
     })
 
 var_df = pd.DataFrame(variance_analysis)
+var_df.to_csv(os.path.join(OUTPUT_DIR, "variance_analysis.csv"), index=False)
 
 # Features com pouca variância (std muito baixo ou quase constantes)
 low_var_features = var_df[
@@ -207,15 +219,19 @@ print("\n" + "=" * 80)
 print("6️⃣ ANÁLISE ESPECÍFICA DE FEATURES LLM")
 print("=" * 80)
 
-print("\n📊 Estatísticas descritivas das features LLM:")
-llm_stats = X[llm_features].describe().T
-print(llm_stats)
+if llm_features:
+    print("\n📊 Estatísticas descritivas das features LLM:")
+    llm_stats = X[llm_features].describe().T
+    print(llm_stats)
+else:
+    print("\n⚠️ Nenhuma feature LLM presente no dataset")
 
-# Importância relativa das LLM features
-llm_rf_imp = rf_importance[rf_importance["feature"].isin(llm_features)]
-print("\n🤖 Ranking de features LLM por RF importance:")
-for i, row in llm_rf_imp.sort_values("rf_importance", ascending=False).iterrows():
-    print(f"   {row['feature']}: {row['rf_importance']:.4f}")
+if llm_features:
+    # Importância relativa das LLM features
+    llm_rf_imp = rf_importance[rf_importance["feature"].isin(llm_features)]
+    print("\n🤖 Ranking de features LLM por RF importance:")
+    for i, row in llm_rf_imp.sort_values("rf_importance", ascending=False).iterrows():
+        print(f"   {row['feature']}: {row['rf_importance']:.4f}")
 
 # Análise específica de llm_mar_evidence
 print("\n" + "-" * 40)
@@ -271,6 +287,30 @@ if "llm_mar_evidence" in X.columns:
 else:
     print("   ⚠️ llm_mar_evidence não encontrada no dataset")
 
+# Salva análise de features LLM
+if llm_features:
+    llm_analysis_rows = []
+    for feat in llm_features:
+        row = {"feature": feat}
+        # Média por classe
+        for cls in [0, 1, 2]:
+            cls_name = {0: "MCAR", 1: "MAR", 2: "MNAR"}[cls]
+            row[f"mean_{cls_name}"] = float(X[feat][y == cls].mean())
+        # ANOVA
+        grps = [X[feat][y == cls] for cls in [0, 1, 2]]
+        f_stat, p_val = stats.f_oneway(*grps)
+        row["anova_F"] = float(f_stat)
+        row["anova_p"] = float(p_val)
+        # Correlação com target
+        corr_val, corr_p = stats.spearmanr(X[feat], y)
+        row["spearman_r"] = float(corr_val)
+        row["spearman_p"] = float(corr_p)
+        # RF importance
+        rf_val = rf_importance[rf_importance["feature"] == feat]["rf_importance"].values
+        row["rf_importance"] = float(rf_val[0]) if len(rf_val) > 0 else 0.0
+        llm_analysis_rows.append(row)
+    pd.DataFrame(llm_analysis_rows).to_csv(os.path.join(OUTPUT_DIR, "llm_feature_analysis.csv"), index=False)
+
 # ============================================================
 # 7. RECURSIVE FEATURE ELIMINATION (RFE)
 # ============================================================
@@ -308,6 +348,7 @@ print("8️⃣ ANÁLISE DE REDUNDÂNCIA (CORRELAÇÃO ALTA)")
 print("=" * 80)
 
 corr_matrix = X.corr()
+corr_matrix.to_csv(os.path.join(OUTPUT_DIR, "correlation_matrix.csv"))
 high_corr_pairs = []
 
 for i, col1 in enumerate(X.columns):
@@ -364,6 +405,22 @@ top_scores = cross_val_score(
 )
 top_acc = top_scores.mean()
 print(f"📊 Apenas top 15 (RFE): {top_acc:.4f} ± {top_scores.std():.4f} (Δ={top_acc-baseline:+.4f})")
+
+# Salva ablation results
+ablation_rows = [
+    {"config": "todas_features", "accuracy_mean": baseline, "accuracy_std": baseline_scores.std(),
+     "n_features": X.shape[1], "delta": 0.0},
+]
+if llm_features:
+    ablation_rows.append({
+        "config": "sem_llm", "accuracy_mean": no_llm, "accuracy_std": no_llm_scores.std(),
+        "n_features": X_no_llm.shape[1], "delta": no_llm - baseline,
+    })
+ablation_rows.append({
+    "config": "top15_rfe", "accuracy_mean": top_acc, "accuracy_std": top_scores.std(),
+    "n_features": len(top_features), "delta": top_acc - baseline,
+})
+pd.DataFrame(ablation_rows).to_csv(os.path.join(OUTPUT_DIR, "ablation_results.csv"), index=False)
 
 # ============================================================
 # 10. CONSOLIDAÇÃO - FEATURES PARA REMOVER
@@ -464,6 +521,11 @@ final_df["removal_reasons"] = final_df["feature"].apply(lambda x: "|".join(remov
 
 final_df.to_csv(output_file, index=False)
 print(f"   ✅ Salvo: {output_file}")
+print(f"   ✅ Salvo: variance_analysis.csv")
+print(f"   ✅ Salvo: correlation_matrix.csv")
+print(f"   ✅ Salvo: ablation_results.csv")
+if llm_features:
+    print(f"   ✅ Salvo: llm_feature_analysis.csv")
 
 # Salva lista de remoção
 removal_file = os.path.join(OUTPUT_DIR, "features_to_remove.txt")

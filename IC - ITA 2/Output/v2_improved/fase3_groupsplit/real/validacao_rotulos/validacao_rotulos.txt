@@ -1,0 +1,66 @@
+VALIDAÇÃO DE RÓTULOS DE MECANISMO DE MISSING DATA
+============================================================
+
+MCAR_breastcancer_barenuclei.txt:
+  Rótulo: MCAR
+  Missing rate: 2.3%
+  MCAR consistente: True
+  MAR evidência: False
+  Diagnóstico: ✅ CONSISTENTE
+
+MCAR_oceanbuoys_airtemp.txt:
+  Rótulo: MCAR
+  Missing rate: 9.9%
+  MCAR consistente: False
+  MAR evidência: True
+  Diagnóstico: ⚠️ INCONSISTENTE: rotulado MCAR mas rejeita hipótese MCAR
+
+MCAR_oceanbuoys_humidity.txt:
+  Rótulo: MCAR
+  Missing rate: 9.9%
+  MCAR consistente: False
+  MAR evidência: True
+  Diagnóstico: ⚠️ INCONSISTENTE: rotulado MCAR mas rejeita hipótese MCAR
+
+MAR_airquality_ozone.txt:
+  Rótulo: MAR
+  Missing rate: 9.8%
+  MCAR consistente: True
+  MAR evidência: False
+  Diagnóstico: ⚠️ FRACO: rotulado MAR mas sem correlação significativa
+
+MAR_mammographic_density.txt:
+  Rótulo: MAR
+  Missing rate: 6.3%
+  MCAR consistente: True
+  MAR evidência: True
+  Diagnóstico: ✅ CONSISTENTE
+
+MAR_titanic_age.txt:
+  Rótulo: MAR
+  Missing rate: 10.0%
+  MCAR consistente: True
+  MAR evidência: True
+  Diagnóstico: ✅ CONSISTENTE
+
+MNAR_adult_capitalgain.txt:
+  Rótulo: MNAR
+  Missing rate: 10.0%
+  MCAR consistente: True
+  MAR evidência: False
+  Diagnóstico: ℹ️ MNAR difícil de testar sem acesso ao valor verdadeiro
+
+MNAR_mroz_wages.txt:
+  Rótulo: MNAR
+  Missing rate: 10.0%
+  MCAR consistente: True
+  MAR evidência: False
+  Diagnóstico: ℹ️ MNAR difícil de testar sem acesso ao valor verdadeiro
+
+MNAR_pima_insulin.txt:
+  Rótulo: MNAR
+  Missing rate: 9.9%
+  MCAR consistente: True
+  MAR evidência: False
+  Diagnóstico: ℹ️ MNAR difícil de testar sem acesso ao valor verdadeiro
+

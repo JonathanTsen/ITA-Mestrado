@@ -98,7 +98,7 @@ uv run python extract_features.py --model none --test
   - **4 features estatísticas**: X0_mean, X0_q25, X0_q50, X0_q75
   - **6 features discriminativas**: auc_mask_from_Xobs, coef_X1_abs, log_pval_X1_mask, X1_mean_diff, X1_mannwhitney_pval, little_proxy_score
   - **8 features LLM** (se habilitado): llm_evidence_consistency, llm_anomaly, llm_dist_shift, llm_mcar_conf, llm_mar_conf, llm_mnar_conf, llm_mcar_vs_mnar, llm_pattern_clarity
-- Salva em `../Output/v2_improved/{modelo}/`
+- Salva em `../Output/v2_improved/{experimento}/{data_type}/{modelo}/`
 
 **Saída esperada:**
 ```
@@ -123,7 +123,7 @@ uv run python train_model.py --model gemini-3-flash-preview
 ```
 
 **O que acontece:**
-- Carrega features de `../Output/v2_improved/{modelo}/`
+- Carrega features de `../Output/v2_improved/{experimento}/{data_type}/{modelo}/`
 - Treina **7 modelos de ML**: RandomForest, GradientBoosting, LogisticRegression, SVM, KNN, MLP, NaiveBayes
 - Faz **cross-validation** (5-fold)
 - Gera relatório e gráficos

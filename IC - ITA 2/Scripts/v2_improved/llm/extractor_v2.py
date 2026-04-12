@@ -166,13 +166,15 @@ class LLMFeatureExtractorV2:
                 X1_mean_diff = round(float(np.mean(X1_miss) - np.mean(X1_obs)), 4)
                 stats_dict["X1_mean_diff"] = X1_mean_diff
         
-        # Evidências MNAR (desvio da distribuição uniforme)
+        # Evidências MNAR (desvio relativo ao range dos dados, não a 0.5 fixo)
         X0_mean_dev = 0.0
         if len(X0_obs) > 10:
-            # Para dados uniform[0,1], esperamos mean=0.5
-            X0_mean_dev = round(0.5 - float(np.mean(X0_obs)), 4)
+            X0_range = float(np.max(X0_obs) - np.min(X0_obs)) if len(X0_obs) > 1 else 1.0
+            X0_center = float(np.median(X0_obs))
+            X0_mean_dev = round((X0_center - float(np.mean(X0_obs))) / max(X0_range, 0.01), 4)
             stats_dict["X0_mean_deviation"] = X0_mean_dev
-            stats_dict["X0_median_deviation"] = round(0.5 - float(np.median(X0_obs)), 4)
+            stats_dict["X0_median_deviation"] = round((X0_center - float(np.median(X0_obs))) / max(X0_range, 0.01), 4)
+            stats_dict["X0_obs_range"] = round(X0_range, 4)
         
         # ============ SEGUNDA ORDEM ============
         
@@ -182,7 +184,7 @@ class LLMFeatureExtractorV2:
         
         # 2. Força combinada de evidências MNAR
         X0_skew = stats_dict.get("X0_obs_skew", 0)
-        mnar_evidence = abs(X0_mean_dev) * 50 + abs(X0_skew) * 5
+        mnar_evidence = abs(X0_mean_dev) * 5 + abs(X0_skew) * 2
         stats_dict["mnar_combined_evidence"] = round(min(mnar_evidence, 1.0), 4)
         
         # 3. Consistência de evidências
@@ -280,10 +282,13 @@ Analise:
 
 ## INSTRUÇÕES DE RACIOCÍNIO
 
-1. Se mar_combined_evidence < 0.1 E mnar_combined_evidence < 0.1 → provavelmente MCAR
-2. Se mar_combined_evidence > 0.3 → provavelmente MAR
-3. Se mnar_combined_evidence > 0.2 E mnar_internal_consistency = 1 → provavelmente MNAR
-4. Se ambas evidências são altas → caso ambíguo, reduza confiança
+1. Compare a MAGNITUDE RELATIVA de mar_combined_evidence vs mnar_combined_evidence
+2. Se ambas são baixas relativas uma à outra → provavelmente MCAR
+3. Se mar_combined_evidence >> mnar_combined_evidence → provavelmente MAR
+4. Se mnar_combined_evidence >> mar_combined_evidence E mnar_internal_consistency = 1 → provavelmente MNAR
+5. Se ambas são altas e próximas → caso ambíguo, reduza confiança e pattern_clarity
+6. IMPORTANTE: A distribuição de X0 pode NÃO ser uniforme [0,1]. Avalie os desvios
+   relativamente ao X0_obs_std e X0_obs_range, não em termos absolutos.
 
 ## RESPOSTA
 
@@ -349,9 +354,11 @@ Onde:
             except Exception as e:
                 if attempt == max_retries - 1:
                     print(f"⚠️ LLM v2 falhou após {max_retries} tentativas: {e}")
-                    return LLMAnalysisV2().to_feature_dict()
-        
-        return LLMAnalysisV2().to_feature_dict()
+                    # Retorna NaN em vez de defaults para evitar viés sistemático
+                    return {k: float('nan') for k in LLMAnalysisV2().to_feature_dict()}
+
+        # Fallback final: NaN em vez de defaults
+        return {k: float('nan') for k in LLMAnalysisV2().to_feature_dict()}
 
 
 def get_llm_fallback_features_v2() -> dict:

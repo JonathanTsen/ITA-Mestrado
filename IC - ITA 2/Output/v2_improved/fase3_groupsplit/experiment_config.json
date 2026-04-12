@@ -1,0 +1,5 @@
+{
+  "experiment": "fase3_groupsplit",
+  "created_at": "2026-04-11",
+  "description": "Fase 3: GroupShuffleSplit (sem data leakage), 445 bootstrap samples, GroupKFold CV, PCA para modelos com LLM features. Correcao critica de data leakage via bootstrap."
+}

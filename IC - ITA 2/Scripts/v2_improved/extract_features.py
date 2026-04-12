@@ -2,12 +2,14 @@
 Script principal para extração de features v2 melhorada.
 
 Uso:
-    python extract_features.py --model <none|gemini-3-flash-preview|gpt-5.2> [--test]
-    
+    python extract_features.py --model <none|gemini-3-flash-preview|gpt-5.2> [--data sintetico|real] [--test]
+
 Exemplos:
-    python extract_features.py --model none              # Apenas features estatísticas
-    python extract_features.py --model gemini-3-flash-preview  # Com LLM
-    python extract_features.py --model none --test       # Modo teste (50 arquivos)
+    python extract_features.py --model none                              # Baseline ML, dados sintéticos
+    python extract_features.py --model gemini-3-flash-preview            # ML + LLM, dados sintéticos
+    python extract_features.py --model none --data real                  # Baseline ML, dados reais
+    python extract_features.py --model gemini-3-flash-preview --data real  # ML + LLM, dados reais
+    python extract_features.py --model none --test                       # Modo teste (50 arquivos)
 """
 import os
 import sys
@@ -25,50 +27,28 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from features.statistical import extract_statistical_features
 from features.discriminative import extract_discriminative_features
+from features.mechdetect import extract_mechdetect_features
 from llm.extractor_v2 import LLMFeatureExtractorV2, get_llm_fallback_features_v2
+from utils.args import parse_common_args
+from utils.paths import (
+    MODEL_TO_PROVIDER, V2_DIR, get_output_dir, get_dataset_paths,
+)
 
 warnings.filterwarnings("ignore")
 
 # ======================================================
 # CONFIGURAÇÃO
 # ======================================================
-MODEL_TO_PROVIDER = {
-    "gpt-5.2": "openai",
-    "gpt-5-mini": "openai", 
-    "gemini-3-pro-preview": "gemini",
-    "gemini-3-flash-preview": "gemini",
-}
-
-# Parse argumentos
-MODEL_NAME = "none"
-TEST_MODE = False
+MODEL_NAME, DATA_TYPE, TEST_MODE, EXPERIMENT = parse_common_args()
 MAX_WORKERS = 100
-
-if "--model" in sys.argv:
-    idx = sys.argv.index("--model")
-    if idx + 1 < len(sys.argv):
-        MODEL_NAME = sys.argv[idx + 1]
-
-if "--test" in sys.argv:
-    TEST_MODE = True
 
 USE_LLM = MODEL_NAME != "none" and MODEL_NAME in MODEL_TO_PROVIDER
 
-# Paths
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(V2_DIR, ".env"))
 
-load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
+DATASET_PATHS = get_dataset_paths(DATA_TYPE)
 
-DATASET_PATHS = {
-    "MCAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MCAR"),
-    "MAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MAR"),
-    "MNAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MNAR"),
-}
-
-# Output organizado por versão e modelo
-OUTPUT_BASE = os.path.join(BASE_DIR, "Output", "v2_improved")
-OUTPUT_DIR = os.path.join(OUTPUT_BASE, MODEL_NAME)
+OUTPUT_DIR = get_output_dir(DATA_TYPE, MODEL_NAME, EXPERIMENT)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 LABEL_MAP = {"MCAR": 0, "MAR": 1, "MNAR": 2}
@@ -76,10 +56,19 @@ LABEL_MAP = {"MCAR": 0, "MAR": 1, "MNAR": 2}
 X_OUT = os.path.join(OUTPUT_DIR, "X_features.csv")
 Y_OUT = os.path.join(OUTPUT_DIR, "y_labels.csv")
 
+# Dados reais têm poucos arquivos, --test não faz sentido
+if TEST_MODE and DATA_TYPE == "real":
+    print("ℹ️ --test ignorado para dados reais (poucos arquivos)")
+    TEST_MODE = False
+
+ABORDAGEM = "apenas ML (baseline)" if MODEL_NAME == "none" else f"ML + LLM ({MODEL_NAME})"
+
 print(f"=" * 60)
 print(f"🚀 EXTRAÇÃO DE FEATURES v2 MELHORADA")
 print(f"=" * 60)
-print(f"📝 Modelo: {MODEL_NAME}")
+print(f"📊 Dados: {DATA_TYPE}")
+print(f"🔬 Abordagem: {ABORDAGEM}")
+print(f"📝 Modelo LLM: {MODEL_NAME}")
 print(f"🤖 Usar LLM: {USE_LLM}")
 print(f"📂 Output: {OUTPUT_DIR}")
 if TEST_MODE:
@@ -108,8 +97,11 @@ def extract_all_features(df: pd.DataFrame) -> dict:
     
     # 2. Features discriminativas (MCAR/MAR/MNAR)
     feats.update(extract_discriminative_features(df))
-    
-    # 3. Features LLM (apenas se habilitado)
+
+    # 3. Features MechDetect (3 tarefas AUC-ROC)
+    feats.update(extract_mechdetect_features(df))
+
+    # 4. Features LLM (apenas se habilitado)
     if USE_LLM and llm_extractor is not None:
         llm_feats = llm_extractor.extract_features(df)
         feats.update(llm_feats)
@@ -190,7 +182,9 @@ def save_checkpoint():
     y_partial = [r[1] for r in results if r is not None]
     
     if X_partial:
-        pd.DataFrame(X_partial).replace([np.inf, -np.inf], 0).fillna(0).to_csv(X_OUT, index=False)
+        X_ckpt = pd.DataFrame(X_partial).replace([np.inf, -np.inf], np.nan)
+        # Checkpoint: fillna(0) temporário (imputação final ocorre ao salvar resultados)
+        X_ckpt.fillna(0).to_csv(X_OUT, index=False)
         pd.Series(y_partial, name="label").to_csv(Y_OUT, index=False)
 
 
@@ -236,18 +230,53 @@ if len(tasks_to_process) > 0:
 # ======================================================
 # SALVA RESULTADOS FINAIS
 # ======================================================
-X_all = [r[0] for r in results if r is not None]
-y_all = [r[1] for r in results if r is not None]
+valid_indices = [i for i, r in enumerate(results) if r is not None]
+X_all = [results[i][0] for i in valid_indices]
+y_all = [results[i][1] for i in valid_indices]
 
 if len(X_all) == 0:
     print("❌ Nenhum resultado válido!")
     sys.exit(1)
 
-X = pd.DataFrame(X_all).replace([np.inf, -np.inf], 0).fillna(0)
+X = pd.DataFrame(X_all).replace([np.inf, -np.inf], np.nan)
+
+# Imputação diferenciada: estatísticas -> 0, LLM -> mediana
+llm_cols = [c for c in X.columns if c.startswith("llm_")]
+stat_cols = [c for c in X.columns if not c.startswith("llm_")]
+
+# Features estatísticas: NaN -> 0 (ausência de sinal)
+X[stat_cols] = X[stat_cols].fillna(0)
+
+# Features LLM: NaN -> mediana das amostras com resposta válida
+if llm_cols:
+    from sklearn.impute import SimpleImputer
+    imputer = SimpleImputer(strategy='median')
+    X[llm_cols] = pd.DataFrame(
+        imputer.fit_transform(X[llm_cols]),
+        columns=llm_cols, index=X.index
+    )
+
 y = pd.Series(y_all, name="label")
+
+# Extrai grupo (dataset de origem) de cada arquivo para GroupShuffleSplit
+# Ex: "MCAR_breastcancer_barenuclei_boot001.txt" -> "MCAR_breastcancer_barenuclei"
+import re
+groups = []
+for i in valid_indices:
+    filepath = tasks[i][0]
+    fname = os.path.basename(filepath)
+    # Remove _bootNNN.txt para obter o grupo (dataset de origem)
+    group = re.sub(r"_boot\d+\.txt$", "", fname)
+    if group == fname.replace(".txt", ""):
+        # Dados sintéticos ou sem bootstrap: cada arquivo é seu próprio grupo
+        group = fname.replace(".txt", "")
+    groups.append(group)
+
+groups_series = pd.Series(groups, name="group")
 
 X.to_csv(X_OUT, index=False)
 y.to_csv(Y_OUT, index=False)
+groups_series.to_csv(os.path.join(OUTPUT_DIR, "groups.csv"), index=False)
 
 # Remove checkpoint
 if os.path.exists(CHECKPOINT_FILE):

@@ -6,8 +6,7 @@ Estas features são baseadas nas definições teóricas dos mecanismos:
 - MAR: P(missing|X_obs, X_miss) = P(missing|X_obs) - depende apenas de observados
 - MNAR: P(missing|X_obs, X_miss) ≠ P(missing|X_obs) - depende do próprio valor faltante
 
-NOTA: Versão otimizada com apenas 6 features relevantes identificadas
-pela análise de relevância (analyze_feature_relevance.py).
+6 features originais + 5 novas features para detecção de MNAR.
 """
 import numpy as np
 import pandas as pd
@@ -20,20 +19,19 @@ from sklearn.metrics import roc_auc_score
 def extract_discriminative_features(df: pd.DataFrame) -> dict:
     """
     Extrai features discriminativas entre MCAR, MAR e MNAR.
-    
-    Features mantidas após análise de relevância:
-    - auc_mask_from_Xobs: AUC de prever missing usando X1-X4
-    - coef_X1_abs: coeficiente absoluto de X1 no modelo logístico
-    - log_pval_X1_mask: -log10 do p-valor da correlação X1 vs mask
-    - X1_mean_diff: diferença de média de X1 entre grupos missing/observed
-    - X1_mannwhitney_pval: p-valor do teste Mann-Whitney
-    - little_proxy_score: proxy do teste de Little (média KS stats)
-    
+
+    6 features originais + 5 novas para detecção de MNAR:
+    - X0_ks_obs_vs_imputed: KS entre X0 observado e X0 imputado
+    - X0_tail_missing_ratio: taxa de missing na cauda vs centro
+    - mask_entropy: entropia de Shannon dos runs de missing
+    - X0_censoring_score: correlação Spearman rank(X0) vs máscara
+    - X0_mean_shift_X1_to_X4: shift médio de X1-X4 por grupo missing/obs
+
     Args:
         df: DataFrame com X0 (missing), X1, X2, X3, X4 (observados)
-    
+
     Returns:
-        Dict com 6 features discriminativas
+        Dict com 11 features discriminativas
     """
     feats = {}
     
@@ -109,7 +107,79 @@ def extract_discriminative_features(df: pd.DataFrame) -> dict:
         feats["little_proxy_score"] = chi2_sum / 4
     except Exception:
         feats["little_proxy_score"] = 0.0
-    
+
+    # =========================================
+    # 4. FEATURES MNAR: X0 observado vs imputado
+    # =========================================
+    X0_obs = df["X0"].dropna().values
+    X0_full = df["X0"].fillna(df["X0"].median()).values
+
+    # KS entre X0 observado e X0 imputado (mediana)
+    if len(X0_obs) > 1 and n_missing > 0:
+        ks_stat, _ = stats.ks_2samp(X0_obs, X0_full)
+        feats["X0_ks_obs_vs_imputed"] = ks_stat
+    else:
+        feats["X0_ks_obs_vs_imputed"] = 0.0
+
+    # Taxa de missing na cauda (Q4) vs centro (Q2)
+    try:
+        quartiles = np.percentile(X0_full, [25, 50, 75])
+        q2_mask = (X0_full >= quartiles[0]) & (X0_full < quartiles[1])
+        q4_mask = X0_full >= quartiles[2]
+
+        n_q2 = q2_mask.sum()
+        n_q4 = q4_mask.sum()
+
+        if n_q2 > 0 and n_q4 > 0:
+            missing_rate_q4 = mask[q4_mask].mean()
+            missing_rate_q2 = mask[q2_mask].mean()
+            if missing_rate_q2 > 1e-10:
+                feats["X0_tail_missing_ratio"] = missing_rate_q4 / missing_rate_q2
+            else:
+                feats["X0_tail_missing_ratio"] = missing_rate_q4 * 10 if missing_rate_q4 > 0 else 1.0
+        else:
+            feats["X0_tail_missing_ratio"] = 1.0
+    except Exception:
+        feats["X0_tail_missing_ratio"] = 1.0
+
+    # Entropia de Shannon dos comprimentos de runs consecutivos
+    try:
+        runs = []
+        current_len = 1
+        for i in range(1, len(mask)):
+            if mask[i] == mask[i - 1]:
+                current_len += 1
+            else:
+                runs.append(current_len)
+                current_len = 1
+        runs.append(current_len)
+
+        runs = np.array(runs, dtype=float)
+        runs_prob = runs / runs.sum()
+        feats["mask_entropy"] = float(-np.sum(runs_prob * np.log2(runs_prob + 1e-10)))
+    except Exception:
+        feats["mask_entropy"] = 0.0
+
+    # Correlação de Spearman: rank(X0_imputado) vs máscara
+    try:
+        corr, _ = stats.spearmanr(X0_full, mask)
+        feats["X0_censoring_score"] = abs(float(corr)) if not np.isnan(corr) else 0.0
+    except Exception:
+        feats["X0_censoring_score"] = 0.0
+
+    # Mean shift de X1-X4 entre grupos missing/observed
+    try:
+        shifts = []
+        for col in ["X1", "X2", "X3", "X4"]:
+            xi = df[col].values
+            xi_miss = xi[mask == 1]
+            xi_obs = xi[mask == 0]
+            if len(xi_miss) > 0 and len(xi_obs) > 0:
+                shifts.append(abs(np.mean(xi_miss) - np.mean(xi_obs)))
+        feats["X0_mean_shift_X1_to_X4"] = float(np.mean(shifts)) if shifts else 0.0
+    except Exception:
+        feats["X0_mean_shift_X1_to_X4"] = 0.0
+
     return feats
 
 
@@ -122,4 +192,9 @@ def _default_discriminative_features():
         "X1_mean_diff": 0.0,
         "X1_mannwhitney_pval": 1.0,
         "little_proxy_score": 0.0,
+        "X0_ks_obs_vs_imputed": 0.0,
+        "X0_tail_missing_ratio": 1.0,
+        "mask_entropy": 0.0,
+        "X0_censoring_score": 0.0,
+        "X0_mean_shift_X1_to_X4": 0.0,
     }
