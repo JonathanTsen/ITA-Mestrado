@@ -3,6 +3,9 @@ Parsing centralizado de argumentos CLI do pipeline v2.
 """
 import sys
 
+# Abordagens LLM disponíveis (STEP04)
+LLM_APPROACHES = ("v2", "judge", "embeddings", "caafe")
+
 
 def parse_common_args() -> tuple[str, str, bool, str]:
     """Parse --model, --data, --test e --experiment de sys.argv.
@@ -36,3 +39,25 @@ def parse_common_args() -> tuple[str, str, bool, str]:
             experiment = sys.argv[idx + 1]
 
     return model_name, data_type, test_mode, experiment
+
+
+def parse_llm_approach() -> str:
+    """Parse --llm-approach de sys.argv.
+
+    Retorna a abordagem LLM escolhida:
+    - 'v2': prompt original de 8 features (default, backward-compatible)
+    - 'judge': desambiguação binária MCAR vs MNAR (4 features)
+    - 'embeddings': sentence-transformers embedding (10 features)
+    - 'caafe': features CAAFE-MNAR puras Python (4 features, sem LLM)
+    """
+    approach = "v2"
+
+    if "--llm-approach" in sys.argv:
+        idx = sys.argv.index("--llm-approach")
+        if idx + 1 < len(sys.argv):
+            approach = sys.argv[idx + 1]
+        if approach not in LLM_APPROACHES:
+            print(f"❌ --llm-approach deve ser {LLM_APPROACHES}, recebido: '{approach}'")
+            sys.exit(1)
+
+    return approach

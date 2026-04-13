@@ -28,8 +28,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from features.statistical import extract_statistical_features
 from features.discriminative import extract_discriminative_features
 from features.mechdetect import extract_mechdetect_features
+from features.caafe_mnar import extract_caafe_mnar_features
 from llm.extractor_v2 import LLMFeatureExtractorV2, get_llm_fallback_features_v2
-from utils.args import parse_common_args
+from llm.judge_mnar import LLMJudgeMNAR
+from llm.embeddings import EmbeddingFeatureExtractor
+from utils.args import parse_common_args, parse_llm_approach
 from utils.paths import (
     MODEL_TO_PROVIDER, V2_DIR, get_output_dir, get_dataset_paths,
 )
@@ -40,9 +43,16 @@ warnings.filterwarnings("ignore")
 # CONFIGURAÇÃO
 # ======================================================
 MODEL_NAME, DATA_TYPE, TEST_MODE, EXPERIMENT = parse_common_args()
+LLM_APPROACH = parse_llm_approach()
 MAX_WORKERS = 100
 
-USE_LLM = MODEL_NAME != "none" and MODEL_NAME in MODEL_TO_PROVIDER
+USE_LLM_API = MODEL_NAME != "none" and MODEL_NAME in MODEL_TO_PROVIDER
+# CAAFE features são puras Python — habilitadas quando approach é "caafe" OU junto com LLM
+USE_CAAFE = LLM_APPROACH == "caafe" or USE_LLM_API
+# Embeddings usam modelo local (sentence-transformers) — não precisa de API
+USE_EMBEDDINGS = LLM_APPROACH == "embeddings"
+# Judge e v2 precisam de API
+USE_LLM = USE_LLM_API and LLM_APPROACH in ("v2", "judge")
 
 load_dotenv(os.path.join(V2_DIR, ".env"))
 
@@ -69,20 +79,40 @@ print(f"=" * 60)
 print(f"📊 Dados: {DATA_TYPE}")
 print(f"🔬 Abordagem: {ABORDAGEM}")
 print(f"📝 Modelo LLM: {MODEL_NAME}")
-print(f"🤖 Usar LLM: {USE_LLM}")
+print(f"🤖 Usar LLM API: {USE_LLM}")
+print(f"🧠 Abordagem LLM: {LLM_APPROACH}")
+print(f"📐 CAAFE features: {USE_CAAFE}")
+print(f"🔤 Embeddings: {USE_EMBEDDINGS}")
 print(f"📂 Output: {OUTPUT_DIR}")
 if TEST_MODE:
     print(f"🧪 MODO TESTE: apenas 50 arquivos")
 print(f"=" * 60)
 
 # ======================================================
-# INICIALIZA LLM (se necessário)
+# INICIALIZA LLM / EMBEDDINGS (conforme abordagem)
 # ======================================================
 llm_extractor = None
+llm_judge = None
+embedding_extractor = None
+
 if USE_LLM:
     provider = MODEL_TO_PROVIDER[MODEL_NAME]
-    print(f"🔧 Inicializando LLM v2: {MODEL_NAME} ({provider})")
-    llm_extractor = LLMFeatureExtractorV2(MODEL_NAME, provider)
+
+    if LLM_APPROACH == "v2":
+        print(f"🔧 Inicializando LLM v2: {MODEL_NAME} ({provider})")
+        llm_extractor = LLMFeatureExtractorV2(MODEL_NAME, provider)
+    elif LLM_APPROACH == "judge":
+        print(f"🔧 Inicializando LLM Judge MNAR: {MODEL_NAME} ({provider})")
+        llm_judge = LLMJudgeMNAR(MODEL_NAME, provider)
+
+if USE_EMBEDDINGS:
+    print(f"🔧 Inicializando Embedding Extractor (sentence-transformers local)")
+    embedding_extractor = EmbeddingFeatureExtractor(
+        n_components=10, cache_dir=OUTPUT_DIR
+    )
+
+if USE_CAAFE and not USE_LLM and not USE_EMBEDDINGS:
+    print(f"🔧 Usando features CAAFE-MNAR (sem chamada LLM)")
 
 
 # ======================================================
@@ -91,21 +121,31 @@ if USE_LLM:
 def extract_all_features(df: pd.DataFrame) -> dict:
     """Extrai todas as features de um DataFrame."""
     feats = {}
-    
-    # 1. Features estatísticas básicas
+
+    # 1. Features estatísticas básicas (4 features)
     feats.update(extract_statistical_features(df))
-    
-    # 2. Features discriminativas (MCAR/MAR/MNAR)
+
+    # 2. Features discriminativas (11 features)
     feats.update(extract_discriminative_features(df))
 
-    # 3. Features MechDetect (3 tarefas AUC-ROC)
+    # 3. Features MechDetect (6 features)
     feats.update(extract_mechdetect_features(df))
 
-    # 4. Features LLM (apenas se habilitado)
-    if USE_LLM and llm_extractor is not None:
-        llm_feats = llm_extractor.extract_features(df)
-        feats.update(llm_feats)
-    
+    # 4. Features CAAFE-MNAR (4 features, puras Python)
+    if USE_CAAFE:
+        feats.update(extract_caafe_mnar_features(df))
+
+    # 5. Features LLM API (v2 ou judge)
+    if USE_LLM:
+        if LLM_APPROACH == "v2" and llm_extractor is not None:
+            feats.update(llm_extractor.extract_features(df))
+        elif LLM_APPROACH == "judge" and llm_judge is not None:
+            feats.update(llm_judge.judge(df))
+
+    # 6. Features embedding (sentence-transformers local, sem API)
+    if USE_EMBEDDINGS and embedding_extractor is not None:
+        feats.update(embedding_extractor.extract_features(df))
+
     return feats
 
 
@@ -240,21 +280,27 @@ if len(X_all) == 0:
 
 X = pd.DataFrame(X_all).replace([np.inf, -np.inf], np.nan)
 
-# Imputação diferenciada: estatísticas -> 0, LLM -> mediana
+# Imputação diferenciada por tipo de feature
 llm_cols = [c for c in X.columns if c.startswith("llm_")]
-stat_cols = [c for c in X.columns if not c.startswith("llm_")]
+emb_cols = [c for c in X.columns if c.startswith("emb_")]
+model_cols = llm_cols + emb_cols  # Features que vêm de modelos (LLM/embeddings)
+stat_cols = [c for c in X.columns if c not in model_cols]
 
-# Features estatísticas: NaN -> 0 (ausência de sinal)
+# Features estatísticas + CAAFE: NaN -> 0 (ausência de sinal)
 X[stat_cols] = X[stat_cols].fillna(0)
 
-# Features LLM: NaN -> mediana das amostras com resposta válida
-if llm_cols:
+# Features LLM/embeddings: NaN -> mediana das amostras com resposta válida
+if model_cols:
     from sklearn.impute import SimpleImputer
     imputer = SimpleImputer(strategy='median')
-    X[llm_cols] = pd.DataFrame(
-        imputer.fit_transform(X[llm_cols]),
-        columns=llm_cols, index=X.index
+    X[model_cols] = pd.DataFrame(
+        imputer.fit_transform(X[model_cols]),
+        columns=model_cols, index=X.index
     )
+
+# Flush embedding cache se usado
+if embedding_extractor is not None:
+    embedding_extractor.flush_cache()
 
 y = pd.Series(y_all, name="label")
 

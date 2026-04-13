@@ -12,6 +12,7 @@ pydantic>=2.0.0
 
 # Data generation
 mdatagen>=0.2.0
+missmecha-py>=0.1.2
 
 # LLM (optional - for feature extraction with AI)
 langchain>=0.1.0

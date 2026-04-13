@@ -45,6 +45,13 @@ if "--experiment" in sys.argv:
     if idx + 1 < len(sys.argv):
         EXPERIMENT = sys.argv[idx + 1]
 
+# Parse --llm-approach (STEP04: v2, judge, embeddings, caafe)
+LLM_APPROACH = "judge"  # Default: novo approach do STEP04
+if "--llm-approach" in sys.argv:
+    idx = sys.argv.index("--llm-approach")
+    if idx + 1 < len(sys.argv):
+        LLM_APPROACH = sys.argv[idx + 1]
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Salvar metadata do experimento
@@ -62,6 +69,7 @@ if TEST_MODE:
 print(f"🔬 Experimento: {EXPERIMENT}")
 print(f"📊 Tipos de dados: {DATA_TYPES}")
 print(f"📋 Modelos a processar: {MODELS}")
+print(f"🧠 Abordagem LLM: {LLM_APPROACH}")
 print("=" * 60)
 
 for data_type in DATA_TYPES:
@@ -90,7 +98,8 @@ for data_type in DATA_TYPES:
         # 1. Extração de features
         print(f"\n🔧 Extraindo features...")
         cmd = [sys.executable, os.path.join(SCRIPT_DIR, "extract_features.py"),
-               "--model", model, "--data", data_type, "--experiment", EXPERIMENT]
+               "--model", model, "--data", data_type, "--experiment", EXPERIMENT,
+               "--llm-approach", LLM_APPROACH]
         if TEST_MODE:
             cmd.append("--test")
 
@@ -136,11 +145,29 @@ for data_type in DATA_TYPES:
         print(f"🔬 VALIDAÇÃO DE RÓTULOS ({data_type.upper()})")
         print(f"{'=' * 60}")
 
-        cmd = [sys.executable, os.path.join(SCRIPT_DIR, "validate_labels.py"),
+        cmd = [sys.executable, os.path.join(SCRIPT_DIR, "validar_rotulos.py"),
                "--data", data_type, "--experiment", EXPERIMENT]
         subprocess.run(cmd, cwd=SCRIPT_DIR)
 
-# 6. Comparação cruzada (se rodou ambos)
+    # 6. Classificação MNAR Focused vs Diffuse
+    print(f"\n{'=' * 60}")
+    print(f"🔍 CLASSIFICAÇÃO MNAR FOCUSED vs DIFFUSE ({data_type.upper()})")
+    print(f"{'=' * 60}")
+
+    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "classificar_mnar.py"),
+           "--data", data_type, "--experiment", EXPERIMENT]
+    subprocess.run(cmd, cwd=SCRIPT_DIR)
+
+    # 7. Classificação Hierárquica + LOGO CV (STEP05)
+    print(f"\n{'=' * 60}")
+    print(f"🔀 CLASSIFICAÇÃO HIERÁRQUICA + LOGO CV ({data_type.upper()})")
+    print(f"{'=' * 60}")
+
+    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "train_hierarchical.py"),
+           "--model", "none", "--data", data_type, "--experiment", EXPERIMENT]
+    subprocess.run(cmd, cwd=SCRIPT_DIR)
+
+# 8. Comparação cruzada (se rodou ambos)
 if len(DATA_TYPES) > 1:
     print(f"\n{'=' * 60}")
     print(f"🔄 COMPARAÇÃO CRUZADA: SINTÉTICO vs REAL")
@@ -149,6 +176,15 @@ if len(DATA_TYPES) > 1:
     cmd = [sys.executable, os.path.join(SCRIPT_DIR, "compare_results.py"),
            "--compare-all", "--experiment", EXPERIMENT]
     subprocess.run(cmd, cwd=SCRIPT_DIR)
+
+# 9. Geração de outputs para tese (STEP05)
+print(f"\n{'=' * 60}")
+print(f"📝 GERAÇÃO DE OUTPUTS PARA TESE")
+print(f"{'=' * 60}")
+
+cmd = [sys.executable, os.path.join(SCRIPT_DIR, "generate_thesis_outputs.py"),
+       "--experiment", EXPERIMENT]
+subprocess.run(cmd, cwd=SCRIPT_DIR)
 
 print(f"\n{'=' * 60}")
 print(f"✅ PIPELINE COMPLETO FINALIZADO!")

@@ -1,0 +1,8 @@
+dataset,auc_complete,auc_excluded,delta,classification,n_samples
+MNAR_adult_capitalgain,0.546,0.5125,0.0335,Diffuse,10
+MNAR_colic_refluxph,0.539,0.4773,0.0617,Diffuse,10
+MNAR_cylinderbands_varnishpct,0.6419,0.516,0.1259,Diffuse,10
+MNAR_kidney_pot,0.5612,0.4844,0.0768,Diffuse,10
+MNAR_kidney_sod,0.5869,0.4764,0.1105,Diffuse,10
+MNAR_mroz_wages,0.5477,0.4807,0.0671,Diffuse,10
+MNAR_pima_insulin,0.5417,0.5031,0.0386,Diffuse,10
