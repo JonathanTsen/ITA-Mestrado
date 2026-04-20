@@ -1,0 +1,784 @@
+{
+  "MCAR_autompg_horsepower": {
+    "domain": "automotive engineering",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "horsepower",
+    "x0_units": "hp (horsepower)",
+    "x0_description": "Engine power output of the automobile",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "displacement",
+        "units": "cubic inches",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "weight",
+        "units": "pounds",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "acceleration",
+        "units": "seconds (0-60mph)",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "cylinders",
+        "units": "count",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of horsepower are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of horsepower itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.015,
+    "n_total_original": 398,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_breastcancer_barenuclei": {
+    "domain": "oncology / breast cancer diagnosis",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "bare_nuclei",
+    "x0_units": "score 1-10 (cytological scale)",
+    "x0_description": "Bare nuclei score from cytological examination",
+    "x0_typical_range": "discrete numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "clump_thickness",
+        "units": "score 1-10",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "uniformity_cell_size",
+        "units": "score 1-10",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "uniformity_cell_shape",
+        "units": "score 1-10",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "marginal_adhesion",
+        "units": "score 1-10",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of bare_nuclei are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of bare_nuclei itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.023,
+    "n_total_original": 699,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_cylinderbands_bladepressure": {
+    "domain": "manufacturing / rotogravure printing",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "blade_pressure",
+    "x0_units": "process-specific unit (doctor blade pressure)",
+    "x0_description": "Doctor blade pressure used to control ink thickness on the printing cylinder",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "press_speed",
+        "units": "speed unit",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "ink_temperature",
+        "units": "degrees (process unit)",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "viscosity",
+        "units": "viscosity unit",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "roughness",
+        "units": "roughness unit",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of blade_pressure are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of blade_pressure itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.313,
+    "n_total_original": 540,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_cylinderbands_esavoltage": {
+    "domain": "manufacturing / rotogravure printing",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "ESA_Voltage",
+    "x0_units": "volts",
+    "x0_description": "Electrostatic assist (ESA) system voltage that aids ink transfer",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "press_speed",
+        "units": "speed unit",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "ink_temperature",
+        "units": "degrees (process unit)",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "viscosity",
+        "units": "viscosity unit",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "roughness",
+        "units": "roughness unit",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of ESA_Voltage are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of ESA_Voltage itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.346,
+    "n_total_original": 540,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_hypothyroid_t4u": {
+    "domain": "endocrinology / thyroid function",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "T4U",
+    "x0_units": "ratio (T4 uptake, dimensionless)",
+    "x0_description": "T4 uptake ratio representing serum protein binding capacity for T4 hormone",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "TSH",
+        "units": "mU/L",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "TT4",
+        "units": "nmol/L",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "FTI",
+        "units": "index",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of T4U are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of T4U itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.104,
+    "n_total_original": 3772,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_airquality_ozone": {
+    "domain": "environmental science / air quality",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "Ozone",
+    "x0_units": "ppb (parts per billion)",
+    "x0_description": "Mean daily tropospheric ozone concentration",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "Wind",
+        "units": "mph (miles per hour)",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "Temp",
+        "units": "degrees Fahrenheit",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "Solar.R",
+        "units": "cal/cm2",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "Month",
+        "units": "month (5-9)",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of Ozone are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of Ozone itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.242,
+    "n_total_original": 153,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_oceanbuoys_humidity": {
+    "domain": "oceanography / marine meteorology",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "humidity",
+    "x0_units": "% (relative humidity)",
+    "x0_description": "Relative air humidity measured by an oceanic buoy",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "sea.surface.temp",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "air.temp",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "uwind",
+        "units": "m/s",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "vwind",
+        "units": "m/s",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of humidity are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of humidity itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.126,
+    "n_total_original": 736,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_oceanbuoys_airtemp": {
+    "domain": "oceanography / marine meteorology",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "air.temp",
+    "x0_units": "degrees Celsius",
+    "x0_description": "Air temperature measured by an oceanic buoy",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "sea.surface.temp",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "humidity",
+        "units": "% relative humidity",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "uwind",
+        "units": "m/s",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "vwind",
+        "units": "m/s",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of air.temp are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of air.temp itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.11,
+    "n_total_original": 736,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_mammographic_density": {
+    "domain": "radiology / breast diagnosis",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "Density",
+    "x0_units": "ordinal scale 1-4 (with Gaussian jitter applied)",
+    "x0_description": "Breast tissue density classification",
+    "x0_typical_range": "discrete numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "BIRADS",
+        "units": "classification 1-5",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "Age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "Shape",
+        "units": "classification 1-4",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "Margin",
+        "units": "classification 1-5",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of Density are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of Density itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.063,
+    "n_total_original": 886,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_sick_t3": {
+    "domain": "endocrinology / thyroid function",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "T3",
+    "x0_units": "nmol/L (nanomol per liter)",
+    "x0_description": "Serum triiodothyronine (T3) level",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "TSH",
+        "units": "mU/L",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "TT4",
+        "units": "nmol/L",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "FTI",
+        "units": "index",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of T3 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of T3 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 3772,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_sick_tsh": {
+    "domain": "endocrinology / thyroid function",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "TSH",
+    "x0_units": "mU/L (milliunits per liter)",
+    "x0_description": "Serum thyroid-stimulating hormone (TSH) level",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "T3",
+        "units": "nmol/L",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "TT4",
+        "units": "nmol/L",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "FTI",
+        "units": "index",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of TSH are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of TSH itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 3772,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_titanic_age": {
+    "domain": "demographics / historical maritime data",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "Age",
+    "x0_units": "years",
+    "x0_description": "Age of the individual recorded in the dataset",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "Pclass",
+        "units": "class 1/2/3",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "SibSp",
+        "units": "count",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "Parch",
+        "units": "count",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "Fare",
+        "units": "monetary units",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of Age are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of Age itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.199,
+    "n_total_original": 891,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_titanic_age_v2": {
+    "domain": "demographics / historical maritime data",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "Age",
+    "x0_units": "years",
+    "x0_description": "Age of the individual recorded in the dataset",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "Pclass",
+        "units": "class 1/2/3",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "SibSp",
+        "units": "count",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "Parch",
+        "units": "count",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "Fare",
+        "units": "monetary units",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of Age are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of Age itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.199,
+    "n_total_original": 891,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_kidney_hemo": {
+    "domain": "nephrology / clinical biochemistry",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "hemo",
+    "x0_units": "g/dL (grams per deciliter)",
+    "x0_description": "Blood hemoglobin level",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "bp",
+        "units": "mmHg",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "bgr",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "bu",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of hemo are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of hemo itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 400,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_hearth_chol": {
+    "domain": "cardiology",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "chol",
+    "x0_units": "mg/dL (milligrams per deciliter)",
+    "x0_description": "Total serum cholesterol",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "trestbps",
+        "units": "mmHg",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "thalach",
+        "units": "bpm",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "oldpeak",
+        "units": "mm",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of chol are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of chol itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 294,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_colic_resprate": {
+    "domain": "veterinary medicine / equine colic",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "respiratory_rate",
+    "x0_units": "breaths/minute",
+    "x0_description": "Animal respiratory rate",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "pulse",
+        "units": "bpm",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "rectal_temperature",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "packed_cell_volume",
+        "units": "% (hematocrit)",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "total_protein",
+        "units": "g/dL",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of respiratory_rate are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of respiratory_rate itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 368,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_pima_insulin": {
+    "domain": "endocrinology / diabetes",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "Insulin",
+    "x0_units": "uU/mL (microunits per milliliter)",
+    "x0_description": "Serum insulin concentration",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "Glucose",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "BloodPressure",
+        "units": "mmHg",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "BMI",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "Age",
+        "units": "years",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of Insulin are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of Insulin itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.487,
+    "n_total_original": 768,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_mroz_wages": {
+    "domain": "labor economics",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "lwg",
+    "x0_units": "log(monetary units per hour)",
+    "x0_description": "Natural logarithm of an hourly wage variable",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "inc",
+        "units": "monetary units per year",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "k5",
+        "units": "count",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "wc_num",
+        "units": "binary 0/1",
+        "role": "binary predictor"
+      }
+    },
+    "missing_context": "Some entries of lwg are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of lwg itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.432,
+    "n_total_original": 753,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_kidney_pot": {
+    "domain": "nephrology / clinical biochemistry",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "pot",
+    "x0_units": "mEq/L (milliequivalents per liter)",
+    "x0_description": "Serum potassium level",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "bp",
+        "units": "mmHg",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "bgr",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "bu",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of pot are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of pot itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 400,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_kidney_sod": {
+    "domain": "nephrology / clinical biochemistry",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "sod",
+    "x0_units": "mEq/L (milliequivalents per liter)",
+    "x0_description": "Serum sodium level",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "bp",
+        "units": "mmHg",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "bgr",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "bu",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of sod are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of sod itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 400,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_colic_refluxph": {
+    "domain": "veterinary medicine / equine colic",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "nasogastric_reflux_PH",
+    "x0_units": "pH (scale 0-14)",
+    "x0_description": "pH of nasogastric reflux fluid",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "pulse",
+        "units": "bpm",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "rectal_temperature",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "packed_cell_volume",
+        "units": "% hematocrit",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "total_protein",
+        "units": "g/dL",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of nasogastric_reflux_PH are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of nasogastric_reflux_PH itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 368,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_cylinderbands_varnishpct": {
+    "domain": "manufacturing / quality control",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "varnish_pct",
+    "x0_units": "percentage (%)",
+    "x0_description": "Varnish percentage applied to the printing cylinder",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "press_speed",
+        "units": "speed unit",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "ink_temperature",
+        "units": "degrees",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "viscosity",
+        "units": "viscosity unit",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "roughness",
+        "units": "roughness unit",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of varnish_pct are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of varnish_pct itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 540,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_adult_capitalgain": {
+    "domain": "economics / demographic census",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "capital_gain",
+    "x0_units": "monetary units",
+    "x0_description": "Capital gain from investments in the fiscal year",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "education_num",
+        "units": "years of study",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "hours_per_week",
+        "units": "hours/week",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "capital_loss",
+        "units": "monetary units",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of capital_gain are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of capital_gain itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 32561,
+    "_metadata_variant": "neutral"
+  }
+}

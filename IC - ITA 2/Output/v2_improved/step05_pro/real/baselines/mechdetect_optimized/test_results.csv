@@ -1,0 +1,4 @@
+,th_cs,th_ce,accuracy,f1_macro,recall_MCAR,recall_MAR,recall_MNAR
+original,0.05,0.03,0.3153,0.3168,0.4737,0.0,0.96
+cv_best_acc,0.25,0.39,0.5186,0.4722,0.5263,0.5933,0.28
+cv_best_f1,0.25,0.36,0.4949,0.4584,0.5263,0.5467,0.28

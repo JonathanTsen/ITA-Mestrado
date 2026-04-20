@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-04-18T21:02:41.619316",
+  "data_type": "real",
+  "experiment": "step05_pro",
+  "llm_model": "gemini-3.1-pro-preview",
+  "n_samples": 1132,
+  "n_train": 837,
+  "n_test": 295,
+  "n_features_baseline": 21,
+  "n_features_caafe": 4,
+  "n_features_llm": 8,
+  "n_features_total": 33,
+  "variantes": {
+    "V1_direto_stat": {
+      "desc": "Direto 3-way (21 stat)",
+      "best_model": "RandomForest",
+      "best_accuracy": 0.4135593220338983,
+      "best_f1_macro": 0.42402381770296577,
+      "best_recall_MNAR": 0.4,
+      "mean_accuracy": 0.362227602905569
+    },
+    "V2_hier_stat": {
+      "desc": "Hier: L1=stat, L2=stat",
+      "best_model": "RandomForest",
+      "best_accuracy": 0.4101694915254237,
+      "best_f1_macro": 0.42264872276859095,
+      "best_recall_MNAR": 0.4,
+      "mean_accuracy": 0.3617433414043583
+    },
+    "V3_hier_caafe_n2": {
+      "desc": "Hier: L1=stat, L2=stat+CAAFE",
+      "best_model": "GradientBoosting",
+      "best_accuracy": 0.5050847457627119,
+      "best_f1_macro": 0.4878937341581564,
+      "best_recall_MNAR": 0.4,
+      "mean_accuracy": 0.4271186440677966
+    },
+    "V4_hier_llm_n2": {
+      "desc": "Hier: L1=stat, L2=stat+CAAFE+LLM [CORE]",
+      "best_model": "GradientBoosting",
+      "best_accuracy": 0.4440677966101695,
+      "best_f1_macro": 0.39644006266957094,
+      "best_recall_MNAR": 0.06,
+      "mean_accuracy": 0.40048426150121064
+    },
+    "V5_hier_llm_ambos": {
+      "desc": "Hier: L1=ALL, L2=ALL [Controle]",
+      "best_model": "KNN",
+      "best_accuracy": 0.43050847457627117,
+      "best_f1_macro": 0.41063284541545414,
+      "best_recall_MNAR": 0.3,
+      "mean_accuracy": 0.37869249394673116
+    },
+    "V6_direto_llm": {
+      "desc": "Direto 3-way (33 ALL) [Controle]",
+      "best_model": "KNN",
+      "best_accuracy": 0.44745762711864406,
+      "best_f1_macro": 0.41435122486817644,
+      "best_recall_MNAR": 0.26,
+      "mean_accuracy": 0.40145278450363203
+    }
+  }
+}

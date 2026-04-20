@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-04-18T20:39:33.190287",
+  "data_type": "real",
+  "experiment": "step05_pro",
+  "n_test": 295,
+  "shap_model": "RandomForest (n=400)",
+  "top5_l1": [
+    "X0_censoring_score",
+    "X1_mean_diff",
+    "X0_ks_obs_vs_imputed",
+    "X0_obs_skew_diff",
+    "X0_obs_vs_full_ratio"
+  ],
+  "top5_l2_caafe": [
+    "X0_obs_vs_full_ratio",
+    "caafe_cond_entropy_X0_mask",
+    "caafe_kurtosis_excess",
+    "caafe_tail_asymmetry",
+    "X0_obs_skew_diff"
+  ],
+  "top5_l2_all": [
+    "X0_obs_vs_full_ratio",
+    "caafe_cond_entropy_X0_mask",
+    "caafe_kurtosis_excess",
+    "caafe_tail_asymmetry",
+    "llm_dist_shift"
+  ],
+  "caafe_features_ranking_l2": {
+    "caafe_cond_entropy_X0_mask": {
+      "rank": 2,
+      "mean_abs_shap": 0.07205633031857164
+    },
+    "caafe_kurtosis_excess": {
+      "rank": 3,
+      "mean_abs_shap": 0.06371404440666717
+    },
+    "caafe_tail_asymmetry": {
+      "rank": 4,
+      "mean_abs_shap": 0.05410719943844618
+    },
+    "caafe_missing_rate_by_quantile": {
+      "rank": 25,
+      "mean_abs_shap": 0.0
+    }
+  }
+}

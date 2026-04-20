@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-04-19T10:03:10.587097",
+  "data_type": "real",
+  "experiment": "step05_pro",
+  "routing_strategies": [
+    "hard",
+    "threshold",
+    "soft3zone",
+    "fullprob"
+  ],
+  "clean_labels": "weight",
+  "calibrate": true,
+  "balancing": "smote",
+  "n_samples": 1132,
+  "n_train": 837,
+  "n_test": 295,
+  "variantes": {
+    "V1_direto_stat": {
+      "desc": "Direto 3-way (baseline)",
+      "best_model": "RandomForest",
+      "best_accuracy": 0.4135593220338983,
+      "best_f1_macro": 0.42402381770296577,
+      "best_recall_MNAR": 0.4
+    },
+    "V3_hier_hard": {
+      "desc": "V3 Hier CAAFE N2 (hard, original)",
+      "best_model": "GradientBoosting",
+      "best_accuracy": 0.5288135593220339,
+      "best_f1_macro": 0.5093141659179394,
+      "best_recall_MNAR": 0.44
+    },
+    "V3plus_threshold": {
+      "desc": "V3+ Hier CAAFE N2 (threshold)",
+      "best_model": "XGBoost",
+      "best_accuracy": 0.6542372881355932,
+      "best_f1_macro": 0.45615400948403995,
+      "best_recall_MNAR": 0.0
+    },
+    "V3plus_soft3zone": {
+      "desc": "V3+ Hier CAAFE N2 (soft3zone)",
+      "best_model": "SVM_RBF",
+      "best_accuracy": 0.4576271186440678,
+      "best_f1_macro": 0.37342845996165314,
+      "best_recall_MNAR": 0.02
+    },
+    "V3plus_fullprob": {
+      "desc": "V3+ Hier CAAFE N2 (fullprob)",
+      "best_model": "SVM_RBF",
+      "best_accuracy": 0.4576271186440678,
+      "best_f1_macro": 0.37342845996165314,
+      "best_recall_MNAR": 0.02
+    }
+  }
+}

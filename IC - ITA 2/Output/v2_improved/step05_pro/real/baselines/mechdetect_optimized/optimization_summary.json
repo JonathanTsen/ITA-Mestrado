@@ -1,0 +1,94 @@
+{
+  "method": "MechDetect_ThresholdOptimized",
+  "cv_method": "GroupKFold(5)",
+  "n_train": 837,
+  "n_test": 295,
+  "n_groups": 23,
+  "grid_search": {
+    "th_cs_range": [
+      0.05,
+      0.1,
+      0.15000000000000002,
+      0.2,
+      0.25,
+      0.30000000000000004,
+      0.35000000000000003,
+      0.4,
+      0.45,
+      0.5
+    ],
+    "th_ce_range": [
+      0.03,
+      0.06,
+      0.09,
+      0.12,
+      0.15,
+      0.18,
+      0.21,
+      0.24,
+      0.27,
+      0.3,
+      0.32999999999999996,
+      0.36,
+      0.39,
+      0.42,
+      0.44999999999999996
+    ],
+    "best_acc_params": {
+      "th_cs": 0.25,
+      "th_ce": 0.39,
+      "cv_acc": 0.5348163992869875
+    },
+    "best_f1_params": {
+      "th_cs": 0.25,
+      "th_ce": 0.36,
+      "cv_f1": 0.38857493228187684
+    }
+  },
+  "test_results": {
+    "original": {
+      "th_cs": 0.05,
+      "th_ce": 0.03,
+      "accuracy": 0.3153,
+      "f1_macro": 0.3168,
+      "recall_MCAR": 0.4737,
+      "recall_MAR": 0.0,
+      "recall_MNAR": 0.96
+    },
+    "cv_best_acc": {
+      "th_cs": 0.25,
+      "th_ce": 0.39,
+      "accuracy": 0.5186,
+      "f1_macro": 0.4722,
+      "recall_MCAR": 0.5263,
+      "recall_MAR": 0.5933,
+      "recall_MNAR": 0.28
+    },
+    "cv_best_f1": {
+      "th_cs": 0.25,
+      "th_ce": 0.36,
+      "accuracy": 0.4949,
+      "f1_macro": 0.4584,
+      "recall_MCAR": 0.5263,
+      "recall_MAR": 0.5467,
+      "recall_MNAR": 0.28
+    }
+  },
+  "logo_cv": {
+    "n_folds": 23,
+    "original": {
+      "accuracy": 0.3843,
+      "f1_macro": 0.3459,
+      "recall_MCAR": 0.4224,
+      "recall_MAR": 0.0,
+      "recall_MNAR": 0.9629
+    },
+    "optimized": {
+      "accuracy": 0.4779,
+      "f1_macro": 0.4798,
+      "recall_MCAR": 0.4353,
+      "recall_MAR": 0.5418,
+      "recall_MNAR": 0.4057
+    }
+  }
+}

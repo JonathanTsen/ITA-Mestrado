@@ -1,0 +1,7 @@
+group,accuracy,n,true_label
+MCAR_hypothyroid_t4u,0.0,50,MCAR
+MAR_sick_tsh,0.04,50,MAR
+MNAR_colic_refluxph,0.42,50,MNAR
+MAR_airquality_ozone,0.66,50,MAR
+MCAR_breastcancer_barenuclei,0.9777777777777777,45,MCAR
+MAR_titanic_age,0.98,50,MAR

@@ -1,0 +1,142 @@
+RELATÓRIO ENSEMBLE ADAPTATIVO - real
+Threshold de confiança: 0.6
+============================================================
+
+==================================================
+=== RandomForest ===
+==================================================
+Baseline: 0.4169
+LLM:      0.4169
+Ensemble: 0.4169
+Amostras baixa confiança: 85/295 (28.8%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       0.95      0.43      0.59        95
+           1       0.45      0.50      0.47       150
+           2       0.08      0.14      0.10        50
+
+    accuracy                           0.42       295
+   macro avg       0.49      0.36      0.39       295
+weighted avg       0.55      0.42      0.45       295
+
+
+==================================================
+=== GradientBoosting ===
+==================================================
+Baseline: 0.4475
+LLM:      0.4475
+Ensemble: 0.4475
+Amostras baixa confiança: 15/295 (5.1%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       0.95      0.43      0.59        95
+           1       0.46      0.50      0.48       150
+           2       0.18      0.32      0.23        50
+
+    accuracy                           0.45       295
+   macro avg       0.53      0.42      0.43       295
+weighted avg       0.57      0.45      0.47       295
+
+
+==================================================
+=== LogisticRegression ===
+==================================================
+Baseline: 0.4203
+LLM:      0.4203
+Ensemble: 0.4203
+Amostras baixa confiança: 48/295 (16.3%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       0.98      0.43      0.60        95
+           1       0.45      0.52      0.48       150
+           2       0.06      0.10      0.08        50
+
+    accuracy                           0.42       295
+   macro avg       0.50      0.35      0.39       295
+weighted avg       0.56      0.42      0.45       295
+
+
+==================================================
+=== SVM_RBF ===
+==================================================
+Baseline: 0.4203
+LLM:      0.4746
+Ensemble: 0.4339
+Amostras baixa confiança: 46/295 (15.6%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       0.93      0.41      0.57        95
+           1       0.46      0.54      0.50       150
+           2       0.10      0.16      0.12        50
+
+    accuracy                           0.43       295
+   macro avg       0.50      0.37      0.40       295
+weighted avg       0.55      0.43      0.46       295
+
+
+==================================================
+=== KNN ===
+==================================================
+Baseline: 0.4271
+LLM:      0.4339
+Ensemble: 0.4305
+Amostras baixa confiança: 16/295 (5.4%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       0.92      0.35      0.50        95
+           1       0.48      0.56      0.52       150
+           2       0.12      0.20      0.15        50
+
+    accuracy                           0.43       295
+   macro avg       0.51      0.37      0.39       295
+weighted avg       0.56      0.43      0.45       295
+
+
+==================================================
+=== MLP ===
+==================================================
+Baseline: 0.4339
+LLM:      0.4542
+Ensemble: 0.4373
+Amostras baixa confiança: 7/295 (2.4%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       0.93      0.41      0.57        95
+           1       0.47      0.45      0.46       150
+           2       0.20      0.44      0.28        50
+
+    accuracy                           0.44       295
+   macro avg       0.53      0.43      0.44       295
+weighted avg       0.57      0.44      0.47       295
+
+
+==================================================
+=== NaiveBayes ===
+==================================================
+Baseline: 0.3831
+LLM:      0.3831
+Ensemble: 0.3831
+Amostras baixa confiança: 15/295 (5.1%)
+
+Classification Report (Ensemble):
+              precision    recall  f1-score   support
+
+           0       1.00      0.24      0.39        95
+           1       0.50      0.49      0.50       150
+           2       0.13      0.32      0.18        50
+
+    accuracy                           0.38       295
+   macro avg       0.54      0.35      0.36       295
+weighted avg       0.60      0.38      0.41       295

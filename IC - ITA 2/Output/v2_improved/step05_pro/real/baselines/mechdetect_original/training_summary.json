@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-04-18T20:24:57.959089",
+  "method": "MechDetect_Original",
+  "reference": "Jung et al. (2024)",
+  "data_type": "real",
+  "experiment": "step05_pro",
+  "n_datasets": 1132,
+  "classifier": "HistGradientBoostingClassifier",
+  "cv_folds": 10,
+  "accuracy": 0.3948763250883392,
+  "f1_macro": 0.36354254409773573,
+  "per_class": {
+    "MCAR": {
+      "precision": 0.6797752808988764,
+      "recall": 0.521551724137931,
+      "f1": 0.5902439024390244,
+      "support": 232
+    },
+    "MAR": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 550
+    },
+    "MNAR": {
+      "precision": 0.34207764952780695,
+      "recall": 0.9314285714285714,
+      "f1": 0.5003837298541827,
+      "support": 350
+    }
+  },
+  "confusion_matrix": [
+    [
+      121,
+      1,
+      110
+    ],
+    [
+      33,
+      0,
+      517
+    ],
+    [
+      24,
+      0,
+      326
+    ]
+  ]
+}

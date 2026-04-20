@@ -32,6 +32,7 @@ MODEL_TO_PROVIDER = {
     "gpt-5-mini": "openai",
     "gemini-3-pro-preview": "gemini",
     "gemini-3-flash-preview": "gemini",
+    "gemini-3.1-pro-preview": "gemini",
 }
 
 

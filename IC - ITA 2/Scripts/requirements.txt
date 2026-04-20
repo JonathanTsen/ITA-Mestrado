@@ -14,6 +14,11 @@ pydantic>=2.0.0
 mdatagen>=0.2.0
 missmecha-py>=0.1.2
 
+# Gradient Boosting optimized
+xgboost>=2.0.0
+catboost>=1.2.0
+optuna>=3.4.0
+
 # LLM (optional - for feature extraction with AI)
 langchain>=0.1.0
 langchain-openai>=0.0.5

@@ -105,7 +105,7 @@ def _compute_all_tasks(X_complete, X_excluded, mask, mask_shuffled, n_folds):
             ))
             aucs_s.append(_fit_and_auc(
                 X_complete[train_idx], mask_shuffled[train_idx],
-                X_complete[test_idx], mask[test_idx]
+                X_complete[test_idx], mask_shuffled[test_idx]
             ))
             aucs_e.append(_fit_and_auc(
                 X_excluded[train_idx], mask[train_idx],

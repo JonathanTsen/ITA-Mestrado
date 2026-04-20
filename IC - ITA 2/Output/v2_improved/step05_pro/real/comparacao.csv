@@ -1,0 +1,8 @@
+,baseline (apenas ML),gemini-3.1-pro-preview (ML + LLM)
+RandomForest,0.4136,0.4068
+GradientBoosting,0.3864,0.4034
+LogisticRegression,0.2712,0.3627
+SVM_RBF,0.3153,0.4136
+KNN,0.3763,0.4475
+MLP,0.3797,0.3932
+NaiveBayes,0.3932,0.3831

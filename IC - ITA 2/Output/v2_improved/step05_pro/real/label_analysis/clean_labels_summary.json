@@ -1,0 +1,18 @@
+{
+  "experiment": "step05_pro",
+  "data_type": "real",
+  "action": "weight",
+  "n_samples": 1132,
+  "n_features": 21,
+  "n_issues": 672,
+  "pct_issues": 59.36395759717315,
+  "mean_quality": 0.3793928828207785,
+  "median_quality": 0.18952092877269316,
+  "quality_by_class": {
+    "MCAR": 0.2678243477567312,
+    "MAR": 0.46628993793981915,
+    "MNAR": 0.31679436801902594
+  },
+  "n_datasets_disagreeing": 15,
+  "n_datasets_total": 23
+}

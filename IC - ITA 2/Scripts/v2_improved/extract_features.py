@@ -29,9 +29,11 @@ from features.statistical import extract_statistical_features
 from features.discriminative import extract_discriminative_features
 from features.mechdetect import extract_mechdetect_features
 from features.caafe_mnar import extract_caafe_mnar_features
+from features.advanced_l2 import extract_advanced_l2_features
 from llm.extractor_v2 import LLMFeatureExtractorV2, get_llm_fallback_features_v2
 from llm.judge_mnar import LLMJudgeMNAR
 from llm.embeddings import EmbeddingFeatureExtractor
+from llm.context_aware import LLMContextAwareExtractor
 from utils.args import parse_common_args, parse_llm_approach
 from utils.paths import (
     MODEL_TO_PROVIDER, V2_DIR, get_output_dir, get_dataset_paths,
@@ -44,15 +46,29 @@ warnings.filterwarnings("ignore")
 # ======================================================
 MODEL_NAME, DATA_TYPE, TEST_MODE, EXPERIMENT = parse_common_args()
 LLM_APPROACH = parse_llm_approach()
-MAX_WORKERS = 100
+MAX_WORKERS = 10 if LLM_APPROACH == "context" else 100
+
+# --metadata-variant: 'default' (original) ou 'neutral' (sem revelar mecanismo)
+METADATA_VARIANT = "default"
+if "--metadata-variant" in sys.argv:
+    idx = sys.argv.index("--metadata-variant")
+    if idx + 1 < len(sys.argv):
+        METADATA_VARIANT = sys.argv[idx + 1]
+    if METADATA_VARIANT not in ("default", "neutral"):
+        print(f"❌ --metadata-variant deve ser 'default' ou 'neutral', recebido: '{METADATA_VARIANT}'")
+        sys.exit(1)
 
 USE_LLM_API = MODEL_NAME != "none" and MODEL_NAME in MODEL_TO_PROVIDER
 # CAAFE features são puras Python — habilitadas quando approach é "caafe" OU junto com LLM
-USE_CAAFE = LLM_APPROACH == "caafe" or USE_LLM_API
+USE_CAAFE = LLM_APPROACH in ("caafe", "context") or USE_LLM_API
+# Advanced L2 features (STEP 03) — habilitadas via --advanced-l2
+USE_ADVANCED_L2 = "--advanced-l2" in sys.argv
 # Embeddings usam modelo local (sentence-transformers) — não precisa de API
 USE_EMBEDDINGS = LLM_APPROACH == "embeddings"
 # Judge e v2 precisam de API
 USE_LLM = USE_LLM_API and LLM_APPROACH in ("v2", "judge")
+# Context-aware precisa de API
+USE_CONTEXT = USE_LLM_API and LLM_APPROACH == "context"
 
 load_dotenv(os.path.join(V2_DIR, ".env"))
 
@@ -82,7 +98,10 @@ print(f"📝 Modelo LLM: {MODEL_NAME}")
 print(f"🤖 Usar LLM API: {USE_LLM}")
 print(f"🧠 Abordagem LLM: {LLM_APPROACH}")
 print(f"📐 CAAFE features: {USE_CAAFE}")
+print(f"📐 Advanced L2: {USE_ADVANCED_L2}")
 print(f"🔤 Embeddings: {USE_EMBEDDINGS}")
+print(f"🌐 Context-aware: {USE_CONTEXT}")
+print(f"📖 Metadata variant: {METADATA_VARIANT}")
 print(f"📂 Output: {OUTPUT_DIR}")
 if TEST_MODE:
     print(f"🧪 MODO TESTE: apenas 50 arquivos")
@@ -94,6 +113,15 @@ print(f"=" * 60)
 llm_extractor = None
 llm_judge = None
 embedding_extractor = None
+context_extractor = None
+
+if USE_CONTEXT:
+    provider = MODEL_TO_PROVIDER[MODEL_NAME]
+    print(f"🔧 Inicializando LLM Context-Aware: {MODEL_NAME} ({provider}) "
+          f"[metadata_variant={METADATA_VARIANT}]")
+    context_extractor = LLMContextAwareExtractor(
+        MODEL_NAME, provider, metadata_variant=METADATA_VARIANT,
+    )
 
 if USE_LLM:
     provider = MODEL_TO_PROVIDER[MODEL_NAME]
@@ -118,7 +146,7 @@ if USE_CAAFE and not USE_LLM and not USE_EMBEDDINGS:
 # ======================================================
 # FUNÇÃO DE EXTRAÇÃO COMPLETA
 # ======================================================
-def extract_all_features(df: pd.DataFrame) -> dict:
+def extract_all_features(df: pd.DataFrame, filename: str = "") -> dict:
     """Extrai todas as features de um DataFrame."""
     feats = {}
 
@@ -135,6 +163,10 @@ def extract_all_features(df: pd.DataFrame) -> dict:
     if USE_CAAFE:
         feats.update(extract_caafe_mnar_features(df))
 
+    # 4b. Features avançadas L2 (7 features, STEP 03)
+    if USE_ADVANCED_L2:
+        feats.update(extract_advanced_l2_features(df))
+
     # 5. Features LLM API (v2 ou judge)
     if USE_LLM:
         if LLM_APPROACH == "v2" and llm_extractor is not None:
@@ -146,6 +178,12 @@ def extract_all_features(df: pd.DataFrame) -> dict:
     if USE_EMBEDDINGS and embedding_extractor is not None:
         feats.update(embedding_extractor.extract_features(df))
 
+    # 7. Features LLM context-aware (6 features, STEP context)
+    if USE_CONTEXT and context_extractor is not None:
+        feats.update(context_extractor.extract_features(
+            df, filename=filename, data_type=DATA_TYPE,
+        ))
+
     return feats
 
 
@@ -154,7 +192,8 @@ def process_file(args):
     filepath, classe, idx = args
     try:
         df = pd.read_csv(filepath, sep="\t")
-        feats = extract_all_features(df)
+        filename = os.path.basename(filepath)
+        feats = extract_all_features(df, filename=filename)
         return (feats, LABEL_MAP[classe], idx, None)
     except Exception as e:
         return (None, LABEL_MAP[classe], idx, str(e))
@@ -231,7 +270,7 @@ def save_checkpoint():
 if len(tasks_to_process) > 0:
     errors = []
     
-    if USE_LLM and MAX_WORKERS > 1:
+    if (USE_LLM or USE_CONTEXT) and MAX_WORKERS > 1:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {executor.submit(process_file, t): t for t in tasks_to_process}
             

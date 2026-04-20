@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-04-19T20:18:40",
+  "experiment": "forensic_neutral_v2",
+  "llm_model": "gemini-3-pro-preview",
+  "data_type": "real",
+  "n_samples": 1132,
+  "n_features_full": 31,
+  "n_groups": 23,
+  "scenarios": {
+    "C_full": {
+      "n_features": 31,
+      "desc": "Todas as 31 features (baseline)"
+    },
+    "C_no_prior": {
+      "n_features": 30,
+      "desc": "Sem llm_ctx_domain_prior (30 features)"
+    },
+    "C_only_prior": {
+      "n_features": 1,
+      "desc": "Apenas llm_ctx_domain_prior (1 feature)"
+    }
+  },
+  "cv_strategies": [
+    "GroupKFold-5",
+    "LODO"
+  ],
+  "n_bootstrap": 1000,
+  "seed": 42,
+  "skipped_folds": {
+    "GroupKFold-5|C_full": {
+      "RandomForest": 0,
+      "GradientBoosting": 0,
+      "LogisticRegression": 0,
+      "SVM_RBF": 0,
+      "KNN": 0,
+      "MLP": 0,
+      "NaiveBayes": 0
+    },
+    "GroupKFold-5|C_no_prior": {
+      "RandomForest": 0,
+      "GradientBoosting": 0,
+      "LogisticRegression": 0,
+      "SVM_RBF": 0,
+      "KNN": 0,
+      "MLP": 0,
+      "NaiveBayes": 0
+    },
+    "GroupKFold-5|C_only_prior": {
+      "RandomForest": 0,
+      "GradientBoosting": 0,
+      "LogisticRegression": 0,
+      "SVM_RBF": 0,
+      "KNN": 0,
+      "MLP": 0,
+      "NaiveBayes": 0
+    },
+    "LODO|C_full": {
+      "RandomForest": 0,
+      "GradientBoosting": 0,
+      "LogisticRegression": 0,
+      "SVM_RBF": 0,
+      "KNN": 0,
+      "MLP": 0,
+      "NaiveBayes": 0
+    },
+    "LODO|C_no_prior": {
+      "RandomForest": 0,
+      "GradientBoosting": 0,
+      "LogisticRegression": 0,
+      "SVM_RBF": 0,
+      "KNN": 0,
+      "MLP": 0,
+      "NaiveBayes": 0
+    },
+    "LODO|C_only_prior": {
+      "RandomForest": 0,
+      "GradientBoosting": 0,
+      "LogisticRegression": 0,
+      "SVM_RBF": 0,
+      "KNN": 0,
+      "MLP": 0,
+      "NaiveBayes": 0
+    }
+  },
+  "input_dir": "/Users/jonathan/Documents/ITA/ITA-Mestrado/IC - ITA 2/Output/v2_improved/forensic_neutral_v2/real/ml_com_llm/gemini-3-pro-preview",
+  "output_dir": "/Users/jonathan/Documents/ITA/ITA-Mestrado/IC - ITA 2/Output/v2_improved/forensic_neutral_v2/real/forensic"
+}

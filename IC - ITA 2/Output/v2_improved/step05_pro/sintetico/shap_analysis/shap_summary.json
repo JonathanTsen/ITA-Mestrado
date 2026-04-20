@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-04-18T20:39:33.193385",
+  "data_type": "sintetico",
+  "experiment": "step05_pro",
+  "n_test": 300,
+  "shap_model": "RandomForest (n=400)",
+  "top5_l1": [
+    "mask_entropy",
+    "X1_mean_diff",
+    "X1_mannwhitney_pval",
+    "log_pval_X1_mask",
+    "mechdetect_mwu_pvalue"
+  ],
+  "top5_l2_caafe": [
+    "X1_mean_diff",
+    "X1_mannwhitney_pval",
+    "log_pval_X1_mask",
+    "coef_X1_abs",
+    "mechdetect_auc_excluded"
+  ],
+  "top5_l2_all": [
+    "X1_mean_diff",
+    "X1_mannwhitney_pval",
+    "log_pval_X1_mask",
+    "coef_X1_abs",
+    "llm_mcar_conf"
+  ],
+  "caafe_features_ranking_l2": {
+    "caafe_kurtosis_excess": {
+      "rank": 16,
+      "mean_abs_shap": 0.002656264000380548
+    },
+    "caafe_cond_entropy_X0_mask": {
+      "rank": 21,
+      "mean_abs_shap": 0.0016412696107152857
+    },
+    "caafe_missing_rate_by_quantile": {
+      "rank": 24,
+      "mean_abs_shap": 0.0
+    },
+    "caafe_tail_asymmetry": {
+      "rank": 25,
+      "mean_abs_shap": 0.0
+    }
+  }
+}

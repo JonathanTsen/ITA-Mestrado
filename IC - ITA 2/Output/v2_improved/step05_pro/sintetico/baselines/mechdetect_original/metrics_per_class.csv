@@ -1,0 +1,4 @@
+modelo,classe,precision,recall,f1,support
+MechDetect_Original,MCAR,0.0,0.0,0.0,300
+MechDetect_Original,MAR,1.0,0.4,0.5714285714285714,500
+MechDetect_Original,MNAR,0.3993993993993994,0.9975,0.5704074338813439,400

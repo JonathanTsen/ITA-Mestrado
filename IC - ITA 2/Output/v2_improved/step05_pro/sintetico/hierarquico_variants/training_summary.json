@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-04-18T22:30:57.042686",
+  "data_type": "sintetico",
+  "experiment": "step05_pro",
+  "llm_model": "gemini-3.1-pro-preview",
+  "n_samples": 1200,
+  "n_train": 900,
+  "n_test": 300,
+  "n_features_baseline": 21,
+  "n_features_caafe": 4,
+  "n_features_llm": 8,
+  "n_features_total": 33,
+  "variantes": {
+    "V1_direto_stat": {
+      "desc": "Direto 3-way (21 stat)",
+      "best_model": "MLP",
+      "best_accuracy": 0.7666666666666667,
+      "best_f1_macro": 0.728825139368019,
+      "best_recall_MNAR": 0.7777777777777778,
+      "mean_accuracy": 0.7404761904761905
+    },
+    "V2_hier_stat": {
+      "desc": "Hier: L1=stat, L2=stat",
+      "best_model": "GradientBoosting",
+      "best_accuracy": 0.7333333333333333,
+      "best_f1_macro": 0.6982448770013537,
+      "best_recall_MNAR": 0.6060606060606061,
+      "mean_accuracy": 0.6747619047619047
+    },
+    "V3_hier_caafe_n2": {
+      "desc": "Hier: L1=stat, L2=stat+CAAFE",
+      "best_model": "GradientBoosting",
+      "best_accuracy": 0.7366666666666667,
+      "best_f1_macro": 0.7007103257103258,
+      "best_recall_MNAR": 0.6060606060606061,
+      "mean_accuracy": 0.678095238095238
+    },
+    "V4_hier_llm_n2": {
+      "desc": "Hier: L1=stat, L2=stat+CAAFE+LLM [CORE]",
+      "best_model": "GradientBoosting",
+      "best_accuracy": 0.73,
+      "best_f1_macro": 0.6956708744273511,
+      "best_recall_MNAR": 0.6060606060606061,
+      "mean_accuracy": 0.6761904761904762
+    },
+    "V5_hier_llm_ambos": {
+      "desc": "Hier: L1=ALL, L2=ALL [Controle]",
+      "best_model": "MLP",
+      "best_accuracy": 0.76,
+      "best_f1_macro": 0.7273714344018497,
+      "best_recall_MNAR": 0.6868686868686869,
+      "mean_accuracy": 0.6966666666666667
+    },
+    "V6_direto_llm": {
+      "desc": "Direto 3-way (33 ALL) [Controle]",
+      "best_model": "RandomForest",
+      "best_accuracy": 0.7933333333333333,
+      "best_f1_macro": 0.7620738109635754,
+      "best_recall_MNAR": 0.7777777777777778,
+      "mean_accuracy": 0.7533333333333333
+    }
+  }
+}

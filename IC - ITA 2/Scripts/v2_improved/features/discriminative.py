@@ -14,6 +14,7 @@ from scipy import stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 
 
 def extract_discriminative_features(df: pd.DataFrame) -> dict:
@@ -50,14 +51,28 @@ def extract_discriminative_features(df: pd.DataFrame) -> dict:
     try:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_predictors)
-        
+
         clf = LogisticRegression(max_iter=1000, solver="lbfgs", random_state=42)
         clf.fit(X_scaled, mask)
-        
-        proba = clf.predict_proba(X_scaled)[:, 1]
-        feats["auc_mask_from_Xobs"] = roc_auc_score(mask, proba)
         feats["coef_X1_abs"] = np.abs(clf.coef_.ravel()[0])
-        
+
+        # Cross-validated AUC para evitar leakage (train != test)
+        min_class = min(n_missing, n_total - n_missing)
+        n_folds = min(3, max(2, min_class))
+        if min_class >= 2:
+            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+            fold_aucs = []
+            for tr_idx, te_idx in skf.split(X_scaled, mask):
+                if len(np.unique(mask[te_idx])) < 2:
+                    continue
+                clf_cv = LogisticRegression(max_iter=1000, solver="lbfgs", random_state=42)
+                clf_cv.fit(X_scaled[tr_idx], mask[tr_idx])
+                proba_cv = clf_cv.predict_proba(X_scaled[te_idx])[:, 1]
+                fold_aucs.append(roc_auc_score(mask[te_idx], proba_cv))
+            feats["auc_mask_from_Xobs"] = float(np.mean(fold_aucs)) if fold_aucs else 0.5
+        else:
+            feats["auc_mask_from_Xobs"] = 0.5
+
     except Exception:
         feats["auc_mask_from_Xobs"] = 0.5
         feats["coef_X1_abs"] = 0.0

@@ -1,0 +1,393 @@
+{
+  "MCAR_autompg_horsepower": {
+    "domain": "automotive engineering",
+    "source": "UCI Auto MPG / OpenML autoMpg v1",
+    "x0_variable": "horsepower",
+    "x0_units": "hp (horsepower)",
+    "x0_description": "Engine power output of the automobile",
+    "x0_typical_range": "46-230 hp for 1970s-80s cars",
+    "predictors": {
+      "X1": {"name": "displacement", "units": "cubic inches", "role": "Engine displacement"},
+      "X2": {"name": "weight", "units": "pounds", "role": "Vehicle weight"},
+      "X3": {"name": "acceleration", "units": "seconds (0-60mph)", "role": "Acceleration time"},
+      "X4": {"name": "cylinders", "units": "count", "role": "Number of cylinders"}
+    },
+    "missing_context": "Horsepower not recorded for some car models during data collection. Administrative failure in technical documentation, unrelated to the actual horsepower value or vehicle characteristics.",
+    "original_missing_rate": 0.015,
+    "n_total_original": 398
+  },
+  "MCAR_breastcancer_barenuclei": {
+    "domain": "oncology / breast cancer diagnosis",
+    "source": "UCI Wisconsin Breast Cancer / OpenML",
+    "x0_variable": "bare_nuclei",
+    "x0_units": "score 1-10 (cytological scale)",
+    "x0_description": "Bare nuclei score from fine needle aspiration (FNA) biopsy",
+    "x0_typical_range": "1-10, where 1=benign, 10=malignant",
+    "predictors": {
+      "X1": {"name": "clump_thickness", "units": "score 1-10", "role": "Cell clump thickness"},
+      "X2": {"name": "uniformity_cell_size", "units": "score 1-10", "role": "Cell size uniformity"},
+      "X3": {"name": "uniformity_cell_shape", "units": "score 1-10", "role": "Cell shape uniformity"},
+      "X4": {"name": "marginal_adhesion", "units": "score 1-10", "role": "Marginal adhesion of cells"}
+    },
+    "missing_context": "Values missing due to errors in biopsy recording or unreadable slides. The failure occurs independently of the cytological result — it is a laboratory process issue, not a clinical one.",
+    "original_missing_rate": 0.023,
+    "n_total_original": 699
+  },
+  "MCAR_cylinderbands_bladepressure": {
+    "domain": "manufacturing / rotogravure printing",
+    "source": "OpenML cylinder-bands v2",
+    "x0_variable": "blade_pressure",
+    "x0_units": "process-specific unit (doctor blade pressure)",
+    "x0_description": "Doctor blade pressure used to control ink thickness on the printing cylinder",
+    "x0_typical_range": "Varies by equipment, continuous values",
+    "predictors": {
+      "X1": {"name": "press_speed", "units": "speed unit", "role": "Rotogravure press speed"},
+      "X2": {"name": "ink_temperature", "units": "degrees (process unit)", "role": "Ink temperature"},
+      "X3": {"name": "viscosity", "units": "viscosity unit", "role": "Ink viscosity"},
+      "X4": {"name": "roughness", "units": "roughness unit", "role": "Cylinder roughness"}
+    },
+    "missing_context": "Blade pressure sensor fails intermittently during press operation. The failure is mechanical/electrical, unrelated to the pressure level being measured. Measurement equipment with limited reliability.",
+    "original_missing_rate": 0.313,
+    "n_total_original": 540
+  },
+  "MCAR_cylinderbands_esavoltage": {
+    "domain": "manufacturing / rotogravure printing",
+    "source": "OpenML cylinder-bands v2",
+    "x0_variable": "ESA_Voltage",
+    "x0_units": "volts",
+    "x0_description": "Electrostatic assist (ESA) system voltage that aids ink transfer",
+    "x0_typical_range": "Varies by configuration, continuous values",
+    "predictors": {
+      "X1": {"name": "press_speed", "units": "speed unit", "role": "Rotogravure press speed"},
+      "X2": {"name": "ink_temperature", "units": "degrees (process unit)", "role": "Ink temperature"},
+      "X3": {"name": "viscosity", "units": "viscosity unit", "role": "Ink viscosity"},
+      "X4": {"name": "roughness", "units": "roughness unit", "role": "Cylinder roughness"}
+    },
+    "missing_context": "ESA voltage sensor fails independently of the voltage level. The ESA system is not always active during operation, and when turned off, the reading is not recorded — a standard operational decision, not based on the value.",
+    "original_missing_rate": 0.346,
+    "n_total_original": 540
+  },
+  "MCAR_hypothyroid_t4u": {
+    "domain": "endocrinology / thyroid function",
+    "source": "OpenML hypothyroid v1",
+    "x0_variable": "T4U",
+    "x0_units": "ratio (T4 uptake, dimensionless)",
+    "x0_description": "T4 uptake ratio — thyroid function test measuring serum protein binding capacity for T4 hormone",
+    "x0_typical_range": "0.7-1.5 (normal ratio)",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Patient age"},
+      "X2": {"name": "TSH", "units": "mU/L", "role": "Thyroid-stimulating hormone"},
+      "X3": {"name": "TT4", "units": "nmol/L", "role": "Total thyroxine"},
+      "X4": {"name": "FTI", "units": "index", "role": "Free thyroxine index"}
+    },
+    "missing_context": "T4U test not ordered as part of the standard thyroid test battery. The decision not to order is administrative (laboratory protocol), not based on the patient's clinical results.",
+    "original_missing_rate": 0.104,
+    "n_total_original": 3772
+  },
+  "MAR_airquality_ozone": {
+    "domain": "environmental science / air quality",
+    "source": "NY State Dept. of Conservation / National Weather Service (1973 data)",
+    "x0_variable": "Ozone",
+    "x0_units": "ppb (parts per billion)",
+    "x0_description": "Mean daily tropospheric ozone concentration in New York",
+    "x0_typical_range": "1-168 ppb (summer average ~42 ppb)",
+    "predictors": {
+      "X1": {"name": "Wind", "units": "mph (miles per hour)", "role": "Average daily wind speed"},
+      "X2": {"name": "Temp", "units": "degrees Fahrenheit", "role": "Maximum daily temperature"},
+      "X3": {"name": "Solar.R", "units": "Langley (cal/cm2)", "role": "Solar radiation"},
+      "X4": {"name": "Month", "units": "month (5-9 = May-September)", "role": "Month of year"}
+    },
+    "missing_context": "Ozone measurements not taken on days with adverse weather conditions — strong wind and low temperature hinder monitor operation. The probability of data collection depends on observable weather conditions, not on the ozone level itself.",
+    "original_missing_rate": 0.242,
+    "n_total_original": 153
+  },
+  "MAR_oceanbuoys_humidity": {
+    "domain": "oceanography / marine meteorology",
+    "source": "NOAA TAO Project (Tropical Atmosphere Ocean) / R naniar package",
+    "x0_variable": "humidity",
+    "x0_units": "% (relative humidity)",
+    "x0_description": "Relative air humidity measured by oceanic buoy in the tropical Pacific",
+    "x0_typical_range": "70-95% (tropical oceanic environment)",
+    "predictors": {
+      "X1": {"name": "sea.surface.temp", "units": "degrees Celsius", "role": "Sea surface temperature"},
+      "X2": {"name": "air.temp", "units": "degrees Celsius", "role": "Air temperature"},
+      "X3": {"name": "uwind", "units": "m/s", "role": "Zonal wind component (east-west)"},
+      "X4": {"name": "vwind", "units": "m/s", "role": "Meridional wind component (north-south)"}
+    },
+    "missing_context": "Buoy humidity sensor fails more frequently under high sea surface temperature and strong wind conditions. The failure is correlated with meteorological conditions, not with the humidity level itself.",
+    "original_missing_rate": 0.126,
+    "n_total_original": 736
+  },
+  "MAR_oceanbuoys_airtemp": {
+    "domain": "oceanography / marine meteorology",
+    "source": "NOAA TAO Project / R naniar package",
+    "x0_variable": "air.temp",
+    "x0_units": "degrees Celsius",
+    "x0_description": "Air temperature measured by oceanic buoy in the tropical Pacific",
+    "x0_typical_range": "20-30 degrees C (tropical oceanic environment)",
+    "predictors": {
+      "X1": {"name": "sea.surface.temp", "units": "degrees Celsius", "role": "Sea surface temperature"},
+      "X2": {"name": "humidity", "units": "% relative humidity", "role": "Relative air humidity"},
+      "X3": {"name": "uwind", "units": "m/s", "role": "Zonal wind component"},
+      "X4": {"name": "vwind", "units": "m/s", "role": "Meridional wind component"}
+    },
+    "missing_context": "Air temperature sensor fails correlated with sea temperature and wind intensity conditions. Sensor reliability degrades under extreme meteorological conditions, but does not depend on the air temperature itself.",
+    "original_missing_rate": 0.110,
+    "n_total_original": 736
+  },
+  "MAR_mammographic_density": {
+    "domain": "radiology / breast diagnosis",
+    "source": "UCI Mammographic Mass Dataset (ID 161)",
+    "x0_variable": "Density",
+    "x0_units": "ordinal scale 1-4 (with Gaussian jitter applied)",
+    "x0_description": "Breast tissue density classification: 1=high density, 2=iso, 3=low density, 4=fat-containing",
+    "x0_typical_range": "1-4 (original ordinal, converted to continuous with jitter)",
+    "predictors": {
+      "X1": {"name": "BIRADS", "units": "classification 1-5", "role": "BI-RADS classification of mammographic mass"},
+      "X2": {"name": "Age", "units": "years", "role": "Patient age"},
+      "X3": {"name": "Shape", "units": "classification 1-4", "role": "Mass shape (round, oval, lobular, irregular)"},
+      "X4": {"name": "Margin", "units": "classification 1-5", "role": "Mass margin (circumscribed to spiculated)"}
+    },
+    "missing_context": "Radiologist omits density classification when BI-RADS classification and age already indicate a clear diagnosis (benign or malignant). The decision to record or not depends on observed clinical variables, not on the density value itself.",
+    "original_missing_rate": 0.063,
+    "n_total_original": 886
+  },
+  "MAR_sick_t3": {
+    "domain": "endocrinology / thyroid function",
+    "source": "OpenML sick dataset v1",
+    "x0_variable": "T3",
+    "x0_units": "nmol/L (nanomol per liter)",
+    "x0_description": "Serum triiodothyronine (T3) level — active thyroid hormone",
+    "x0_typical_range": "1.2-2.7 nmol/L (adults)",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Patient age"},
+      "X2": {"name": "TSH", "units": "mU/L", "role": "Thyroid-stimulating hormone"},
+      "X3": {"name": "TT4", "units": "nmol/L", "role": "Total thyroxine"},
+      "X4": {"name": "FTI", "units": "index", "role": "Free thyroxine index"}
+    },
+    "missing_context": "T3 test selectively ordered by physician based on clinical symptoms and TSH/TT4 results. If TSH and TT4 are normal, the physician generally does not order T3. The decision depends on already observed clinical variables.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 3772
+  },
+  "MAR_sick_tsh": {
+    "domain": "endocrinology / thyroid function",
+    "source": "OpenML sick dataset v1",
+    "x0_variable": "TSH",
+    "x0_units": "mU/L (milliunits per liter)",
+    "x0_description": "Serum thyroid-stimulating hormone (TSH) level — primary regulator of thyroid function",
+    "x0_typical_range": "0.4-4.0 mU/L (adults)",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Patient age"},
+      "X2": {"name": "T3", "units": "nmol/L", "role": "Triiodothyronine"},
+      "X3": {"name": "TT4", "units": "nmol/L", "role": "Total thyroxine"},
+      "X4": {"name": "FTI", "units": "index", "role": "Free thyroxine index"}
+    },
+    "missing_context": "TSH not ordered when the overall clinical picture and other thyroid indicators do not suggest dysfunction. The decision is clinical and depends on symptoms and already available test results.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 3772
+  },
+  "MAR_titanic_age": {
+    "domain": "demographics / historical maritime data",
+    "source": "Kaggle Titanic Dataset (coletar_dados_reais.py)",
+    "x0_variable": "Age",
+    "x0_units": "years",
+    "x0_description": "Age of the RMS Titanic passenger (1912)",
+    "x0_typical_range": "0.42-80 years",
+    "predictors": {
+      "X1": {"name": "Pclass", "units": "class 1/2/3", "role": "Ticket class (proxy for socioeconomic status)"},
+      "X2": {"name": "SibSp", "units": "count", "role": "Number of spouses/siblings aboard"},
+      "X3": {"name": "Parch", "units": "count", "role": "Number of parents/children aboard"},
+      "X4": {"name": "Fare", "units": "British pounds", "role": "Ticket fare paid"}
+    },
+    "missing_context": "Age not recorded for many 3rd-class passengers. The ship's registration crew and authorities prioritized documentation of higher-class passengers. The probability of recording depends on social class and fare paid, not on age itself.",
+    "original_missing_rate": 0.199,
+    "n_total_original": 891
+  },
+  "MAR_titanic_age_v2": {
+    "domain": "demographics / historical maritime data",
+    "source": "GitHub datasciencedojo/datasets Titanic CSV",
+    "x0_variable": "Age",
+    "x0_units": "years",
+    "x0_description": "Age of the RMS Titanic passenger (1912) — alternative dataset version",
+    "x0_typical_range": "0.42-80 years",
+    "predictors": {
+      "X1": {"name": "Pclass", "units": "class 1/2/3", "role": "Ticket class"},
+      "X2": {"name": "SibSp", "units": "count", "role": "Spouses/siblings aboard"},
+      "X3": {"name": "Parch", "units": "count", "role": "Parents/children aboard"},
+      "X4": {"name": "Fare", "units": "British pounds", "role": "Ticket fare paid"}
+    },
+    "missing_context": "Same context as titanic_age — age not recorded preferentially for lower-class passengers. Alternative dataset version may have preprocessing differences.",
+    "original_missing_rate": 0.199,
+    "n_total_original": 891
+  },
+  "MAR_kidney_hemo": {
+    "domain": "nephrology / chronic kidney disease",
+    "source": "OpenML chronic-kidney-disease v1",
+    "x0_variable": "hemo",
+    "x0_units": "g/dL (grams per deciliter)",
+    "x0_description": "Blood hemoglobin level — indicator of anemia, common in chronic kidney disease",
+    "x0_typical_range": "12-17 g/dL (normal), <10 g/dL indicates significant anemia",
+    "predictors": {
+      "X1": {"name": "bp", "units": "mmHg", "role": "Blood pressure"},
+      "X2": {"name": "age", "units": "years", "role": "Patient age"},
+      "X3": {"name": "bgr", "units": "mg/dL", "role": "Random blood glucose"},
+      "X4": {"name": "bu", "units": "mg/dL", "role": "Blood urea"}
+    },
+    "missing_context": "Hemoglobin tested more frequently in patients with severe disease indicators (high urea, altered blood pressure). Early-stage patients with normal basic tests may not have hemoglobin measured. The decision depends on severity observed through other tests.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 400
+  },
+  "MAR_hearth_chol": {
+    "domain": "cardiology",
+    "source": "OpenML heart-h v1 (Heart Disease Cleveland)",
+    "x0_variable": "chol",
+    "x0_units": "mg/dL (milligrams per deciliter)",
+    "x0_description": "Total serum cholesterol",
+    "x0_typical_range": "<200 mg/dL (desirable), 200-239 (borderline), >240 (high)",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Patient age"},
+      "X2": {"name": "trestbps", "units": "mmHg", "role": "Resting blood pressure"},
+      "X3": {"name": "thalach", "units": "bpm", "role": "Maximum heart rate during stress test"},
+      "X4": {"name": "oldpeak", "units": "mm", "role": "Exercise-induced ST depression"}
+    },
+    "missing_context": "Cholesterol not tested when primary cardiac indicators (ECG, blood pressure, maximum heart rate) do not suggest significant risk. The decision to order the test depends on other cardiological test results.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 294
+  },
+  "MAR_colic_resprate": {
+    "domain": "veterinary medicine / equine colic",
+    "source": "OpenML colic v1 (equine colic disease)",
+    "x0_variable": "respiratory_rate",
+    "x0_units": "breaths/minute",
+    "x0_description": "Horse respiratory rate — vital sign in equine colic assessment",
+    "x0_typical_range": "8-16 breaths/min (normal at rest), >20 indicates distress",
+    "predictors": {
+      "X1": {"name": "pulse", "units": "bpm", "role": "Horse heart rate"},
+      "X2": {"name": "rectal_temperature", "units": "degrees Celsius", "role": "Rectal temperature"},
+      "X3": {"name": "packed_cell_volume", "units": "% (hematocrit)", "role": "Packed cell volume"},
+      "X4": {"name": "total_protein", "units": "g/dL", "role": "Total blood protein"}
+    },
+    "missing_context": "Respiratory rate not measured when other vital signs (pulse, temperature) already indicate severity level. In veterinary emergencies, professionals prioritize intervention over complete documentation. The decision depends on clinical assessment based on other signs.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 368
+  },
+  "MNAR_pima_insulin": {
+    "domain": "endocrinology / diabetes",
+    "source": "NIDDK Pima Indians Diabetes Database (UCI/Kaggle)",
+    "x0_variable": "Insulin",
+    "x0_units": "uU/mL (microunits per milliliter)",
+    "x0_description": "Serum insulin concentration 2 hours after oral glucose tolerance test (OGTT)",
+    "x0_typical_range": "16-166 uU/mL (normal), >166 indicates insulin resistance",
+    "predictors": {
+      "X1": {"name": "Glucose", "units": "mg/dL", "role": "Plasma glucose level 2h post-OGTT"},
+      "X2": {"name": "BloodPressure", "units": "mmHg", "role": "Diastolic blood pressure"},
+      "X3": {"name": "BMI", "units": "kg/m2", "role": "Body mass index"},
+      "X4": {"name": "Age", "units": "years", "role": "Patient age"}
+    },
+    "missing_context": "Serum insulin test is expensive and invasive. In the original dataset, zero values (biologically impossible) represent tests not performed. The test tends not to be ordered when glucose is in the normal range and the physician does not suspect diabetes. Additionally, patients with very high insulin may have results discarded due to laboratory doubt.",
+    "original_missing_rate": 0.487,
+    "n_total_original": 768
+  },
+  "MNAR_mroz_wages": {
+    "domain": "labor economics",
+    "source": "Mroz (1987) - Female Labor Supply, PSID 1975 / Econometrica",
+    "x0_variable": "lwg",
+    "x0_units": "log(USD/hour)",
+    "x0_description": "Natural logarithm of the woman's hourly wage",
+    "x0_typical_range": "log wage ~0.5-3.5 for employed women",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Woman's age"},
+      "X2": {"name": "inc", "units": "USD/year", "role": "Family income excluding woman's wage"},
+      "X3": {"name": "k5", "units": "count", "role": "Number of children under 5"},
+      "X4": {"name": "wc_num", "units": "binary 0/1", "role": "Attended college (1=yes)"}
+    },
+    "missing_context": "Wage observed only for women who participate in the labor market. Women who do not work have missing wages because the value simply does not exist. The decision to work is related to potential wage — women with low potential earnings tend not to enter the market. Classic example of selection bias (Heckman, 1979).",
+    "original_missing_rate": 0.432,
+    "n_total_original": 753
+  },
+  "MNAR_kidney_pot": {
+    "domain": "nephrology / clinical biochemistry",
+    "source": "OpenML chronic-kidney-disease v1",
+    "x0_variable": "pot",
+    "x0_units": "mEq/L (milliequivalents per liter)",
+    "x0_description": "Serum potassium level — critical electrolyte for cardiac and muscular function",
+    "x0_typical_range": "3.5-5.0 mEq/L (normal), <3.5 hypokalemia, >5.5 hyperkalemia",
+    "predictors": {
+      "X1": {"name": "bp", "units": "mmHg", "role": "Blood pressure"},
+      "X2": {"name": "age", "units": "years", "role": "Patient age"},
+      "X3": {"name": "bgr", "units": "mg/dL", "role": "Blood glucose"},
+      "X4": {"name": "bu", "units": "mg/dL", "role": "Blood urea"}
+    },
+    "missing_context": "Extreme potassium values (very high or very low) are difficult to measure accurately in the laboratory. Samples may be hemolyzed (cell destruction during collection), releasing intracellular potassium and generating a false result. Laboratories frequently discard or do not report these suspicious measurements.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 400
+  },
+  "MNAR_kidney_sod": {
+    "domain": "nephrology / clinical biochemistry",
+    "source": "OpenML chronic-kidney-disease v1",
+    "x0_variable": "sod",
+    "x0_units": "mEq/L (milliequivalents per liter)",
+    "x0_description": "Serum sodium level — primary electrolyte for osmotic balance",
+    "x0_typical_range": "136-145 mEq/L (normal), <135 hyponatremia, >145 hypernatremia",
+    "predictors": {
+      "X1": {"name": "bp", "units": "mmHg", "role": "Blood pressure"},
+      "X2": {"name": "age", "units": "years", "role": "Patient age"},
+      "X3": {"name": "bgr", "units": "mg/dL", "role": "Blood glucose"},
+      "X4": {"name": "bu", "units": "mg/dL", "role": "Blood urea"}
+    },
+    "missing_context": "Similar to potassium — extreme sodium values not reliably reported. Laboratories may reject samples with values far outside the normal range, considering them possible analytical errors. Critically ill patients with highly altered sodium may have more difficult sample collection.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 400
+  },
+  "MNAR_colic_refluxph": {
+    "domain": "veterinary medicine / equine colic",
+    "source": "OpenML colic v1",
+    "x0_variable": "nasogastric_reflux_PH",
+    "x0_units": "pH (scale 0-14)",
+    "x0_description": "pH of fluid obtained by nasogastric intubation in the horse — indicates acidity of refluxed gastric content",
+    "x0_typical_range": "pH 1-7 (acidic to neutral)",
+    "predictors": {
+      "X1": {"name": "pulse", "units": "bpm", "role": "Horse heart rate"},
+      "X2": {"name": "rectal_temperature", "units": "degrees Celsius", "role": "Rectal temperature"},
+      "X3": {"name": "packed_cell_volume", "units": "% hematocrit", "role": "Packed cell volume"},
+      "X4": {"name": "total_protein", "units": "g/dL", "role": "Total blood protein"}
+    },
+    "missing_context": "Nasogastric reflux pH is only measurable when there is significant reflux volume. Horses with little or no reflux do not have enough sample to measure pH. The presence of reflux is correlated with the severity of intestinal obstruction, and extreme volumes (very high) produce samples that are difficult to process.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 368
+  },
+  "MNAR_cylinderbands_varnishpct": {
+    "domain": "manufacturing / quality control",
+    "source": "OpenML cylinder-bands v2",
+    "x0_variable": "varnish_pct",
+    "x0_units": "percentage (%)",
+    "x0_description": "Varnish percentage applied to the rotogravure printing cylinder",
+    "x0_typical_range": "Varies by specification, continuous values",
+    "predictors": {
+      "X1": {"name": "press_speed", "units": "speed unit", "role": "Press speed"},
+      "X2": {"name": "ink_temperature", "units": "degrees", "role": "Ink temperature"},
+      "X3": {"name": "viscosity", "units": "viscosity unit", "role": "Ink viscosity"},
+      "X4": {"name": "roughness", "units": "roughness unit", "role": "Cylinder roughness"}
+    },
+    "missing_context": "Varnish percentage not recorded when batch quality is outside specifications (too high or too low). Line operators tend not to fully document batches with severe quality issues, focusing on immediate correction rather than recording.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 540
+  },
+  "MNAR_adult_capitalgain": {
+    "domain": "economics / demographic census",
+    "source": "UCI Adult Census Income Dataset / OpenML",
+    "x0_variable": "capital_gain",
+    "x0_units": "USD (US dollars)",
+    "x0_description": "Capital gain from investments in the fiscal year",
+    "x0_typical_range": "0-99999 USD, but most of the population has 0",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Individual's age"},
+      "X2": {"name": "education_num", "units": "years of study", "role": "Years of formal education"},
+      "X3": {"name": "hours_per_week", "units": "hours/week", "role": "Hours worked per week"},
+      "X4": {"name": "capital_loss", "units": "USD", "role": "Individual's capital loss in fiscal year"}
+    },
+    "missing_context": "Capital gains only reported by people with investments that generated profit. Most of the population has zero gains (not missing, but literal zero). Missing values represent non-reporting — people with low gains have less financial and legal incentive to report in detail. The missing value is related to the gain amount itself.",
+    "original_missing_rate": 0.10,
+    "n_total_original": 32561
+  }
+}

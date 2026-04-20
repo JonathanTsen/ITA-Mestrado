@@ -1,0 +1,72 @@
+{
+  "MCAR_uniform": {
+    "mechanism_description": "Each observation has an independent and equal probability of being missing. No variable influences missingness.",
+    "structural_pattern": "Pure binomial distribution — similar to flipping a coin per row",
+    "expected_statistics": "No mask-Xi correlation, uniform missing rate across X0 quartiles, no induced asymmetry"
+  },
+  "MCAR_fixed": {
+    "mechanism_description": "Exactly N randomly selected rows are missing. The total count is fixed, but the selection is uniform.",
+    "structural_pattern": "Sampling without replacement — guarantees exactly rate% missing",
+    "expected_statistics": "Identical to uniform, but with no variance in the total missing rate"
+  },
+  "MCAR_block": {
+    "mechanism_description": "Missing occurs in contiguous blocks (like temporal sensor failure). The block locations are random.",
+    "structural_pattern": "Temporal clusters of missing — long NaN runs interspersed with complete observations",
+    "expected_statistics": "Low mask entropy (repetitive pattern), but no correlation with Xi values"
+  },
+  "MAR_logistic": {
+    "mechanism_description": "P(missing|X1) follows a logistic function. Higher X1 values progressively increase the chance of X0 being missing.",
+    "structural_pattern": "Smooth probability gradient along X1",
+    "expected_statistics": "Positive mask-X1 correlation, significant X1_mean_diff, high AUC mask~X1"
+  },
+  "MAR_threshold": {
+    "mechanism_description": "X0 is missing when X1 exceeds a fixed threshold (1-rate quantile of X1). Deterministic mechanism.",
+    "structural_pattern": "Abrupt cutoff — all with high X1 lose X0",
+    "expected_statistics": "Very strong mask-X1 correlation, maximum X1_mean_diff, near-perfect separation"
+  },
+  "MAR_rank": {
+    "mechanism_description": "The N observations with the highest X1 values have X0 missing. Similar to threshold but rank-based.",
+    "structural_pattern": "Top-N selection by X1 ranking",
+    "expected_statistics": "Similar to threshold, strong unidirectional X1 dependence"
+  },
+  "MAR_quantile_group": {
+    "mechanism_description": "Missing probability varies by X1 quartile: Q1=20%, Q2=60%, Q3=140%, Q4=200% of base rate.",
+    "structural_pattern": "Increasing probability staircase by X1 group",
+    "expected_statistics": "Moderate mask-X1 correlation, unequal missing rate across X1 groups"
+  },
+  "MAR_multi_predictor": {
+    "mechanism_description": "P(missing|X1,X2) = sigmoid(0.7*norm(X1) + 0.3*norm(X2)). Depends on two variables with different weights.",
+    "structural_pattern": "Weighted dependence on two variables, X1 dominant",
+    "expected_statistics": "Correlation with X1 and X2, AUC mask~(X1,X2) higher than mask~X1 alone"
+  },
+  "MNAR_self_logistic": {
+    "mechanism_description": "P(missing|X0) follows a logistic function over X0. Higher X0 values are more likely to be missing.",
+    "structural_pattern": "Smooth self-censoring — the data with the most extreme values are the most likely to be missing",
+    "expected_statistics": "Biased observed X0 (negative skew from upper tail loss), increasing missing rate in upper quartiles, NO significant X1 correlation"
+  },
+  "MNAR_quantile_threshold": {
+    "mechanism_description": "X0 is missing when X0 >= quantile(1-rate). Deterministic truncation at the upper tail.",
+    "structural_pattern": "Abrupt cutoff at X0 value — upper tail completely removed",
+    "expected_statistics": "Strong negative skewness in observed X0, abnormal kurtosis, missing concentrated 100% in Q4"
+  },
+  "MNAR_tail_censoring": {
+    "mechanism_description": "Missing in the rate/2% lowest AND rate/2% highest X0 values. Symmetric bilateral censoring.",
+    "structural_pattern": "Both tails removed — observed X0 is truncated at both extremes",
+    "expected_statistics": "Reduced kurtosis (flatter distribution), narrower IQR than expected, missing in both Q1 and Q4"
+  },
+  "MNAR_self_noisy": {
+    "mechanism_description": "Similar to self_logistic, but with Gaussian noise N(0, 0.1) added to X0 before computing P(missing). Blurred mechanism.",
+    "structural_pattern": "Self-censoring with uncertainty — the missing threshold is fuzzy/diffuse",
+    "expected_statistics": "Similar to self_logistic but with softer and more diluted effects due to noise"
+  },
+
+  "_distribution_cycle": {
+    "description": "Base distributions cycle in order: uniform, normal, exponential, beta",
+    "distributions": {
+      "uniform": {"description": "Uniform [0, 1]", "expected_mean": 0.5, "expected_skew": 0.0, "expected_kurtosis": -1.2},
+      "normal": {"description": "Clipped Normal(mu=0.5, sigma=0.15) in [0, 1]", "expected_mean": 0.5, "expected_skew": 0.0, "expected_kurtosis": -0.06},
+      "exponential": {"description": "Clipped Exponential(lambda=0.3) in [0, 1]", "expected_mean": 0.26, "expected_skew": 1.7, "expected_kurtosis": 3.5},
+      "beta": {"description": "Beta(alpha=2, beta=5)", "expected_mean": 0.286, "expected_skew": 0.6, "expected_kurtosis": -0.12}
+    }
+  }
+}

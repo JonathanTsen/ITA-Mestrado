@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-04-18T17:57:45.160343",
+  "data_type": "real",
+  "experiment": "step05_pro",
+  "llm_model": "gemini-3.1-pro-preview",
+  "n_samples": 1132,
+  "n_train": 837,
+  "n_test": 295,
+  "configs": {
+    "E1_disc": {
+      "n_features": 6,
+      "desc": "Discriminativas (6f)",
+      "mean_accuracy": 0.4213075060532688,
+      "max_accuracy": 0.49491525423728816,
+      "best_model": "RandomForest"
+    },
+    "E2_stat_mnar": {
+      "n_features": 15,
+      "desc": "Disc+Stat+MNAR (15f)",
+      "mean_accuracy": 0.36561743341404357,
+      "max_accuracy": 0.39661016949152544,
+      "best_model": "RandomForest"
+    },
+    "E3_baseline": {
+      "n_features": 21,
+      "desc": "Baseline completo (21f)",
+      "mean_accuracy": 0.3598062953995158,
+      "max_accuracy": 0.4033898305084746,
+      "best_model": "RandomForest"
+    },
+    "E4_caafe": {
+      "n_features": 25,
+      "desc": "Baseline+CAAFE (25f)",
+      "mean_accuracy": 0.40096852300242125,
+      "max_accuracy": 0.43389830508474575,
+      "best_model": "SVM_RBF"
+    },
+    "E5_llm": {
+      "n_features": 29,
+      "desc": "Baseline+LLM (29f)",
+      "mean_accuracy": 0.3670702179176756,
+      "max_accuracy": 0.42033898305084744,
+      "best_model": "KNN"
+    },
+    "E6_all": {
+      "n_features": 33,
+      "desc": "Todas (33f)",
+      "mean_accuracy": 0.39951573849878935,
+      "max_accuracy": 0.44745762711864406,
+      "best_model": "KNN"
+    }
+  },
+  "friedman_chi2": 8.692946058091275,
+  "friedman_p": 0.12195629945187204
+}
