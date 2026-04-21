@@ -127,6 +127,58 @@ The **honest upper bound** for LLM-enhanced classification with neutral metadata
 
 ---
 
+## Holdout vs. Cross-Validation: Diferença Importante
+
+Os resultados deste estudo usam **duas métricas de avaliação distintas**, que produzem valores diferentes e não devem ser confundidas:
+
+### 1. Holdout (GroupShuffleSplit 75/25)
+
+Acurácia calculada em um **único split fixo** (17 datasets treino, 6 datasets teste). É o que aparece em `relatorio.txt` e `resultados.png`.
+
+| Classificador | Acurácia Holdout |
+|---------------|-----------------|
+| KNN | 48.1% |
+| LogisticRegression | 47.8% |
+| RandomForest | 45.4% |
+| MLP | 44.4% |
+| SVM_RBF | 44.7% |
+| GradientBoosting | 43.4% |
+| NaiveBayes | 41.4% |
+
+### 2. GroupKFold-5 Cross-Validation
+
+Acurácia média sobre **5 folds**, cada um com datasets diferentes no teste. É o que aparece em `cv_scores.csv` e é reportado na tabela de ablação principal.
+
+| Classificador | CV Média | Desvio |
+|---------------|----------|--------|
+| **NaiveBayes** | **55.5%** | ±32.9% |
+| LogisticRegression | 47.8% | ±47.6% |
+| KNN | 42.9% | ±34.6% |
+| RandomForest | 41.6% | ±45.3% |
+| MLP | 40.7% | ±44.3% |
+| SVM_RBF | 40.0% | ±42.8% |
+| GradientBoosting | 39.1% | ±42.9% |
+
+### Qual métrica é mais confiável?
+
+**GroupKFold-5 CV é a métrica preferida** para este estudo, por três razões:
+
+1. **Usa todos os dados.** Cada amostra aparece exatamente uma vez no teste ao longo dos 5 folds, enquanto o holdout avalia apenas 6 dos 23 datasets.
+2. **Menos sensível ao split.** Com apenas 23 datasets, um único holdout depende fortemente de *quais* 6 datasets caem no teste. O NaiveBayes exemplifica isso: 41.4% no holdout vs. 55.5% no CV — o holdout pegou um split desfavorável.
+3. **Consistente com LODO.** Os valores de GroupKFold-5 são próximos dos LODO (Leave-One-Dataset-Out), confirmando que o CV não está inflado.
+
+### Por que a discrepância é tão grande no NaiveBayes?
+
+O NaiveBayes tem scores por fold de: 50.0%, 82.4%, 65.4%, 38.0%, 41.5%. O desvio padrão (±32.9%) é o menor entre os modelos, mas ainda é alto em termos absolutos. O fold 1 (82.4%) puxa a média para cima; o holdout fixo corresponde a um split semelhante aos folds 3-4 (38-41%), daí os 41.4%.
+
+### Recomendação
+
+- **Na tese/artigo:** reportar GroupKFold-5 como métrica principal e LODO como validação secundária.
+- **`resultados.png`** deve ser interpretado como resultado holdout, não como o resultado principal do experimento.
+- Sempre identificar explicitamente qual métrica está sendo apresentada.
+
+---
+
 ## Artifacts and Reproducibility
 
 All raw results are stored under `Output/v2_improved/`:

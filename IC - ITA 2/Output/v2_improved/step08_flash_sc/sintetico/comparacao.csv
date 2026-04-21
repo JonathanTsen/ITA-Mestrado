@@ -1,0 +1,8 @@
+,baseline (apenas ML),gemini-3-flash-preview (ML + LLM)
+RandomForest,0.7567,0.7367
+GradientBoosting,0.75,0.7433
+LogisticRegression,0.7633,0.7633
+SVM_RBF,0.76,0.7733
+KNN,0.7133,0.6967
+MLP,0.7467,0.7433
+NaiveBayes,0.7067,0.69

@@ -1,0 +1,8 @@
+,baseline (apenas ML)
+RandomForest,0.4076
+GradientBoosting,0.4051
+LogisticRegression,0.5519
+SVM_RBF,0.4456
+KNN,0.4152
+MLP,0.4405
+NaiveBayes,0.5392

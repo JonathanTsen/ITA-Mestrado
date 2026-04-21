@@ -4,7 +4,7 @@ Parsing centralizado de argumentos CLI do pipeline v2.
 import sys
 
 # Abordagens LLM disponíveis (STEP04)
-LLM_APPROACHES = ("v2", "judge", "embeddings", "caafe", "context")
+LLM_APPROACHES = ("v2", "judge", "embeddings", "caafe", "context", "self_consistency")
 
 
 def parse_common_args() -> tuple[str, str, bool, str]:
@@ -49,7 +49,8 @@ def parse_llm_approach() -> str:
     - 'judge': desambiguação binária MCAR vs MNAR (4 features)
     - 'embeddings': sentence-transformers embedding (10 features)
     - 'caafe': features CAAFE-MNAR puras Python (4 features, sem LLM)
-    - 'context': features context-aware com domínio + contra-argumentação (6 features)
+    - 'context': features context-aware com domínio + contra-argumentação (9 features)
+    - 'self_consistency': 5 perspectivas com votação CISC (8 features)
     """
     approach = "v2"
 

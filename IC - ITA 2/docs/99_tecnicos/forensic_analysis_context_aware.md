@@ -200,6 +200,20 @@ This framing presents honest contributions:
 
 ---
 
+## Nota: Holdout vs. Cross-Validation
+
+O arquivo `resultados.png` gerado pelo pipeline mostra a **acurácia holdout** (split fixo 75/25), enquanto a tabela de ablação acima reporta a **acurácia GroupKFold-5 CV**. Essas métricas divergem significativamente:
+
+| Classificador | Holdout (`resultados.png`) | GroupKFold-5 CV (ablação) |
+|---------------|---------------------------|---------------------------|
+| NaiveBayes | 41.4% | **55.5%** |
+| KNN | **48.1%** | 42.9% |
+| LogisticRegression | 47.8% | 47.8% |
+
+A divergência ocorre porque o holdout avalia apenas 6 dos 23 datasets, tornando-o muito sensível a quais datasets caem no teste. O GroupKFold-5 CV é mais robusto (usa todos os dados) e consistente com LODO (54.3%), sendo a **métrica preferida** para reportar na tese. Detalhes completos em `ablation_results_summary.md`.
+
+---
+
 ## Artifacts and Reproducibility
 
 All raw results are stored under `Output/v2_improved/`:

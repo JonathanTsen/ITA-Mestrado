@@ -34,6 +34,7 @@ from llm.extractor_v2 import LLMFeatureExtractorV2, get_llm_fallback_features_v2
 from llm.judge_mnar import LLMJudgeMNAR
 from llm.embeddings import EmbeddingFeatureExtractor
 from llm.context_aware import LLMContextAwareExtractor
+from llm.self_consistency import SelfConsistencyExtractor
 from utils.args import parse_common_args, parse_llm_approach
 from utils.paths import (
     MODEL_TO_PROVIDER, V2_DIR, get_output_dir, get_dataset_paths,
@@ -46,7 +47,11 @@ warnings.filterwarnings("ignore")
 # ======================================================
 MODEL_NAME, DATA_TYPE, TEST_MODE, EXPERIMENT = parse_common_args()
 LLM_APPROACH = parse_llm_approach()
-MAX_WORKERS = 10 if LLM_APPROACH == "context" else 100
+_default_workers = 10 if LLM_APPROACH in ("context", "self_consistency") else 100
+if "--workers" in sys.argv:
+    idx = sys.argv.index("--workers")
+    _default_workers = int(sys.argv[idx + 1])
+MAX_WORKERS = _default_workers
 
 # --metadata-variant: 'default' (original) ou 'neutral' (sem revelar mecanismo)
 METADATA_VARIANT = "default"
@@ -60,7 +65,7 @@ if "--metadata-variant" in sys.argv:
 
 USE_LLM_API = MODEL_NAME != "none" and MODEL_NAME in MODEL_TO_PROVIDER
 # CAAFE features são puras Python — habilitadas quando approach é "caafe" OU junto com LLM
-USE_CAAFE = LLM_APPROACH in ("caafe", "context") or USE_LLM_API
+USE_CAAFE = LLM_APPROACH in ("caafe", "context", "self_consistency") or USE_LLM_API
 # Advanced L2 features (STEP 03) — habilitadas via --advanced-l2
 USE_ADVANCED_L2 = "--advanced-l2" in sys.argv
 # Embeddings usam modelo local (sentence-transformers) — não precisa de API
@@ -69,6 +74,8 @@ USE_EMBEDDINGS = LLM_APPROACH == "embeddings"
 USE_LLM = USE_LLM_API and LLM_APPROACH in ("v2", "judge")
 # Context-aware precisa de API
 USE_CONTEXT = USE_LLM_API and LLM_APPROACH == "context"
+# Self-consistency precisa de API (5 perspectivas paralelas)
+USE_SC = USE_LLM_API and LLM_APPROACH == "self_consistency"
 
 load_dotenv(os.path.join(V2_DIR, ".env"))
 
@@ -101,6 +108,7 @@ print(f"📐 CAAFE features: {USE_CAAFE}")
 print(f"📐 Advanced L2: {USE_ADVANCED_L2}")
 print(f"🔤 Embeddings: {USE_EMBEDDINGS}")
 print(f"🌐 Context-aware: {USE_CONTEXT}")
+print(f"🔄 Self-consistency: {USE_SC}")
 print(f"📖 Metadata variant: {METADATA_VARIANT}")
 print(f"📂 Output: {OUTPUT_DIR}")
 if TEST_MODE:
@@ -114,6 +122,15 @@ llm_extractor = None
 llm_judge = None
 embedding_extractor = None
 context_extractor = None
+sc_extractor = None
+
+if USE_SC:
+    provider = MODEL_TO_PROVIDER[MODEL_NAME]
+    print(f"🔧 Inicializando Self-Consistency: {MODEL_NAME} ({provider}) "
+          f"[metadata_variant={METADATA_VARIANT}]")
+    sc_extractor = SelfConsistencyExtractor(
+        MODEL_NAME, provider, metadata_variant=METADATA_VARIANT,
+    )
 
 if USE_CONTEXT:
     provider = MODEL_TO_PROVIDER[MODEL_NAME]
@@ -178,9 +195,15 @@ def extract_all_features(df: pd.DataFrame, filename: str = "") -> dict:
     if USE_EMBEDDINGS and embedding_extractor is not None:
         feats.update(embedding_extractor.extract_features(df))
 
-    # 7. Features LLM context-aware (6 features, STEP context)
+    # 7. Features LLM context-aware (9 features, STEP context)
     if USE_CONTEXT and context_extractor is not None:
         feats.update(context_extractor.extract_features(
+            df, filename=filename, data_type=DATA_TYPE,
+        ))
+
+    # 8. Features self-consistency (8 features, 5 perspectivas + CISC)
+    if USE_SC and sc_extractor is not None:
+        feats.update(sc_extractor.extract_features(
             df, filename=filename, data_type=DATA_TYPE,
         ))
 
@@ -255,7 +278,7 @@ print(f"⏭️ Arquivos restantes: {len(tasks_to_process)}")
 def save_checkpoint():
     """Salva checkpoint e CSVs parciais."""
     with open(CHECKPOINT_FILE, 'w') as f:
-        json.dump({"processed": list(processed_files)}, f)
+        json.dump({"processed": list(processed_files), "total": len(tasks)}, f)
     
     X_partial = [r[0] for r in results if r is not None]
     y_partial = [r[1] for r in results if r is not None]
@@ -270,7 +293,7 @@ def save_checkpoint():
 if len(tasks_to_process) > 0:
     errors = []
     
-    if (USE_LLM or USE_CONTEXT) and MAX_WORKERS > 1:
+    if (USE_LLM or USE_CONTEXT or USE_SC) and MAX_WORKERS > 1:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {executor.submit(process_file, t): t for t in tasks_to_process}
             

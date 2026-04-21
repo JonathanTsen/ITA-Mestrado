@@ -373,6 +373,108 @@
     "original_missing_rate": 0.10,
     "n_total_original": 540
   },
+  "MCAR_hepatitis_alkphosphate": {
+    "domain": "hepatology / liver disease",
+    "source": "UCI Hepatitis Dataset / OpenML hepatitis v1 (ID #55)",
+    "x0_variable": "ALK_PHOSPHATE",
+    "x0_units": "U/L (international units per liter)",
+    "x0_description": "Serum alkaline phosphatase level — enzyme produced by liver, bile ducts, and bone. Elevated in cholestatic liver disease.",
+    "x0_typical_range": "26-295 U/L in this dataset (normal adult: 44-147 U/L)",
+    "predictors": {
+      "X1": {"name": "AGE", "units": "years", "role": "Patient age"},
+      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "Serum bilirubin (liver function marker)"},
+      "X3": {"name": "SGOT", "units": "U/L", "role": "Serum glutamic oxaloacetic transaminase (AST)"},
+      "X4": {"name": "PROTIME", "units": "seconds", "role": "Prothrombin time (clotting function)"}
+    },
+    "missing_context": "Alkaline phosphatase is part of the standard hepatic panel but was not always ordered in 1980s clinical protocols. Missing values (29/155 = 18.7%) reflect laboratory logistics — insufficient blood sample volume, lab backlog, or cost constraints — not patient condition. Little's MCAR test confirms (p=0.44).",
+    "original_missing_rate": 0.187,
+    "n_total_original": 155
+  },
+  "MCAR_hepatitis_albumin": {
+    "domain": "hepatology / liver disease",
+    "source": "UCI Hepatitis Dataset / OpenML hepatitis v1 (ID #55)",
+    "x0_variable": "ALBUMIN",
+    "x0_units": "g/dL (grams per deciliter)",
+    "x0_description": "Serum albumin level — major plasma protein synthesized by the liver. Low levels indicate chronic liver disease.",
+    "x0_typical_range": "2.1-6.4 g/dL in this dataset (normal adult: 3.5-5.5 g/dL)",
+    "predictors": {
+      "X1": {"name": "AGE", "units": "years", "role": "Patient age"},
+      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "Serum bilirubin"},
+      "X3": {"name": "SGOT", "units": "U/L", "role": "SGOT (AST)"},
+      "X4": {"name": "ALK_PHOSPHATE", "units": "U/L", "role": "Alkaline phosphatase"}
+    },
+    "missing_context": "Albumin is a general health marker, not hepatitis-specific. Missing values (16/155 = 10.3%) result from the same laboratory logistics as ALK_PHOSPHATE — routine test randomly omitted. Little's MCAR test confirms (p=0.68).",
+    "original_missing_rate": 0.103,
+    "n_total_original": 155
+  },
+  "MCAR_creditapproval_a14": {
+    "domain": "finance / consumer credit",
+    "source": "UCI Credit Approval Dataset / OpenML credit-approval v1 (ID #29)",
+    "x0_variable": "A14",
+    "x0_units": "continuous (anonymized)",
+    "x0_description": "Anonymized continuous field from credit card application form. Original variable names protected for privacy.",
+    "x0_typical_range": "0-2000 (anonymized units)",
+    "predictors": {
+      "X1": {"name": "A2", "units": "continuous (anonymized)", "role": "Applicant attribute"},
+      "X2": {"name": "A3", "units": "continuous (anonymized)", "role": "Applicant attribute"},
+      "X3": {"name": "A8", "units": "continuous (anonymized)", "role": "Applicant attribute"},
+      "X4": {"name": "A15", "units": "continuous (anonymized)", "role": "Applicant attribute"}
+    },
+    "missing_context": "Only 13/690 values missing (1.9%). In anonymized credit card applications, missing fields are consistent with random form incompleteness — applicant skipped a field or entry was illegible. Little's MCAR test confirms (p=0.70).",
+    "original_missing_rate": 0.019,
+    "n_total_original": 690
+  },
+  "MCAR_echomonths_epss": {
+    "domain": "cardiology / echocardiography",
+    "source": "UCI Echocardiogram Dataset / OpenML echoMonths v1 (ID #222)",
+    "x0_variable": "epss",
+    "x0_units": "mm (millimeters)",
+    "x0_description": "E-point septal separation — echocardiographic measurement of the distance between the E-point of the mitral valve and the interventricular septum. Marker of left ventricular function.",
+    "x0_typical_range": "0-40 mm (normal <7mm, >7mm suggests LV dysfunction)",
+    "predictors": {
+      "X1": {"name": "age", "units": "years", "role": "Patient age"},
+      "X2": {"name": "fractional", "units": "fraction (0-1)", "role": "Fractional shortening (LV systolic function)"},
+      "X3": {"name": "lvdd", "units": "mm", "role": "Left ventricular diastolic dimension"},
+      "X4": {"name": "wall_score", "units": "score", "role": "Wall motion score (cardiac wall abnormality)"}
+    },
+    "missing_context": "EPSS measurement requires adequate acoustic window during echocardiography. Missing values (14/130 = 10.8%) occur when the ultrasound image quality is insufficient due to patient body habitus, lung disease, or technical factors — independent of the actual EPSS value. Little's MCAR test confirms (p=0.65).",
+    "original_missing_rate": 0.108,
+    "n_total_original": 130
+  },
+  "MNAR_hepatitis_protime": {
+    "domain": "hepatology / liver disease",
+    "source": "UCI Hepatitis Dataset / OpenML hepatitis v1 (ID #55)",
+    "x0_variable": "PROTIME",
+    "x0_units": "seconds (prothrombin time)",
+    "x0_description": "Prothrombin time — measures how long blood takes to clot. Prolonged PT indicates impaired liver synthesis of clotting factors.",
+    "x0_typical_range": "0-100 seconds in this dataset (normal: 11-13.5 seconds)",
+    "predictors": {
+      "X1": {"name": "AGE", "units": "years", "role": "Patient age"},
+      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "Serum bilirubin"},
+      "X3": {"name": "SGOT", "units": "U/L", "role": "SGOT (AST)"},
+      "X4": {"name": "ALBUMIN", "units": "g/dL", "role": "Serum albumin"}
+    },
+    "missing_context": "Prothrombin time had the highest missing rate in the hepatitis dataset (67/155 = 43.2%). The test is selectively ordered when the physician suspects coagulopathy — i.e., when the expected PT value is abnormal. Patients with apparently normal liver function do not receive this test because the result would be unremarkable. The probability of missing depends on the expected value of PT itself (MNAR).",
+    "original_missing_rate": 0.432,
+    "n_total_original": 155
+  },
+  "MNAR_pima_skinthickness": {
+    "domain": "endocrinology / diabetes / anthropometry",
+    "source": "NIDDK Pima Indians Diabetes Database (UCI/Kaggle)",
+    "x0_variable": "SkinThickness",
+    "x0_units": "mm (millimeters)",
+    "x0_description": "Triceps skinfold thickness — anthropometric measurement of subcutaneous fat used to estimate body composition",
+    "x0_typical_range": "7-99 mm in this dataset (normal adult: 10-25 mm)",
+    "predictors": {
+      "X1": {"name": "Pregnancies", "units": "count", "role": "Number of pregnancies"},
+      "X2": {"name": "Glucose", "units": "mg/dL", "role": "Plasma glucose 2h post-OGTT"},
+      "X3": {"name": "BMI", "units": "kg/m2", "role": "Body mass index"},
+      "X4": {"name": "Age", "units": "years", "role": "Patient age"}
+    },
+    "missing_context": "Skinfold thickness recorded as 0 (biologically impossible) for 227/768 women (29.6%). Standard skinfold calipers have a maximum capacity of ~45mm. Obese patients with thick subcutaneous fat exceed caliper capacity, making measurement impossible. The higher the true skinfold thickness, the more likely it is to be missing — a classic MNAR mechanism documented in medical literature (Pham et al., 2015; Bray et al., 1978).",
+    "original_missing_rate": 0.296,
+    "n_total_original": 768
+  },
   "MNAR_adult_capitalgain": {
     "domain": "economics / demographic census",
     "source": "UCI Adult Census Income Dataset / OpenML",

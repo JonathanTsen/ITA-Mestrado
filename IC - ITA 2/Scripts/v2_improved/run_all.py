@@ -52,6 +52,13 @@ if "--llm-approach" in sys.argv:
     if idx + 1 < len(sys.argv):
         LLM_APPROACH = sys.argv[idx + 1]
 
+# Parse --metadata-variant (default: 'default', opção 'neutral' para sem leakage)
+METADATA_VARIANT = "default"
+if "--metadata-variant" in sys.argv:
+    idx = sys.argv.index("--metadata-variant")
+    if idx + 1 < len(sys.argv):
+        METADATA_VARIANT = sys.argv[idx + 1]
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Salvar metadata do experimento
@@ -70,6 +77,7 @@ print(f"🔬 Experimento: {EXPERIMENT}")
 print(f"📊 Tipos de dados: {DATA_TYPES}")
 print(f"📋 Modelos a processar: {MODELS}")
 print(f"🧠 Abordagem LLM: {LLM_APPROACH}")
+print(f"📖 Metadata variant: {METADATA_VARIANT}")
 print("=" * 60)
 
 for data_type in DATA_TYPES:
@@ -99,7 +107,8 @@ for data_type in DATA_TYPES:
         print(f"\n🔧 Extraindo features...")
         cmd = [sys.executable, os.path.join(SCRIPT_DIR, "extract_features.py"),
                "--model", model, "--data", data_type, "--experiment", EXPERIMENT,
-               "--llm-approach", LLM_APPROACH]
+               "--llm-approach", LLM_APPROACH,
+               "--metadata-variant", METADATA_VARIANT]
         if TEST_MODE:
             cmd.append("--test")
 

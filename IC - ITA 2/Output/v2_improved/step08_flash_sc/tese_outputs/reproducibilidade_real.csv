@@ -1,0 +1,7 @@
+data_type,seed,modelo,accuracy,recall_mnar
+real,42,RandomForest,0.40759493670886077,0.32666666666666666
+real,42,GradientBoosting,0.4050632911392405,0.32
+real,123,RandomForest,0.35443037974683544,0.23
+real,123,GradientBoosting,0.3392405063291139,0.22
+real,456,RandomForest,0.5544303797468354,0.45
+real,456,GradientBoosting,0.5468354430379747,0.52

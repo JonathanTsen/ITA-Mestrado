@@ -1,0 +1,265 @@
+VALIDACAO DE ROTULOS — 3 TESTES ESTATISTICOS
+============================================================
+Testes: Little's MCAR | Correlacao mask-Xi | KS obs vs imputado
+
+MCAR_autompg_horsepower.txt:
+  Rotulo atual: MCAR
+  Missing rate: 1.5%
+  Little p-value: 0.431108
+  Max |corr| mask-Xi: -0.0817 (X4)
+  KS stat: 0.0075, p=1.0
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_breastcancer_barenuclei.txt:
+  Rotulo atual: MCAR
+  Missing rate: 2.3%
+  Little p-value: 0.275526
+  Max |corr| mask-Xi: -0.0567 (X1)
+  KS stat: 0.0094, p=1.0
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_creditapproval_a14.txt:
+  Rotulo atual: MCAR
+  Missing rate: 1.9%
+  Little p-value: 0.704761
+  Max |corr| mask-Xi: 0.0396 (X4)
+  KS stat: 0.0092, p=1.0
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_cylinderbands_bladepressure.txt:
+  Rotulo atual: MCAR
+  Missing rate: 10.0%
+  Little p-value: 8.7e-05
+  Max |corr| mask-Xi: -0.1637 (X1)
+  KS stat: 0.0442, p=0.678467
+  Diagnostico: INCONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MCAR_cylinderbands_esavoltage.txt:
+  Rotulo atual: MCAR
+  Missing rate: 10.0%
+  Little p-value: 0.135413
+  Max |corr| mask-Xi: 0.0868 (X2)
+  KS stat: 0.0337, p=0.921154
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_echomonths_epss.txt:
+  Rotulo atual: MCAR
+  Missing rate: 10.0%
+  Little p-value: 0.653288
+  Max |corr| mask-Xi: 0.136 (X1)
+  KS stat: 0.0496, p=0.995741
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_hepatitis_albumin.txt:
+  Rotulo atual: MCAR
+  Missing rate: 9.7%
+  Little p-value: 0.683764
+  Max |corr| mask-Xi: 0.0936 (X3)
+  KS stat: 0.0449, p=0.996178
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_hepatitis_alkphosphate.txt:
+  Rotulo atual: MCAR
+  Missing rate: 9.7%
+  Little p-value: 0.438372
+  Max |corr| mask-Xi: 0.1249 (X3)
+  KS stat: 0.0442, p=0.996895
+  Diagnostico: CONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MCAR_hypothyroid_t4u.txt:
+  Rotulo atual: MCAR
+  Missing rate: 10.0%
+  Little p-value: 0.0
+  Max |corr| mask-Xi: -0.0826 (X1)
+  KS stat: 0.0499, p=0.000263
+  Diagnostico: INCONSISTENTE: Possivelmente MNAR (rejeita MCAR + KS significativo)
+  Rotulo recomendado: MNAR
+
+MAR_airquality_ozone.txt:
+  Rotulo atual: MAR
+  Missing rate: 9.8%
+  Little p-value: 0.308818
+  Max |corr| mask-Xi: -0.1541 (X4)
+  KS stat: 0.049, p=0.989853
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MAR_colic_resprate.txt:
+  Rotulo atual: MAR
+  Missing rate: 9.8%
+  Little p-value: 0.391083
+  Max |corr| mask-Xi: 0.0846 (X1)
+  KS stat: 0.0483, p=0.784737
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MAR_hearth_chol.txt:
+  Rotulo atual: MAR
+  Missing rate: 7.8%
+  Little p-value: 0.598745
+  Max |corr| mask-Xi: -0.0835 (X4)
+  KS stat: 0.039, p=0.974874
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MAR_kidney_hemo.txt:
+  Rotulo atual: MAR
+  Missing rate: 10.0%
+  Little p-value: 0.740877
+  Max |corr| mask-Xi: 0.0611 (X1)
+  KS stat: 0.0497, p=0.713998
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MAR_mammographic_density.txt:
+  Rotulo atual: MAR
+  Missing rate: 6.3%
+  Little p-value: 0.001804
+  Max |corr| mask-Xi: -0.1261 (X4)
+  KS stat: 0.0316, p=0.768443
+  Diagnostico: CONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MAR_oceanbuoys_airtemp.txt:
+  Rotulo atual: MAR
+  Missing rate: 9.9%
+  Little p-value: 0.0
+  Max |corr| mask-Xi: 0.333 (X1)
+  KS stat: 0.0495, p=0.34422
+  Diagnostico: CONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MAR_oceanbuoys_humidity.txt:
+  Rotulo atual: MAR
+  Missing rate: 9.9%
+  Little p-value: 0.0
+  Max |corr| mask-Xi: -0.333 (X1)
+  KS stat: 0.0491, p=0.354972
+  Diagnostico: CONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MAR_sick_t3.txt:
+  Rotulo atual: MAR
+  Missing rate: 10.0%
+  Little p-value: 0.00046
+  Max |corr| mask-Xi: -0.072 (X1)
+  KS stat: 0.0481, p=0.000495
+  Diagnostico: INCONSISTENTE: Possivelmente MNAR (rejeita MCAR + KS significativo)
+  Rotulo recomendado: MNAR
+
+MAR_sick_tsh.txt:
+  Rotulo atual: MAR
+  Missing rate: 9.8%
+  Little p-value: 0.0
+  Max |corr| mask-Xi: -0.1052 (X1)
+  KS stat: 0.0484, p=0.000432
+  Diagnostico: CONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MAR_titanic_age.txt:
+  Rotulo atual: MAR
+  Missing rate: 10.0%
+  Little p-value: 6.2e-05
+  Max |corr| mask-Xi: 0.1323 (X1)
+  KS stat: 0.0489, p=0.252806
+  Diagnostico: CONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MAR_titanic_age_v2.txt:
+  Rotulo atual: MAR
+  Missing rate: 10.0%
+  Little p-value: 0.000296
+  Max |corr| mask-Xi: 0.1099 (X1)
+  KS stat: 0.0496, p=0.239988
+  Diagnostico: CONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MNAR_adult_capitalgain.txt:
+  Rotulo atual: MNAR
+  Missing rate: 10.0%
+  Little p-value: 0.656572
+  Max |corr| mask-Xi: -0.0333 (X2)
+  KS stat: 0.0432, p=0.327901
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MNAR_colic_refluxph.txt:
+  Rotulo atual: MNAR
+  Missing rate: 9.8%
+  Little p-value: 0.142097
+  Max |corr| mask-Xi: -0.0952 (X1)
+  KS stat: 0.048, p=0.790806
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MNAR_cylinderbands_varnishpct.txt:
+  Rotulo atual: MNAR
+  Missing rate: 10.0%
+  Little p-value: 0.00419
+  Max |corr| mask-Xi: 0.1368 (X2)
+  KS stat: 0.0496, p=0.535765
+  Diagnostico: INCONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MNAR_hepatitis_protime.txt:
+  Rotulo atual: MNAR
+  Missing rate: 9.7%
+  Little p-value: 0.774718
+  Max |corr| mask-Xi: 0.0871 (X1)
+  KS stat: 0.0477, p=0.992067
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MNAR_kidney_pot.txt:
+  Rotulo atual: MNAR
+  Missing rate: 10.0%
+  Little p-value: 0.009414
+  Max |corr| mask-Xi: 0.1601 (X3)
+  KS stat: 0.0478, p=0.757909
+  Diagnostico: INCONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
+MNAR_kidney_sod.txt:
+  Rotulo atual: MNAR
+  Missing rate: 10.0%
+  Little p-value: 0.059065
+  Max |corr| mask-Xi: 0.0947 (X3)
+  KS stat: 0.0489, p=0.73298
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MNAR_mroz_wages.txt:
+  Rotulo atual: MNAR
+  Missing rate: 10.0%
+  Little p-value: 0.021503
+  Max |corr| mask-Xi: 0.0861 (X3)
+  KS stat: 0.0497, p=0.328061
+  Diagnostico: CONSISTENTE: Ambiguo (testes conflitantes)
+  Rotulo recomendado: MNAR
+
+MNAR_pima_insulin.txt:
+  Rotulo atual: MNAR
+  Missing rate: 9.9%
+  Little p-value: 0.900567
+  Max |corr| mask-Xi: -0.0267 (X3)
+  KS stat: 0.0488, p=0.337549
+  Diagnostico: INCONSISTENTE: MCAR confirmado
+  Rotulo recomendado: MCAR
+
+MNAR_pima_skinthickness.txt:
+  Rotulo atual: MNAR
+  Missing rate: 9.9%
+  Little p-value: 0.000698
+  Max |corr| mask-Xi: 0.1271 (X4)
+  KS stat: 0.0489, p=0.334141
+  Diagnostico: INCONSISTENTE: Evidencia MAR (rejeita MCAR + correlacao mask-Xi)
+  Rotulo recomendado: MAR
+
