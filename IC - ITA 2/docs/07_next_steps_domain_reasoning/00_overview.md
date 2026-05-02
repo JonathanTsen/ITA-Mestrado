@@ -1,7 +1,20 @@
 # Next Steps: Melhorar Domain Reasoning para Classificacao de Missing Data
 
-**Data:** 2026-04-19
-**Contexto:** Experimento forensic_neutral_v2 atingiu 56.2% (GroupKFold-5) e 63.1% (domain_prior alone). Analise forense confirmou ausencia de data leakage classico, mas revelou fraquezas sistematicas no domain reasoning da LLM.
+**Data original:** 2026-04-19
+**Atualização:** 2026-04-25 (Step 1 executado — ver `docs/08_step1_v2_neutral_results/`)
+
+**Status dos Steps:**
+| Step | Status | Resultado real |
+|------|:------:|----------------|
+| Step 1 (Few-shot + tipologia + anti-bias) | ✅ Executado 2026-04-25 | CV 49.3% (target era 60%+) — ver [pasta 08](../08_step1_v2_neutral_results/) e [pasta 09](../09_resultados_ml_flash_pro/) |
+| Step 2 (Causal Reasoning DAG) | ⏳ Não executado | — |
+| Step 3 (Self-Consistency CISC) | 🟡 Executado parcialmente (Flash) | 38.4% CV (degradou — perdeu contexto) |
+
+**Documentação dos resultados:**
+- 📊 **[`08_step1_v2_neutral_results/`](../08_step1_v2_neutral_results/00_INDICE.md)** — análise detalhada da execução Step 1 (metodologia, regressão vs `forensic_neutral_v2`, datasets problemáticos, próximos passos)
+- 📈 **[`09_resultados_ml_flash_pro/`](../09_resultados_ml_flash_pro/00_INDICE.md)** — comparação head-to-head ML × Flash × Pro sobre o benchmark expandido (custo-benefício, análise por modelo, narrativa para tese)
+
+**Contexto:** Experimento forensic_neutral_v2 atingiu 56.2% (GroupKFold-5) e 63.1% (domain_prior alone). Analise forense confirmou ausencia de data leakage classico, mas revelou fraquezas sistematicas no domain reasoning da LLM. **Atualização (2026-04-25):** o benchmark foi expandido de 23 → 29 datasets reais (+6 datasets clinicamente difíceis), e Step 1 foi re-executado com Pro + neutral; os números abaixo agora podem ser interpretados em dois pontos de avaliação distintos.
 
 ## Diagnostico Atual
 
@@ -51,13 +64,17 @@ Step 3: Self-Consistency Voting    ──> multiplas perspectivas + agregacao
 
 ### Metricas de Sucesso
 
-| Metrica | Atual | Target Step 1 | Target Step 2 | Target Step 3 |
-|---------|-------|---------------|---------------|---------------|
-| Accuracy GroupKFold-5 | 56.2% | 60%+ | 65%+ | 68%+ |
-| F1-macro | 50.1% | 55%+ | 60%+ | 63%+ |
-| MCAR accuracy LODO | ~30% | 45%+ | 50%+ | 55%+ |
-| MNAR accuracy LODO | ~34% | 45%+ | 50%+ | 55%+ |
-| MAR accuracy LODO | 96.5% | >90% | >90% | >90% |
+| Metrica | Atual (forensic 23) | Real Step 1 (29 datasets) | Target Step 2 | Target Step 3 |
+|---------|---------------------|:-------------------------:|---------------|---------------|
+| Accuracy GroupKFold-5 | 56.2% | **49.3%** ❌ (era 60%+) | 55%+ (revisado) | 60%+ |
+| F1-macro | 50.1% | **0.55** | 0.58+ | 0.62+ |
+| MCAR accuracy global | ~30% | 24.9% | 35%+ | 45%+ |
+| MNAR accuracy global | ~34% | 32.0% | 45%+ | 55%+ |
+| MAR accuracy global | 96.5% | 67.6% (queda esperada) | 70%+ | 75%+ |
+| Recall 6 datasets críticos | — | ~5% (média) | ≥30% | ≥45% |
+| domain_prior alone | 63.1% | 43.7% | — | — |
+
+**Nota sobre comparação:** os números de "Atual (forensic 23)" são sobre o benchmark de 23 datasets antigos; os números do Step 1 atual são sobre 29 datasets (benchmark expandido). A regressão CV de −7pp é majoritariamente atribuível à expansão do benchmark, não à degradação do método (ver `docs/08_step1_v2_neutral_results/04_ANALISE_REGRESSAO.md`).
 
 ## Documentos Detalhados
 
