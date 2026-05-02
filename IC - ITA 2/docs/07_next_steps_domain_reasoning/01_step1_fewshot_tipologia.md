@@ -1,9 +1,22 @@
 # Step 1: Few-Shot com Exemplos Canonicos + Tipologia MNAR
 
+**Status:** ✅ **EXECUTADO em 2026-04-25** — ver resultados completos em [`docs/08_step1_v2_neutral_results/`](../08_step1_v2_neutral_results/00_INDICE.md)
+
+**Resultado real:**
+- CV avg (NB): **49.33% ± 14.2%** — abaixo do target de 60%+
+- Holdout (NB): **55.19%**
+- domain_prior solo: 43.7% (vs 63.1% esperado)
+- Custo real: ~$30-36 USD (Pro × 2 metades)
+
+**Veredicto:** o prompt instrumentado funcionou (+1.9pp CV vs Flash), mas **MAR-bias residual em 6 datasets do benchmark expandido** impediu o ganho esperado. Step 2 (Causal DAG) é o próximo passo natural.
+
+---
+
 **Prioridade:** ALTA (menor esforco, maior impacto esperado)
-**Estimativa de impacto:** +4-6pp accuracy, reducao significativa do MAR bias
+**Estimativa de impacto (planejado):** +4-6pp accuracy, reducao significativa do MAR bias
+**Estimativa de impacto (real):** +1.9pp CV vs Flash; -7pp vs forensic_neutral_v2 (regressão atribuída à expansão do benchmark de 23→29 datasets)
 **Custo API:** Nenhum adicional (mesmo numero de chamadas)
-**Arquivos a modificar:** `llm/context_aware.py` (prompt template)
+**Arquivos modificados:** `llm/context_aware.py` (prompt template — implementado entre 2026-04-19 e 2026-04-20)
 
 ## Problema que Resolve
 
@@ -179,3 +192,42 @@ uv run python compare_results.py --data real
 | Few-shot overfitting (LLM memoriza exemplos) | Media | Usar exemplos de dominios diferentes dos test sets |
 | Anti-bias overcorrection (MCAR demais) | Baixa | Monitorar distribuicao de predicoes |
 | Prompt muito longo (> token limit) | Baixa | Exemplos sao ~200 tokens extras, bem dentro do limite |
+
+---
+
+## Resultados Obtidos (atualização 2026-04-25)
+
+A execução real revelou um padrão diferente do esperado:
+
+### Acertos do plano
+
+✅ **Implementação técnica:** prompt few-shot, tipologia MNAR e anti-bias estão presentes em `llm/context_aware.py` (linhas 354-420 do DAG prompt e 488-499 da classification).
+
+✅ **Cache invalidation:** confirmado que cache é in-memory e reinicia automaticamente em cada novo processo Python — não foi necessária ação manual.
+
+✅ **Anti-bias funcionou parcialmente:** reduziu MAR recall de 96.5% (em `forensic_neutral_v2`) para 67.6% (esperado: > 90% manter, atingiu menos que isso, mas redução era esperada).
+
+### Surpresas negativas
+
+❌ **Target de 60%+ CV não atingido:** real foi 49.33% CV (NB). Diferença −10.7pp.
+
+❌ **`MNAR_pima_insulin` continuou em 4% recall:** apesar de ser caso canônico explicitamente referenciado nos few-shot examples, o LLM continua classificando-o como MAR.
+
+❌ **Verificações de sanidade falharam parcialmente:**
+- ✅ Distribuição de domain_prior mais equilibrada (recall MCAR 24.9%, MAR 67.6%, MNAR 32.0%) — mais balanceado que `forensic_neutral_v2` mas ainda tendendo a MAR
+- ❌ Datasets MCAR canônicos (`autompg_horsepower`: 51% recall ✅; `breastcancer_barenuclei`: apenas 36% ❌) — parcial
+- ❌ Datasets MNAR clássicos (`pima_insulin`: 4% ❌; `mroz_wages`: 92% ✅) — parcial
+
+### Causa raiz identificada
+
+A análise (ver `docs/08_step1_v2_neutral_results/05_DATASETS_PROBLEMATICOS.md`) identificou **9 datasets críticos** com recall ≤ 20%, divididos em 3 padrões:
+
+1. **Defaulting MAR em domínios clínicos** (7 datasets) — instrução textual anti-bias é insuficiente para superar prior dominial forte
+2. **Falsos positivos MNAR por interpretação de truncamento** (1 dataset)
+3. **Variáveis com baixo R² estatístico** caem no fallback uniforme, perdendo sinal discriminativo (6 datasets)
+
+### Conclusão para Step 2
+
+O Step 1 confirma a hipótese de partida (anti-bias reduz MAR-default), mas falha em casos onde o LLM precisaria **nomear especificamente** a variável causadora. A decomposição em 2 etapas (Causal DAG → Classificação) do Step 2 é o próximo passo natural — ataca diretamente o gargalo identificado.
+
+Ver [`docs/08_step1_v2_neutral_results/08_PROXIMOS_PASSOS.md`](../08_step1_v2_neutral_results/08_PROXIMOS_PASSOS.md) para roadmap completo.

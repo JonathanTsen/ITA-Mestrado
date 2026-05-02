@@ -63,6 +63,22 @@ if "--metadata-variant" in sys.argv:
         print(f"❌ --metadata-variant deve ser 'default' ou 'neutral', recebido: '{METADATA_VARIANT}'")
         sys.exit(1)
 
+# --datasets-include: filtra por parent-dataset (1 prefixo por linha; '#' = comentário)
+DATASETS_INCLUDE: set[str] | None = None
+if "--datasets-include" in sys.argv:
+    idx = sys.argv.index("--datasets-include")
+    if idx + 1 < len(sys.argv):
+        _di_path = sys.argv[idx + 1]
+        if not os.path.exists(_di_path):
+            print(f"❌ --datasets-include: arquivo não encontrado: {_di_path}")
+            sys.exit(1)
+        with open(_di_path) as _f:
+            DATASETS_INCLUDE = {
+                line.strip() for line in _f
+                if line.strip() and not line.startswith("#")
+            }
+        print(f"📋 Filtro --datasets-include: {len(DATASETS_INCLUDE)} parent-datasets de {_di_path}")
+
 USE_LLM_API = MODEL_NAME != "none" and MODEL_NAME in MODEL_TO_PROVIDER
 # CAAFE features são puras Python — habilitadas quando approach é "caafe" OU junto com LLM
 USE_CAAFE = LLM_APPROACH in ("caafe", "context", "self_consistency") or USE_LLM_API
@@ -225,15 +241,27 @@ def process_file(args):
 # ======================================================
 # COLETA ARQUIVOS
 # ======================================================
+import re as _re_filter
+_BOOT_RE = _re_filter.compile(r"_boot\d+\.txt$")
+
 tasks = []
+_skipped_by_filter = 0
 for classe, pasta in DATASET_PATHS.items():
     if not os.path.exists(pasta):
         print(f"⚠️ Pasta não encontrada: {pasta}")
         continue
     arquivos = sorted([a for a in os.listdir(pasta) if a.endswith(".txt")])
     for arq in arquivos:
+        if DATASETS_INCLUDE is not None:
+            parent = _BOOT_RE.sub("", arq)
+            if parent not in DATASETS_INCLUDE:
+                _skipped_by_filter += 1
+                continue
         filepath = os.path.join(pasta, arq)
         tasks.append((filepath, classe, len(tasks)))
+
+if DATASETS_INCLUDE is not None:
+    print(f"📋 Filtro aplicado: {len(tasks)} arquivos incluídos, {_skipped_by_filter} excluídos")
 
 if TEST_MODE:
     tasks = tasks[:50]
