@@ -8,32 +8,36 @@ Exemplos:
     python train_model.py --model none                              # Baseline ML, dados sintéticos
     python train_model.py --model gemini-3-flash-preview --data real # ML + LLM, dados reais
 """
+
+import json
 import os
 import sys
-import json
 import warnings
 from datetime import datetime
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.decomposition import PCA
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import (
-    train_test_split, cross_val_score, LeaveOneOut, RepeatedStratifiedKFold,
-    GroupShuffleSplit, GroupKFold
+    GroupKFold,
+    GroupShuffleSplit,
+    LeaveOneOut,
+    RepeatedStratifiedKFold,
+    cross_val_score,
+    train_test_split,
 )
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.feature_selection import SelectKBest, f_classif
-from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.args import parse_common_args
@@ -58,14 +62,14 @@ if not os.path.exists(X_IN):
 
 ABORDAGEM = "apenas ML (baseline)" if MODEL_NAME == "none" else f"ML + LLM ({MODEL_NAME})"
 
-print(f"=" * 60)
-print(f"🤖 TREINAMENTO DE MODELOS v2")
-print(f"=" * 60)
+print("=" * 60)
+print("🤖 TREINAMENTO DE MODELOS v2")
+print("=" * 60)
 print(f"📊 Dados: {DATA_TYPE}")
 print(f"🔬 Abordagem: {ABORDAGEM}")
 print(f"📝 Modelo LLM: {MODEL_NAME}")
 print(f"📂 Input: {OUTPUT_DIR}")
-print(f"=" * 60)
+print("=" * 60)
 
 # ======================================================
 # CARREGA DADOS
@@ -112,10 +116,7 @@ feature_selection_log = {
 if X.shape[1] > max_features:
     print(f"\n🔍 Feature selection: {X.shape[1]} → {max_features} features (n={n_samples})")
     selector = SelectKBest(f_classif, k=max_features)
-    X_selected = pd.DataFrame(
-        selector.fit_transform(X, y),
-        columns=X.columns[selector.get_support()]
-    )
+    X_selected = pd.DataFrame(selector.fit_transform(X, y), columns=X.columns[selector.get_support()])
     removed = set(X.columns) - set(X_selected.columns)
     print(f"   Removidas: {removed}")
 
@@ -123,7 +124,7 @@ if X.shape[1] > max_features:
     feature_selection_log["n_selected"] = int(max_features)
     feature_selection_log["features_selected"] = list(X_selected.columns)
     feature_selection_log["features_removed"] = list(removed)
-    for feat, score, pval in zip(X.columns, selector.scores_, selector.pvalues_):
+    for feat, score, pval in zip(X.columns, selector.scores_, selector.pvalues_, strict=False):
         feature_selection_log["scores"][feat] = float(score)
         feature_selection_log["p_values"][feat] = float(pval)
 
@@ -134,6 +135,7 @@ if X.shape[1] > max_features:
     stat_cols = [c for c in X.columns if not c.startswith("llm_")]
 else:
     print(f"\n🔍 Feature selection: {X.shape[1]} features mantidas (n={n_samples}, max={max_features})")
+
 
 # ======================================================
 # MODELOS (hiperparâmetros adaptativos ao tamanho do dataset)
@@ -158,52 +160,39 @@ def get_modelos(n_samples: int, has_llm_features: bool = False) -> dict:
     if n_samples < 100:
         # Dataset pequeno: modelos simples, menos overfitting
         return {
-            "RandomForest": RandomForestClassifier(
-                n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
+            "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
             "GradientBoosting": GradientBoostingClassifier(
-                n_estimators=50, max_depth=3, learning_rate=0.1, random_state=42),
+                n_estimators=50, max_depth=3, learning_rate=0.1, random_state=42
+            ),
             "LogisticRegression": _sensitive_pipeline(
-                LogisticRegression(max_iter=3000, C=0.5, random_state=42), use_pca=False),
-            "SVM_RBF": _sensitive_pipeline(
-                SVC(kernel="rbf", C=1, random_state=42, probability=True)),
-            "KNN": _sensitive_pipeline(
-                KNeighborsClassifier(n_neighbors=3)),
-            "MLP": _sensitive_pipeline(
-                MLPClassifier(hidden_layer_sizes=(32, 16),
-                              max_iter=2000, random_state=42)),
-            "NaiveBayes": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", GaussianNB())
-            ]),
+                LogisticRegression(max_iter=3000, C=0.5, random_state=42), use_pca=False
+            ),
+            "SVM_RBF": _sensitive_pipeline(SVC(kernel="rbf", C=1, random_state=42, probability=True)),
+            "KNN": _sensitive_pipeline(KNeighborsClassifier(n_neighbors=3)),
+            "MLP": _sensitive_pipeline(MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=2000, random_state=42)),
+            "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
     else:
         # Dataset grande: modelos originais
         return {
-            "RandomForest": RandomForestClassifier(
-                n_estimators=400, random_state=42, n_jobs=-1),
-            "GradientBoosting": GradientBoostingClassifier(
-                n_estimators=300, random_state=42),
+            "RandomForest": RandomForestClassifier(n_estimators=400, random_state=42, n_jobs=-1),
+            "GradientBoosting": GradientBoostingClassifier(n_estimators=300, random_state=42),
             "LogisticRegression": _sensitive_pipeline(
-                LogisticRegression(max_iter=3000, random_state=42), use_pca=False),
-            "SVM_RBF": _sensitive_pipeline(
-                SVC(kernel="rbf", C=3, random_state=42, probability=True)),
-            "KNN": _sensitive_pipeline(
-                KNeighborsClassifier(n_neighbors=5)),
-            "MLP": _sensitive_pipeline(
-                MLPClassifier(hidden_layer_sizes=(128, 64, 32),
-                              max_iter=2000, random_state=42)),
-            "NaiveBayes": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", GaussianNB())
-            ]),
+                LogisticRegression(max_iter=3000, random_state=42), use_pca=False
+            ),
+            "SVM_RBF": _sensitive_pipeline(SVC(kernel="rbf", C=3, random_state=42, probability=True)),
+            "KNN": _sensitive_pipeline(KNeighborsClassifier(n_neighbors=5)),
+            "MLP": _sensitive_pipeline(MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=42)),
+            "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
+
 
 has_llm = len(llm_cols) > 0
 modelos = get_modelos(len(X), has_llm_features=has_llm)
 regime = "pequeno (n<100)" if len(X) < 100 else "grande (n>=100)"
 print(f"\n⚙️ Hiperparâmetros: regime {regime}")
 if has_llm:
-    print(f"   PCA ativado para SVM/KNN/MLP (features LLM presentes)")
+    print("   PCA ativado para SVM/KNN/MLP (features LLM presentes)")
 
 # ======================================================
 # SPLIT (com GroupShuffleSplit se grupos disponíveis)
@@ -224,11 +213,9 @@ if groups is not None and groups.nunique() > 1:
     if overlap:
         print(f"   ⚠️ LEAK: grupos em ambos: {overlap}")
     else:
-        print(f"   ✅ Sem leakage: 0 grupos compartilhados")
+        print("   ✅ Sem leakage: 0 grupos compartilhados")
 else:
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, stratify=y, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y, random_state=42)
     print(f"\n📈 Split: train={len(y_train)}, test={len(y_test)}")
 
 print(f"   Distribuição train: {dict(pd.Series(y_train).value_counts().sort_index())}")
@@ -237,6 +224,7 @@ print(f"   Distribuição test:  {dict(pd.Series(y_test).value_counts().sort_ind
 # SMOTE para balanceamento de classes no treino
 try:
     from imblearn.over_sampling import SMOTE
+
     min_class_count = y_train.value_counts().min()
     if min_class_count >= 2:
         k_neighbors = min(3, min_class_count - 1)
@@ -258,15 +246,17 @@ all_predictions = []
 class_labels = sorted(y.unique())
 class_names = {0: "MCAR", 1: "MAR", 2: "MNAR"}
 
-print(f"\n🏋️ Treinando modelos...")
+print("\n🏋️ Treinando modelos...")
 for nome, modelo in tqdm(modelos.items(), desc="Treinando"):
     modelo.fit(X_train, y_train)
     y_pred = modelo.predict(X_test)
 
     # Probabilidades por classe
-    if hasattr(modelo, "predict_proba"):
-        y_proba = modelo.predict_proba(X_test)
-    elif hasattr(modelo, "named_steps") and hasattr(modelo.named_steps.get("clf", modelo), "predict_proba"):
+    if (
+        hasattr(modelo, "predict_proba")
+        or hasattr(modelo, "named_steps")
+        and hasattr(modelo.named_steps.get("clf", modelo), "predict_proba")
+    ):
         y_proba = modelo.predict_proba(X_test)
     else:
         y_proba = np.full((len(X_test), len(class_labels)), np.nan)
@@ -290,7 +280,7 @@ for nome, modelo in tqdm(modelos.items(), desc="Treinando"):
     resultados[nome] = {
         "accuracy": acc,
         "report": classification_report(y_test, y_pred, output_dict=True),
-        "confusion": confusion_matrix(y_test, y_pred)
+        "confusion": confusion_matrix(y_test, y_pred),
     }
 
     relatorio_lines.append(f"\n{'='*50}")
@@ -304,10 +294,9 @@ for nome, modelo in tqdm(modelos.items(), desc="Treinando"):
 # ANÁLISE DE FEATURE IMPORTANCE (RandomForest)
 # ======================================================
 rf_model = modelos["RandomForest"]
-feature_importance = pd.DataFrame({
-    "feature": X.columns,
-    "importance": rf_model.feature_importances_
-}).sort_values("importance", ascending=False)
+feature_importance = pd.DataFrame({"feature": X.columns, "importance": rf_model.feature_importances_}).sort_values(
+    "importance", ascending=False
+)
 
 relatorio_lines.append(f"\n{'='*50}")
 relatorio_lines.append("=== FEATURE IMPORTANCE (RandomForest) ===")
@@ -349,8 +338,7 @@ print(f"\n📊 Estratégia CV: {cv_name} (n={n_cv})")
 cv_results = {}
 cv_scores_rows = []
 for nome, modelo in tqdm(modelos.items(), desc="Cross-validation"):
-    scores = cross_val_score(modelo, X, y, cv=cv_strategy, scoring="accuracy",
-                             groups=cv_groups)
+    scores = cross_val_score(modelo, X, y, cv=cv_strategy, scoring="accuracy", groups=cv_groups)
     cv_results[nome] = {"mean": scores.mean(), "std": scores.std()}
     relatorio_lines.append(f"{nome}: {scores.mean():.4f} (+/- {scores.std()*2:.4f})")
     for fold_i, score in enumerate(scores):
@@ -370,7 +358,7 @@ print(f"\n✅ Relatório salvo: {relatorio_path}")
 # ======================================================
 # SALVA OUTPUTS ESTRUTURADOS
 # ======================================================
-print(f"\n💾 Salvando outputs estruturados...")
+print("\n💾 Salvando outputs estruturados...")
 
 # 1. predictions.csv
 predictions_df = pd.DataFrame(all_predictions)
@@ -382,14 +370,16 @@ for nome, res in resultados.items():
     for cl_key, cl_name in class_names.items():
         cl_str = str(cl_key)
         if cl_str in res["report"]:
-            metrics_rows.append({
-                "modelo": nome,
-                "classe": cl_name,
-                "precision": res["report"][cl_str]["precision"],
-                "recall": res["report"][cl_str]["recall"],
-                "f1": res["report"][cl_str]["f1-score"],
-                "support": int(res["report"][cl_str]["support"]),
-            })
+            metrics_rows.append(
+                {
+                    "modelo": nome,
+                    "classe": cl_name,
+                    "precision": res["report"][cl_str]["precision"],
+                    "recall": res["report"][cl_str]["recall"],
+                    "f1": res["report"][cl_str]["f1-score"],
+                    "support": int(res["report"][cl_str]["support"]),
+                }
+            )
 pd.DataFrame(metrics_rows).to_csv(os.path.join(OUTPUT_DIR, "metrics_per_class.csv"), index=False)
 
 # 3. feature_importance.csv (todas as features, não só top 20)
@@ -409,15 +399,17 @@ with open(os.path.join(OUTPUT_DIR, "confusion_matrices.json"), "w") as f:
 hyperparams = {}
 for nome, modelo in modelos.items():
     hyperparams[nome] = modelo.get_params()
+
+
 # Converter tipos não serializáveis
 def _sanitize(obj):
     if isinstance(obj, dict):
         return {k: _sanitize(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list | tuple):
         return [_sanitize(v) for v in obj]
-    if isinstance(obj, (np.integer,)):
+    if isinstance(obj, np.integer):
         return int(obj)
-    if isinstance(obj, (np.floating,)):
+    if isinstance(obj, np.floating):
         return float(obj)
     if isinstance(obj, np.ndarray):
         return obj.tolist()
@@ -426,6 +418,8 @@ def _sanitize(obj):
     if isinstance(obj, type):
         return str(obj)
     return obj
+
+
 with open(os.path.join(OUTPUT_DIR, "hyperparameters.json"), "w") as f:
     json.dump(_sanitize(hyperparams), f, indent=2, default=str)
 
@@ -447,7 +441,9 @@ training_summary = {
     "features": list(X.columns),
     "n_features_llm": len(llm_cols),
     "n_features_stat": len(stat_cols),
-    "split_method": "GroupShuffleSplit" if (groups is not None and groups.nunique() > 1) else "StratifiedTrainTestSplit",
+    "split_method": "GroupShuffleSplit"
+    if (groups is not None and groups.nunique() > 1)
+    else "StratifiedTrainTestSplit",
     "cv_method": cv_name,
     "seed": 42,
 }
@@ -463,8 +459,8 @@ print(f"   ✅ feature_importance.csv ({len(feature_importance)} features)")
 print(f"   ✅ cv_scores.csv ({len(cv_scores_rows)} linhas)")
 print(f"   ✅ confusion_matrices.json ({len(conf_matrices)} modelos)")
 print(f"   ✅ hyperparameters.json ({len(hyperparams)} modelos)")
-print(f"   ✅ feature_selection_log.json")
-print(f"   ✅ training_summary.json")
+print("   ✅ feature_selection_log.json")
+print("   ✅ training_summary.json")
 
 # ======================================================
 # GRÁFICOS
@@ -482,18 +478,19 @@ bars = ax1.bar(nomes, accs, color=colors, edgecolor="black")
 ax1.set_ylabel("Acurácia")
 ax1.set_title(f"Comparação de Modelos - {MODEL_NAME}")
 ax1.set_ylim([0, 1])
-ax1.tick_params(axis='x', rotation=45)
-ax1.axhline(y=0.333, color='red', linestyle='--', alpha=0.5, label="Random (33.3%)")
+ax1.tick_params(axis="x", rotation=45)
+ax1.axhline(y=0.333, color="red", linestyle="--", alpha=0.5, label="Random (33.3%)")
 ax1.legend()
 
-for bar, acc in zip(bars, accs):
-    ax1.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.01,
-             f'{acc:.1%}', ha='center', va='bottom', fontsize=9)
+for bar, acc in zip(bars, accs, strict=False):
+    ax1.text(
+        bar.get_x() + bar.get_width() / 2.0, bar.get_height() + 0.01, f"{acc:.1%}", ha="center", va="bottom", fontsize=9
+    )
 
 # Feature importance
 ax2 = axes[1]
 top_features = feature_importance.head(15)
-colors2 = ['#ff6b6b' if f.startswith('llm_') else '#4ecdc4' for f in top_features["feature"]]
+colors2 = ["#ff6b6b" if f.startswith("llm_") else "#4ecdc4" for f in top_features["feature"]]
 ax2.barh(range(len(top_features)), top_features["importance"], color=colors2)
 ax2.set_yticks(range(len(top_features)))
 ax2.set_yticklabels(top_features["feature"], fontsize=8)
@@ -503,9 +500,9 @@ ax2.invert_yaxis()
 
 # Legenda
 from matplotlib.patches import Patch
-legend_elements = [Patch(facecolor='#ff6b6b', label='LLM'),
-                   Patch(facecolor='#4ecdc4', label='Estatística')]
-ax2.legend(handles=legend_elements, loc='lower right')
+
+legend_elements = [Patch(facecolor="#ff6b6b", label="LLM"), Patch(facecolor="#4ecdc4", label="Estatística")]
+ax2.legend(handles=legend_elements, loc="lower right")
 
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "resultados.png"), dpi=300, bbox_inches="tight")
@@ -520,20 +517,20 @@ for i, classe in enumerate(classes):
     ax = axes[i]
     precisoes = [r["report"][class_map[classe]]["precision"] for r in resultados.values()]
     recalls = [r["report"][class_map[classe]]["recall"] for r in resultados.values()]
-    
+
     x = np.arange(len(nomes))
     width = 0.35
-    
-    ax.bar(x - width/2, precisoes, width, label="Precision", color="#3498db")
-    ax.bar(x + width/2, recalls, width, label="Recall", color="#e74c3c")
-    
+
+    ax.bar(x - width / 2, precisoes, width, label="Precision", color="#3498db")
+    ax.bar(x + width / 2, recalls, width, label="Recall", color="#e74c3c")
+
     ax.set_ylabel("Score")
     ax.set_title(f"{classe}")
     ax.set_xticks(x)
     ax.set_xticklabels(nomes, rotation=45, ha="right", fontsize=8)
     ax.set_ylim([0, 1])
     ax.legend(fontsize=8)
-    ax.axhline(y=0.333, color='gray', linestyle='--', alpha=0.3)
+    ax.axhline(y=0.333, color="gray", linestyle="--", alpha=0.3)
 
 plt.suptitle(f"Precision/Recall por Classe - {MODEL_NAME}", fontsize=14)
 plt.tight_layout()
@@ -544,14 +541,14 @@ plt.close()
 # RESUMO FINAL
 # ======================================================
 print(f"\n{'='*60}")
-print(f"✅ TREINAMENTO CONCLUÍDO!")
+print("✅ TREINAMENTO CONCLUÍDO!")
 print(f"{'='*60}")
 
-print(f"\n📊 RESULTADOS:")
+print("\n📊 RESULTADOS:")
 for nome, res in sorted(resultados.items(), key=lambda x: -x[1]["accuracy"]):
     print(f"   {nome:20s}: {res['accuracy']:.4f}")
 
-print(f"\n📊 CROSS-VALIDATION:")
+print("\n📊 CROSS-VALIDATION:")
 for nome, res in sorted(cv_results.items(), key=lambda x: -x[1]["mean"]):
     print(f"   {nome:20s}: {res['mean']:.4f} (+/- {res['std']*2:.4f})")
 
@@ -559,15 +556,15 @@ best_model = max(resultados.items(), key=lambda x: x[1]["accuracy"])
 print(f"\n🏆 Melhor modelo: {best_model[0]} ({best_model[1]['accuracy']:.4f})")
 
 print(f"\n💾 Arquivos salvos em: {OUTPUT_DIR}")
-print(f"   - relatorio.txt")
-print(f"   - resultados.png")
-print(f"   - precisao_por_classe.png")
-print(f"   - predictions.csv")
-print(f"   - metrics_per_class.csv")
-print(f"   - feature_importance.csv")
-print(f"   - cv_scores.csv")
-print(f"   - confusion_matrices.json")
-print(f"   - hyperparameters.json")
-print(f"   - feature_selection_log.json")
-print(f"   - training_summary.json")
+print("   - relatorio.txt")
+print("   - resultados.png")
+print("   - precisao_por_classe.png")
+print("   - predictions.csv")
+print("   - metrics_per_class.csv")
+print("   - feature_importance.csv")
+print("   - cv_scores.csv")
+print("   - confusion_matrices.json")
+print("   - hyperparameters.json")
+print("   - feature_selection_log.json")
+print("   - training_summary.json")
 print(f"{'='*60}")

@@ -6,16 +6,17 @@ Uso:
     python compare_results.py --data real                # Compara dentro de dados reais
     python compare_results.py --compare-all              # Comparação cruzada sintético vs real
 """
+
 import os
 import sys
 
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.args import parse_common_args
-from utils.paths import get_comparison_dir, find_result_dirs, OUTPUT_BASE, get_experiment_dir
+from utils.paths import find_result_dirs, get_comparison_dir, get_experiment_dir
 
 
 def parse_relatorio(filepath):
@@ -23,7 +24,7 @@ def parse_relatorio(filepath):
     results = {}
     current_model = None
 
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line.startswith("=== ") and line.endswith(" ==="):
@@ -61,7 +62,7 @@ def compare_data_type(data_type, experiment="default"):
     # Calcula diferenças vs baseline
     baseline_col = "baseline (apenas ML)"
     if baseline_col in df_compare.columns and len(df_compare.columns) > 1:
-        print(f"\n📈 DIFERENÇA vs BASELINE (apenas ML):")
+        print("\n📈 DIFERENÇA vs BASELINE (apenas ML):")
         for col in df_compare.columns:
             if col != baseline_col:
                 diff = df_compare[col] - df_compare[baseline_col]
@@ -83,20 +84,27 @@ def compare_data_type(data_type, experiment="default"):
         bars = ax.bar(x + offset, df_compare[col], width, label=col, color=colors[i])
         for bar in bars:
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2., height + 0.01,
-                    f'{height:.2f}', ha='center', va='bottom', fontsize=7, rotation=90)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height + 0.01,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=7,
+                rotation=90,
+            )
 
     data_label = "Dados Sintéticos" if data_type == "sintetico" else "Dados Reais"
-    ax.set_ylabel('Acurácia')
-    ax.set_title(f'Comparação de Abordagens - {data_label}')
+    ax.set_ylabel("Acurácia")
+    ax.set_title(f"Comparação de Abordagens - {data_label}")
     ax.set_xticks(x)
-    ax.set_xticklabels(df_compare.index, rotation=45, ha='right')
+    ax.set_xticklabels(df_compare.index, rotation=45, ha="right")
     ax.legend(title="Configuração")
     ax.set_ylim([0, 1])
-    ax.axhline(y=0.333, color='red', linestyle='--', alpha=0.5, label="Random")
+    ax.axhline(y=0.333, color="red", linestyle="--", alpha=0.5, label="Random")
 
     plt.tight_layout()
-    plt.savefig(os.path.join(comparison_base, "comparacao.png"), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(comparison_base, "comparacao.png"), dpi=300, bbox_inches="tight")
     plt.close()
     print(f"\n💾 Gráfico salvo: {os.path.join(comparison_base, 'comparacao.png')}")
 
@@ -110,7 +118,7 @@ def compare_data_type(data_type, experiment="default"):
 def compare_all(experiment="default"):
     """Comparação cruzada entre dados sintéticos e reais."""
     print(f"\n{'=' * 60}")
-    print(f"🔄 COMPARAÇÃO CRUZADA: SINTÉTICO vs REAL")
+    print("🔄 COMPARAÇÃO CRUZADA: SINTÉTICO vs REAL")
     print(f"{'=' * 60}")
 
     dfs = {}
@@ -131,12 +139,14 @@ def compare_all(experiment="default"):
     for data_type, df in dfs.items():
         for config_col in df.columns:
             for ml_model, acc in df[config_col].items():
-                rows.append({
-                    "tipo_dado": data_type,
-                    "configuracao": config_col,
-                    "modelo_ml": ml_model,
-                    "acuracia": acc,
-                })
+                rows.append(
+                    {
+                        "tipo_dado": data_type,
+                        "configuracao": config_col,
+                        "modelo_ml": ml_model,
+                        "acuracia": acc,
+                    }
+                )
 
     df_cross = pd.DataFrame(rows)
     cross_path = os.path.join(get_experiment_dir(experiment), "comparacao_sintetico_vs_real.csv")

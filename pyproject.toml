@@ -136,18 +136,21 @@ select = [
     "UP",   # pyupgrade
     "SIM",  # flake8-simplify
     "C4",   # flake8-comprehensions
-    "PTH",  # flake8-use-pathlib
     "RUF",  # ruff-specific
 ]
 ignore = [
     "E501",   # line-too-long (handled by formatter)
     "B008",   # function call in default argument (common in sklearn-style code)
     "SIM108", # ternary collapse (often less readable)
+    "RUF001", # ambiguous unicode (Portuguese text in strings)
+    "RUF002", # ambiguous unicode in docstrings
+    "RUF003", # ambiguous unicode in comments
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]            # assert allowed in tests
 "src/missdetect/data_generation/**" = ["T201"]  # prints OK in CLI scripts
+"src/missdetect/*.py" = ["E402"]  # sys.path hacks before imports in legacy scripts
 
 [tool.ruff.format]
 quote-style = "double"

@@ -15,6 +15,7 @@ Uso:
     python ablation_study.py --data sintetico --experiment step05_pro --llm-model gemini-3.1-pro-preview
     python ablation_study.py --data real --experiment step05_pro --llm-model gemini-3.1-pro-preview
 """
+
 import argparse
 import json
 import os
@@ -22,16 +23,16 @@ import sys
 import warnings
 from datetime import datetime
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from scipy.stats import wilcoxon, friedmanchisquare, chi2
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from scipy.stats import chi2, friedmanchisquare, wilcoxon
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import GroupShuffleSplit
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -42,7 +43,7 @@ from sklearn.svm import SVC
 from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.paths import get_output_dir, OUTPUT_BASE
+from utils.paths import OUTPUT_BASE, get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -84,18 +85,33 @@ if os.path.exists(gpath):
 # ==============================================================================
 # DEFINIR GRUPOS DE FEATURES
 # ==============================================================================
-DISC_COLS = ["auc_mask_from_Xobs", "coef_X1_abs", "log_pval_X1_mask",
-             "X1_mean_diff", "X1_mannwhitney_pval", "little_proxy_score"]
+DISC_COLS = [
+    "auc_mask_from_Xobs",
+    "coef_X1_abs",
+    "log_pval_X1_mask",
+    "X1_mean_diff",
+    "X1_mannwhitney_pval",
+    "little_proxy_score",
+]
 
-STAT_INV_COLS = ["X0_missing_rate", "X0_obs_vs_full_ratio", "X0_iqr_ratio",
-                 "X0_obs_skew_diff"]
+STAT_INV_COLS = ["X0_missing_rate", "X0_obs_vs_full_ratio", "X0_iqr_ratio", "X0_obs_skew_diff"]
 
-MNAR_COLS = ["X0_ks_obs_vs_imputed", "X0_tail_missing_ratio", "mask_entropy",
-             "X0_censoring_score", "X0_mean_shift_X1_to_X4"]
+MNAR_COLS = [
+    "X0_ks_obs_vs_imputed",
+    "X0_tail_missing_ratio",
+    "mask_entropy",
+    "X0_censoring_score",
+    "X0_mean_shift_X1_to_X4",
+]
 
-MECHDETECT_COLS = ["mechdetect_auc_complete", "mechdetect_auc_shuffled",
-                   "mechdetect_auc_excluded", "mechdetect_delta_complete_shuffled",
-                   "mechdetect_delta_complete_excluded", "mechdetect_mwu_pvalue"]
+MECHDETECT_COLS = [
+    "mechdetect_auc_complete",
+    "mechdetect_auc_shuffled",
+    "mechdetect_auc_excluded",
+    "mechdetect_delta_complete_shuffled",
+    "mechdetect_delta_complete_excluded",
+    "mechdetect_mwu_pvalue",
+]
 
 CAAFE_COLS = [c for c in X_full.columns if c.startswith("caafe_")]
 LLM_COLS = [c for c in X_full.columns if c.startswith("llm_")]
@@ -136,6 +152,7 @@ CONFIGS = {
 for name, cfg in CONFIGS.items():
     print(f"   {name}: {cfg['n']} features — {cfg['desc']}")
 
+
 # ==============================================================================
 # MODELOS
 # ==============================================================================
@@ -144,19 +161,33 @@ def get_modelos(n_samples):
         return {
             "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
             "GradientBoosting": GradientBoostingClassifier(n_estimators=50, max_depth=3, random_state=42),
-            "LogisticRegression": Pipeline([("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, C=0.5, random_state=42))]),
+            "LogisticRegression": Pipeline(
+                [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, C=0.5, random_state=42))]
+            ),
             "SVM_RBF": Pipeline([("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=1, random_state=42))]),
             "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=3))]),
-            "MLP": Pipeline([("scaler", StandardScaler()), ("clf", MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=2000, random_state=42))]),
+            "MLP": Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    ("clf", MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=2000, random_state=42)),
+                ]
+            ),
             "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
     return {
         "RandomForest": RandomForestClassifier(n_estimators=400, random_state=42, n_jobs=-1),
         "GradientBoosting": GradientBoostingClassifier(n_estimators=300, random_state=42),
-        "LogisticRegression": Pipeline([("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, random_state=42))]),
+        "LogisticRegression": Pipeline(
+            [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, random_state=42))]
+        ),
         "SVM_RBF": Pipeline([("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=3, random_state=42))]),
         "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=5))]),
-        "MLP": Pipeline([("scaler", StandardScaler()), ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=42))]),
+        "MLP": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=42)),
+            ]
+        ),
         "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
     }
 
@@ -164,7 +195,10 @@ def get_modelos(n_samples):
 def apply_smote(X_in, y_in):
     try:
         from imblearn.over_sampling import SMOTE
-        min_count = pd.Series(y_in).value_counts().min() if not hasattr(y_in, "value_counts") else y_in.value_counts().min()
+
+        min_count = (
+            pd.Series(y_in).value_counts().min() if not hasattr(y_in, "value_counts") else y_in.value_counts().min()
+        )
         if min_count >= 2:
             k = min(3, min_count - 1)
             return SMOTE(random_state=42, k_neighbors=k).fit_resample(X_in, y_in)
@@ -181,6 +215,7 @@ if groups is not None and groups.nunique() > 1:
     train_idx, test_idx = next(gss.split(X_baseline, y, groups))
 else:
     from sklearn.model_selection import train_test_split
+
     indices = np.arange(len(X_baseline))
     train_idx, test_idx = train_test_split(indices, test_size=0.25, stratify=y, random_state=42)
 
@@ -192,7 +227,7 @@ print(f"\n📈 Split: train={len(y_train)}, test={len(y_test)}")
 # ==============================================================================
 # RODAR TODAS AS CONFIGURAÇÕES
 # ==============================================================================
-print(f"\n🏋️ Rodando 6 configs × 7 modelos...")
+print("\n🏋️ Rodando 6 configs × 7 modelos...")
 all_results = {}  # {config: {model: {acc, f1, y_pred, ...}}}
 
 for cfg_name, cfg in tqdm(CONFIGS.items(), desc="Configs"):
@@ -237,16 +272,18 @@ rows = []
 for cfg_name in CONFIGS:
     for m_name in model_names:
         r = all_results[cfg_name][m_name]
-        rows.append({
-            "config": cfg_name,
-            "n_features": CONFIGS[cfg_name]["n"],
-            "modelo": m_name,
-            "accuracy": r["accuracy"],
-            "f1_macro": r["f1_macro"],
-            "recall_MCAR": r["recall_MCAR"],
-            "recall_MAR": r["recall_MAR"],
-            "recall_MNAR": r["recall_MNAR"],
-        })
+        rows.append(
+            {
+                "config": cfg_name,
+                "n_features": CONFIGS[cfg_name]["n"],
+                "modelo": m_name,
+                "accuracy": r["accuracy"],
+                "f1_macro": r["f1_macro"],
+                "recall_MCAR": r["recall_MCAR"],
+                "recall_MAR": r["recall_MAR"],
+                "recall_MNAR": r["recall_MNAR"],
+            }
+        )
 
 df_ablation = pd.DataFrame(rows)
 df_ablation.to_csv(os.path.join(OUT_DIR, "ablacao_completa.csv"), index=False)
@@ -258,7 +295,7 @@ print(pivot.round(3).to_string())
 # ==============================================================================
 # BOOTSTRAP 95% CI
 # ==============================================================================
-print(f"\n📊 Bootstrap 95% CI...")
+print("\n📊 Bootstrap 95% CI...")
 N_BOOTSTRAP = 1000
 rng = np.random.RandomState(42)
 
@@ -272,13 +309,15 @@ for cfg_name in CONFIGS:
             boot_accs.append(accuracy_score(y_test.values[idx], y_pred[idx]))
         ci_lo = np.percentile(boot_accs, 2.5)
         ci_hi = np.percentile(boot_accs, 97.5)
-        ci_rows.append({
-            "config": cfg_name,
-            "modelo": m_name,
-            "accuracy": all_results[cfg_name][m_name]["accuracy"],
-            "ci_lower": ci_lo,
-            "ci_upper": ci_hi,
-        })
+        ci_rows.append(
+            {
+                "config": cfg_name,
+                "modelo": m_name,
+                "accuracy": all_results[cfg_name][m_name]["accuracy"],
+                "ci_lower": ci_lo,
+                "ci_upper": ci_hi,
+            }
+        )
 
 df_ci = pd.DataFrame(ci_rows)
 df_ci.to_csv(os.path.join(OUT_DIR, "bootstrap_ci.csv"), index=False)
@@ -304,7 +343,7 @@ sig_rows = []
 for cfg_a, cfg_b, label in pairs:
     accs_a = [all_results[cfg_a][m]["accuracy"] for m in model_names]
     accs_b = [all_results[cfg_b][m]["accuracy"] for m in model_names]
-    diffs = [b - a for a, b in zip(accs_a, accs_b)]
+    diffs = [b - a for a, b in zip(accs_a, accs_b, strict=False)]
 
     if any(d != 0 for d in diffs):
         try:
@@ -318,18 +357,24 @@ for cfg_a, cfg_b, label in pairs:
     sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
     print(f"  {label:20s}: {cfg_a}→{cfg_b}  Δ_mean={mean_delta:+.4f}  W={stat:.1f}  p={p:.4f} {sig}")
 
-    sig_rows.append({
-        "config_a": cfg_a, "config_b": cfg_b, "label": label,
-        "mean_delta": mean_delta, "wilcoxon_stat": stat, "wilcoxon_p": p,
-        "significant_005": p < 0.05,
-    })
+    sig_rows.append(
+        {
+            "config_a": cfg_a,
+            "config_b": cfg_b,
+            "label": label,
+            "mean_delta": mean_delta,
+            "wilcoxon_stat": stat,
+            "wilcoxon_p": p,
+            "significant_005": p < 0.05,
+        }
+    )
 
     # McNemar for best model
     best_model = model_names[np.argmax(accs_b)]
     y_pred_a = all_results[cfg_a][best_model]["y_pred"]
     y_pred_b = all_results[cfg_b][best_model]["y_pred"]
-    correct_a = (y_pred_a == y_test.values)
-    correct_b = (y_pred_b == y_test.values)
+    correct_a = y_pred_a == y_test.values
+    correct_b = y_pred_b == y_test.values
     b_val = np.sum(correct_a & ~correct_b)
     c_val = np.sum(~correct_a & correct_b)
     if b_val + c_val > 0:
@@ -344,7 +389,7 @@ for cfg_a, cfg_b, label in pairs:
 pd.DataFrame(sig_rows).to_csv(os.path.join(OUT_DIR, "significancia.csv"), index=False)
 
 # Friedman test
-print(f"\n  Friedman test (6 configs × 7 modelos):")
+print("\n  Friedman test (6 configs × 7 modelos):")
 config_names = list(CONFIGS.keys())
 acc_matrix = np.zeros((len(model_names), len(config_names)))
 for i, m in enumerate(model_names):
@@ -355,9 +400,9 @@ try:
     friedman_stat, friedman_p = friedmanchisquare(*[acc_matrix[:, j] for j in range(len(config_names))])
     print(f"    χ²={friedman_stat:.4f}, p={friedman_p:.4f}")
     if friedman_p < 0.05:
-        print(f"    ✅ Significativo — diferenças entre configs existem")
+        print("    ✅ Significativo — diferenças entre configs existem")
     else:
-        print(f"    ❌ Não significativo")
+        print("    ❌ Não significativo")
 except Exception as e:
     print(f"    Erro: {e}")
     friedman_stat, friedman_p = 0.0, 1.0
@@ -382,9 +427,15 @@ ax.set_title(f"Ablação de Features — {DATA_TYPE.upper()}")
 plt.colorbar(im, ax=ax, label="Accuracy")
 for i in range(len(config_names)):
     for j in range(len(model_names)):
-        ax.text(j, i, f"{heat_data[i, j]:.1%}",
-                ha="center", va="center", fontsize=7,
-                color="white" if heat_data[i, j] < 0.5 else "black")
+        ax.text(
+            j,
+            i,
+            f"{heat_data[i, j]:.1%}",
+            ha="center",
+            va="center",
+            fontsize=7,
+            color="white" if heat_data[i, j] < 0.5 else "black",
+        )
 plt.tight_layout()
 plt.savefig(os.path.join(OUT_DIR, "heatmap_ablacao.png"), dpi=300, bbox_inches="tight")
 plt.close()
@@ -399,8 +450,9 @@ ax.plot(n_feats, mean_accs, "o-", label="Média (7 modelos)", color="#3498db", l
 ax.plot(n_feats, max_accs, "s--", label="Melhor modelo", color="#e74c3c", linewidth=2, markersize=8)
 ax.axhline(y=0.333, color="gray", linestyle="--", alpha=0.3, label="Acaso")
 for i, c in enumerate(config_names):
-    ax.annotate(c.split("_")[0], (n_feats[i], mean_accs[i]),
-                textcoords="offset points", xytext=(0, 10), ha='center', fontsize=8)
+    ax.annotate(
+        c.split("_")[0], (n_feats[i], mean_accs[i]), textcoords="offset points", xytext=(0, 10), ha="center", fontsize=8
+    )
 ax.set_xlabel("Número de Features")
 ax.set_ylabel("Accuracy")
 ax.set_title(f"Ablação: Accuracy vs N Features — {DATA_TYPE.upper()}")
@@ -419,9 +471,8 @@ for i, m in enumerate(model_names):
     accs = [all_results[c][m]["accuracy"] for c in config_names]
     ci_lo = [df_ci[(df_ci["config"] == c) & (df_ci["modelo"] == m)]["ci_lower"].values[0] for c in config_names]
     ci_hi = [df_ci[(df_ci["config"] == c) & (df_ci["modelo"] == m)]["ci_upper"].values[0] for c in config_names]
-    yerr = [[a - lo for a, lo in zip(accs, ci_lo)],
-            [hi - a for a, hi in zip(accs, ci_hi)]]
-    ax.bar(x + i*width, accs, width, label=m, color=colors[i], yerr=yerr, capsize=2)
+    yerr = [[a - lo for a, lo in zip(accs, ci_lo, strict=False)], [hi - a for a, hi in zip(accs, ci_hi, strict=False)]]
+    ax.bar(x + i * width, accs, width, label=m, color=colors[i], yerr=yerr, capsize=2)
 
 ax.set_xticks(x + width * len(model_names) / 2)
 ax.set_xticklabels([f"{c}\n({CONFIGS[c]['n']}f)" for c in config_names], fontsize=7)
@@ -444,11 +495,16 @@ summary = {
     "n_samples": int(len(y)),
     "n_train": int(len(y_train)),
     "n_test": int(len(y_test)),
-    "configs": {c: {"n_features": CONFIGS[c]["n"], "desc": CONFIGS[c]["desc"],
-                     "mean_accuracy": float(np.mean([all_results[c][m]["accuracy"] for m in model_names])),
-                     "max_accuracy": float(max(all_results[c][m]["accuracy"] for m in model_names)),
-                     "best_model": model_names[np.argmax([all_results[c][m]["accuracy"] for m in model_names])],
-                     } for c in config_names},
+    "configs": {
+        c: {
+            "n_features": CONFIGS[c]["n"],
+            "desc": CONFIGS[c]["desc"],
+            "mean_accuracy": float(np.mean([all_results[c][m]["accuracy"] for m in model_names])),
+            "max_accuracy": float(max(all_results[c][m]["accuracy"] for m in model_names)),
+            "best_model": model_names[np.argmax([all_results[c][m]["accuracy"] for m in model_names])],
+        }
+        for c in config_names
+    },
     "friedman_chi2": float(friedman_stat),
     "friedman_p": float(friedman_p),
 }
@@ -457,9 +513,9 @@ with open(os.path.join(OUT_DIR, "training_summary.json"), "w") as f:
 
 # Print final
 print(f"\n{'='*70}")
-print(f"✅ ABLAÇÃO CONCLUÍDA!")
+print("✅ ABLAÇÃO CONCLUÍDA!")
 print(f"{'='*70}")
-print(f"\n📊 Resumo (accuracy média ± max):")
+print("\n📊 Resumo (accuracy média ± max):")
 for c in config_names:
     mean_a = np.mean([all_results[c][m]["accuracy"] for m in model_names])
     max_a = max(all_results[c][m]["accuracy"] for m in model_names)

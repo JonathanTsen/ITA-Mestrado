@@ -10,29 +10,29 @@ Uso:
     python ensemble_model.py --data real
     python ensemble_model.py --data sintetico
 """
+
 import os
 import sys
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.model_selection import train_test_split, GroupShuffleSplit
+from sklearn.decomposition import PCA
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
+from sklearn.svm import SVC
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.args import parse_common_args
-from utils.paths import get_output_dir, get_comparison_dir
+from utils.paths import get_comparison_dir, get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -105,10 +105,9 @@ else:
     X_train_bl, X_test_bl, y_train, y_test = train_test_split(
         X_baseline, y_baseline, test_size=0.25, stratify=y_baseline, random_state=42
     )
-    X_train_llm, X_test_llm, _, _ = train_test_split(
-        X_llm, y_llm, test_size=0.25, stratify=y_llm, random_state=42
-    )
+    X_train_llm, X_test_llm, _, _ = train_test_split(X_llm, y_llm, test_size=0.25, stratify=y_llm, random_state=42)
     print(f"📈 Split: train={len(y_train)}, test={len(y_test)}")
+
 
 # ======================================================
 # MODELOS BASE
@@ -116,32 +115,24 @@ else:
 def make_models():
     """Modelos com predict_proba para ensemble."""
     return {
-        "RandomForest": RandomForestClassifier(
-            n_estimators=400, random_state=42, n_jobs=-1),
-        "GradientBoosting": GradientBoostingClassifier(
-            n_estimators=300, random_state=42),
-        "LogisticRegression": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(max_iter=3000, random_state=42))
-        ]),
-        "SVM_RBF": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", SVC(kernel="rbf", C=3, random_state=42, probability=True))
-        ]),
-        "KNN": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", KNeighborsClassifier(n_neighbors=5))
-        ]),
-        "MLP": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32),
-                                  max_iter=2000, random_state=42))
-        ]),
-        "NaiveBayes": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", GaussianNB())
-        ]),
+        "RandomForest": RandomForestClassifier(n_estimators=400, random_state=42, n_jobs=-1),
+        "GradientBoosting": GradientBoostingClassifier(n_estimators=300, random_state=42),
+        "LogisticRegression": Pipeline(
+            [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, random_state=42))]
+        ),
+        "SVM_RBF": Pipeline(
+            [("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=3, random_state=42, probability=True))]
+        ),
+        "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=5))]),
+        "MLP": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=42)),
+            ]
+        ),
+        "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
     }
+
 
 # ======================================================
 # ENSEMBLE
@@ -150,7 +141,7 @@ resultados = {}
 relatorio_lines = []
 all_decisions = []
 
-print(f"\n🏋️ Treinando ensemble...")
+print("\n🏋️ Treinando ensemble...")
 
 for nome in make_models():
     # Treina modelo baseline
@@ -161,11 +152,16 @@ for nome in make_models():
     modelo_llm_def = make_models()[nome]
     if nome in ("SVM_RBF", "KNN", "MLP"):
         # Adiciona PCA para modelos sensíveis a dimensionalidade
-        modelo_llm = Pipeline([
-            ("scaler", StandardScaler()),
-            ("pca", PCA(n_components=0.95, random_state=42)),
-            ("clf", modelo_llm_def if not isinstance(modelo_llm_def, Pipeline) else modelo_llm_def.named_steps["clf"])
-        ])
+        modelo_llm = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("pca", PCA(n_components=0.95, random_state=42)),
+                (
+                    "clf",
+                    modelo_llm_def if not isinstance(modelo_llm_def, Pipeline) else modelo_llm_def.named_steps["clf"],
+                ),
+            ]
+        )
     else:
         modelo_llm = modelo_llm_def
     modelo_llm.fit(X_train_llm, y_train)
@@ -219,7 +215,7 @@ for nome in make_models():
     relatorio_lines.append(f"LLM:      {acc_llm:.4f}")
     relatorio_lines.append(f"Ensemble: {acc_ens:.4f}")
     relatorio_lines.append(f"Amostras baixa confiança: {n_low}/{len(y_test)} ({n_low/len(y_test)*100:.1f}%)")
-    relatorio_lines.append(f"\nClassification Report (Ensemble):")
+    relatorio_lines.append("\nClassification Report (Ensemble):")
     relatorio_lines.append(classification_report(y_test, pred_ensemble))
 
     print(f"   {nome:20s}: BL={acc_bl:.3f} | LLM={acc_llm:.3f} | ENS={acc_ens:.3f} (low_conf={n_low})")
@@ -242,12 +238,9 @@ nomes = list(resultados.keys())
 x = np.arange(len(nomes))
 width = 0.25
 
-bars1 = ax.bar(x - width, [r["acc_baseline"] for r in resultados.values()],
-               width, label="Baseline", color="#4ecdc4")
-bars2 = ax.bar(x, [r["acc_llm"] for r in resultados.values()],
-               width, label="LLM", color="#ff6b6b")
-bars3 = ax.bar(x + width, [r["acc_ensemble"] for r in resultados.values()],
-               width, label="Ensemble", color="#45b7d1")
+bars1 = ax.bar(x - width, [r["acc_baseline"] for r in resultados.values()], width, label="Baseline", color="#4ecdc4")
+bars2 = ax.bar(x, [r["acc_llm"] for r in resultados.values()], width, label="LLM", color="#ff6b6b")
+bars3 = ax.bar(x + width, [r["acc_ensemble"] for r in resultados.values()], width, label="Ensemble", color="#45b7d1")
 
 ax.set_ylabel("Acurácia")
 ax.set_title(f"Ensemble Adaptativo - {DATA_TYPE.upper()} (threshold={CONFIDENCE_THRESHOLD})")
@@ -260,8 +253,7 @@ ax.axhline(y=0.333, color="red", linestyle="--", alpha=0.3)
 for bars in [bars1, bars2, bars3]:
     for bar in bars:
         h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2., h + 0.01,
-                f'{h:.1%}', ha='center', va='bottom', fontsize=7)
+        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 0.01, f"{h:.1%}", ha="center", va="bottom", fontsize=7)
 
 plt.tight_layout()
 plt.savefig(os.path.join(ENSEMBLE_DIR, "ensemble_comparacao.png"), dpi=300, bbox_inches="tight")
@@ -281,7 +273,7 @@ print(f"\n   💾 ensemble_decisions.csv: {len(decisions_df)} linhas, {n_switche
 # RESUMO
 # ======================================================
 print(f"\n{'='*60}")
-print(f"✅ ENSEMBLE CONCLUÍDO!")
+print("✅ ENSEMBLE CONCLUÍDO!")
 print(f"{'='*60}")
 
 n_better = sum(1 for r in resultados.values() if r["acc_ensemble"] > r["acc_baseline"])
@@ -290,7 +282,7 @@ n_better_llm = sum(1 for r in resultados.values() if r["acc_ensemble"] > r["acc_
 print(f"\n📊 Ensemble > Baseline: {n_better}/{len(resultados)} modelos")
 print(f"📊 Ensemble > LLM:      {n_better_llm}/{len(resultados)} modelos")
 
-print(f"\n📊 RESULTADOS DETALHADOS:")
+print("\n📊 RESULTADOS DETALHADOS:")
 for nome, r in sorted(resultados.items(), key=lambda x: -x[1]["acc_ensemble"]):
     delta_bl = r["acc_ensemble"] - r["acc_baseline"]
     delta_llm = r["acc_ensemble"] - r["acc_llm"]

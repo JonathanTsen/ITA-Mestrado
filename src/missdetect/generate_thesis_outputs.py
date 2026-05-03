@@ -16,36 +16,28 @@ Uso:
     python generate_thesis_outputs.py --experiment step05 --data sintetico
     python generate_thesis_outputs.py --experiment step05 --data real
 """
+
+import json
 import os
 import sys
-import json
 import warnings
 
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.rcParams['font.size'] = 11
-matplotlib.rcParams['axes.titlesize'] = 13
-matplotlib.rcParams['axes.labelsize'] = 11
 
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.model_selection import GroupShuffleSplit, GroupKFold, LeaveOneGroupOut
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+matplotlib.rcParams["font.size"] = 11
+matplotlib.rcParams["axes.titlesize"] = 13
+matplotlib.rcParams["axes.labelsize"] = 11
+
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import GroupShuffleSplit
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.args import parse_common_args
-from utils.paths import (
-    get_output_dir, get_comparison_dir, get_experiment_dir,
-    find_result_dirs, OUTPUT_BASE
-)
+from utils.paths import OUTPUT_BASE, find_result_dirs, get_comparison_dir, get_experiment_dir, get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -70,9 +62,14 @@ def load_experiment_data(experiment, data_type, model_name):
     out_dir = get_output_dir(data_type, model_name, experiment)
     data = {}
 
-    for fname in ["training_summary.json", "feature_importance.csv",
-                   "metrics_per_class.csv", "cv_scores.csv",
-                   "confusion_matrices.json", "feature_selection_log.json"]:
+    for fname in [
+        "training_summary.json",
+        "feature_importance.csv",
+        "metrics_per_class.csv",
+        "cv_scores.csv",
+        "confusion_matrices.json",
+        "feature_selection_log.json",
+    ]:
         fpath = os.path.join(out_dir, fname)
         if os.path.exists(fpath):
             if fname.endswith(".csv"):
@@ -89,8 +86,7 @@ def load_hier_data(experiment, data_type):
     hier_dir = os.path.join(get_comparison_dir(data_type, experiment), "hierarquico")
     data = {}
 
-    for fname in ["comparacao_hier_vs_direta.csv", "cv_logo_vs_groupkfold.csv",
-                   "training_summary.json"]:
+    for fname in ["comparacao_hier_vs_direta.csv", "cv_logo_vs_groupkfold.csv", "training_summary.json"]:
         fpath = os.path.join(hier_dir, fname)
         if os.path.exists(fpath):
             if fname.endswith(".csv"):
@@ -105,7 +101,7 @@ def load_hier_data(experiment, data_type):
 # ======================================================
 # 1. TABELA PRINCIPAL: COMPARAÇÃO ENTRE FASES
 # ======================================================
-print(f"\n📊 1. Tabela principal de fases...")
+print("\n📊 1. Tabela principal de fases...")
 
 phases = {}
 # Busca resultados dos experimentos históricos
@@ -172,8 +168,11 @@ if phases:
     df_phases = pd.DataFrame(phases.values())
     df_phases.to_csv(os.path.join(THESIS_DIR, "tabela_fases.csv"), index=False)
     print(f"   ✅ tabela_fases.csv ({len(df_phases)} entradas)")
-    print(df_phases[["experiment", "data_type", "best_accuracy", "best_recall_mnar",
-                      "cv_variance_pct"]].to_string(index=False))
+    print(
+        df_phases[["experiment", "data_type", "best_accuracy", "best_recall_mnar", "cv_variance_pct"]].to_string(
+            index=False
+        )
+    )
 else:
     print("   ⚠️ Nenhum dado encontrado")
 
@@ -181,12 +180,12 @@ else:
 # ======================================================
 # 2. TABELA DE ABLAÇÃO (features x modelo)
 # ======================================================
-print(f"\n📊 2. Tabela de ablação...")
+print("\n📊 2. Tabela de ablação...")
 
 ablation_rows = []
 for dt in ["sintetico", "real"]:
     result_dirs = find_result_dirs(dt, EXPERIMENT)
-    for name, dir_path, abordagem in result_dirs:
+    for name, dir_path, _abordagem in result_dirs:
         rel_path = os.path.join(dir_path, "relatorio.txt")
         summary_path = os.path.join(dir_path, "training_summary.json")
 
@@ -207,13 +206,15 @@ for dt in ["sintetico", "real"]:
                     current_model = line[4:-4]
                 elif line.startswith("Acurácia:") and current_model:
                     acc = float(line.split(":")[1].strip())
-                    ablation_rows.append({
-                        "data_type": dt,
-                        "configuracao": name,
-                        "n_features": n_features,
-                        "modelo_ml": current_model,
-                        "accuracy": acc,
-                    })
+                    ablation_rows.append(
+                        {
+                            "data_type": dt,
+                            "configuracao": name,
+                            "n_features": n_features,
+                            "modelo_ml": current_model,
+                            "accuracy": acc,
+                        }
+                    )
 
 if ablation_rows:
     df_ablation = pd.DataFrame(ablation_rows)
@@ -233,7 +234,7 @@ else:
 # ======================================================
 # 3. FEATURE IMPORTANCE POR TIPO (barras empilhadas)
 # ======================================================
-print(f"\n📊 3. Feature importance por tipo...")
+print("\n📊 3. Feature importance por tipo...")
 
 for dt in ["sintetico", "real"]:
     fi_path = os.path.join(get_output_dir(dt, "none", EXPERIMENT), "feature_importance.csv")
@@ -252,8 +253,7 @@ for dt in ["sintetico", "real"]:
             return "CAAFE"
         if name.startswith("mechdetect_"):
             return "MechDetect"
-        if name in ("X0_missing_rate", "X0_obs_vs_full_iqr_ratio",
-                     "X0_obs_vs_full_skew_diff", "X0_obs_count_ratio"):
+        if name in ("X0_missing_rate", "X0_obs_vs_full_iqr_ratio", "X0_obs_vs_full_skew_diff", "X0_obs_count_ratio"):
             return "Estatística"
         return "Discriminativa"
 
@@ -280,8 +280,8 @@ for dt in ["sintetico", "real"]:
     ax.invert_yaxis()
 
     from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=c, label=l) for l, c in colors_map.items()
-                       if l in top15["tipo"].values]
+
+    legend_elements = [Patch(facecolor=c, label=lbl) for lbl, c in colors_map.items() if lbl in top15["tipo"].values]
     ax.legend(handles=legend_elements, loc="lower right", fontsize=9)
 
     plt.tight_layout()
@@ -297,8 +297,7 @@ for dt in ["sintetico", "real"]:
     # Gráfico de pizza
     fig, ax = plt.subplots(figsize=(8, 6))
     tipo_colors = [colors_map.get(t, "#95a5a6") for t in tipo_agg.index]
-    ax.pie(tipo_agg.values, labels=tipo_agg.index, autopct='%1.1f%%',
-           colors=tipo_colors, startangle=90)
+    ax.pie(tipo_agg.values, labels=tipo_agg.index, autopct="%1.1f%%", colors=tipo_colors, startangle=90)
     ax.set_title(f"Importância por Tipo de Feature — {dt.upper()}")
     plt.tight_layout()
     plt.savefig(os.path.join(THESIS_DIR, f"feature_importance_tipo_{dt}.png"), dpi=300, bbox_inches="tight")
@@ -311,7 +310,7 @@ for dt in ["sintetico", "real"]:
 # ======================================================
 # 4. BOX PLOTS DE CV SCORES
 # ======================================================
-print(f"\n📊 4. Box plots de CV scores...")
+print("\n📊 4. Box plots de CV scores...")
 
 for dt in ["sintetico", "real"]:
     cv_path = os.path.join(get_output_dir(dt, "none", EXPERIMENT), "cv_scores.csv")
@@ -326,12 +325,12 @@ for dt in ["sintetico", "real"]:
 
     bp = ax.boxplot(data_boxes, labels=modelos_cv, patch_artist=True)
     colors = plt.cm.Set2(np.linspace(0, 1, len(modelos_cv)))
-    for patch, color in zip(bp['boxes'], colors):
+    for patch, color in zip(bp["boxes"], colors, strict=False):
         patch.set_facecolor(color)
 
     ax.set_ylabel("Accuracy")
     ax.set_title(f"Distribuição CV Scores — {dt.upper()}")
-    ax.tick_params(axis='x', rotation=45)
+    ax.tick_params(axis="x", rotation=45)
     ax.axhline(y=0.333, color="red", linestyle="--", alpha=0.3, label="Random")
     ax.legend(fontsize=8)
 
@@ -344,7 +343,7 @@ for dt in ["sintetico", "real"]:
 # ======================================================
 # 5. SCATTER: ACCURACY SINTÉTICO vs REAL
 # ======================================================
-print(f"\n📊 5. Scatter sintético vs real...")
+print("\n📊 5. Scatter sintético vs real...")
 
 acc_sint = {}
 acc_real = {}
@@ -370,24 +369,24 @@ if acc_sint and acc_real:
         y_vals = [acc_real[m] for m in common_models]
 
         ax.scatter(x_vals, y_vals, s=100, zorder=5, color="#3498db", edgecolors="black")
-        for m, xv, yv in zip(common_models, x_vals, y_vals):
+        for m, xv, yv in zip(common_models, x_vals, y_vals, strict=False):
             ax.annotate(m, (xv, yv), textcoords="offset points", xytext=(5, 5), fontsize=8)
 
         # Diagonal
         lims = [0, 1]
-        ax.plot(lims, lims, 'r--', alpha=0.5, label="Sintético = Real")
+        ax.plot(lims, lims, "r--", alpha=0.5, label="Sintético = Real")
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
         ax.set_xlabel("Accuracy (Sintético)")
         ax.set_ylabel("Accuracy (Real)")
         ax.set_title("Accuracy: Sintético vs Real")
         ax.legend()
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
 
         plt.tight_layout()
         plt.savefig(os.path.join(THESIS_DIR, "scatter_sintetico_vs_real.png"), dpi=300, bbox_inches="tight")
         plt.close()
-        print(f"   ✅ scatter_sintetico_vs_real.png")
+        print("   ✅ scatter_sintetico_vs_real.png")
 else:
     print("   ⚠️ Dados insuficientes para scatter")
 
@@ -395,15 +394,22 @@ else:
 # ======================================================
 # 6. HIERÁRQUICO: resumo
 # ======================================================
-print(f"\n📊 6. Resultados hierárquicos...")
+print("\n📊 6. Resultados hierárquicos...")
 
 for dt in ["sintetico", "real"]:
     hier_data = load_hier_data(EXPERIMENT, dt)
     if "comparacao_hier_vs_direta" in hier_data:
         df = hier_data["comparacao_hier_vs_direta"]
         print(f"\n   Hierárquico ({dt}):")
-        cols = ["modelo", "acc_direta", "acc_hierarquica", "delta_acc",
-                "recall_MNAR_direta", "recall_MNAR_hier", "delta_recall_MNAR"]
+        cols = [
+            "modelo",
+            "acc_direta",
+            "acc_hierarquica",
+            "delta_acc",
+            "recall_MNAR_direta",
+            "recall_MNAR_hier",
+            "delta_recall_MNAR",
+        ]
         available_cols = [c for c in cols if c in df.columns]
         print(df[available_cols].to_string(index=False))
 
@@ -411,7 +417,7 @@ for dt in ["sintetico", "real"]:
 # ======================================================
 # 7. TESTES DE REPRODUTIBILIDADE (multi-seed)
 # ======================================================
-print(f"\n📊 7. Teste de reprodutibilidade (3 seeds)...")
+print("\n📊 7. Teste de reprodutibilidade (3 seeds)...")
 
 for dt in ["sintetico", "real"]:
     x_path = os.path.join(get_output_dir(dt, "none", EXPERIMENT), "X_features.csv")
@@ -434,9 +440,9 @@ for dt in ["sintetico", "real"]:
             train_idx, test_idx = next(gss.split(X, y, groups))
         else:
             from sklearn.model_selection import train_test_split
+
             indices = np.arange(len(X))
-            train_idx, test_idx = train_test_split(
-                indices, test_size=0.25, stratify=y, random_state=seed)
+            train_idx, test_idx = train_test_split(indices, test_size=0.25, stratify=y, random_state=seed)
 
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
@@ -444,6 +450,7 @@ for dt in ["sintetico", "real"]:
         # SMOTE
         try:
             from imblearn.over_sampling import SMOTE
+
             min_count = y_train.value_counts().min()
             if min_count >= 2:
                 k = min(3, min_count - 1)
@@ -462,13 +469,15 @@ for dt in ["sintetico", "real"]:
             acc = accuracy_score(y_test, y_pred)
             report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
             recall_mnar = report.get("2", {}).get("recall", 0)
-            repro_results.append({
-                "data_type": dt,
-                "seed": seed,
-                "modelo": model_name,
-                "accuracy": acc,
-                "recall_mnar": recall_mnar,
-            })
+            repro_results.append(
+                {
+                    "data_type": dt,
+                    "seed": seed,
+                    "modelo": model_name,
+                    "accuracy": acc,
+                    "recall_mnar": recall_mnar,
+                }
+            )
 
     df_repro = pd.DataFrame(repro_results)
     df_repro.to_csv(os.path.join(THESIS_DIR, f"reproducibilidade_{dt}.csv"), index=False)
@@ -477,8 +486,10 @@ for dt in ["sintetico", "real"]:
     for modelo in df_repro["modelo"].unique():
         sub = df_repro[df_repro["modelo"] == modelo]
         acc_range = sub["accuracy"].max() - sub["accuracy"].min()
-        print(f"   {dt}/{modelo}: acc={sub['accuracy'].mean():.4f}±{sub['accuracy'].std():.4f} "
-              f"(range={acc_range:.4f}, {'✅' if acc_range < 0.05 else '⚠️'} <5%)")
+        print(
+            f"   {dt}/{modelo}: acc={sub['accuracy'].mean():.4f}±{sub['accuracy'].std():.4f} "
+            f"(range={acc_range:.4f}, {'✅' if acc_range < 0.05 else '⚠️'} <5%)"
+        )
 
     print(f"   ✅ reproducibilidade_{dt}.csv")
 
@@ -486,7 +497,7 @@ for dt in ["sintetico", "real"]:
 # ======================================================
 # 8. AVALIAÇÃO DE METAS FINAIS
 # ======================================================
-print(f"\n📊 8. Avaliação de metas finais...")
+print("\n📊 8. Avaliação de metas finais...")
 
 metas = {
     "accuracy_real_70": {"meta": 0.70, "descricao": "Accuracy (melhor modelo, real) > 70%"},
@@ -570,11 +581,18 @@ if os.path.exists(real_rel) and os.path.exists(real_llm_rel):
 # 5. Features invariantes
 if os.path.exists(real_fi):
     fi = pd.read_csv(real_fi)
-    invariant_features = ["mechdetect_auc_complete", "mechdetect_auc_shuffled",
-                          "mechdetect_auc_excluded", "mechdetect_delta_complete_shuffled",
-                          "mechdetect_delta_complete_excluded", "mechdetect_mwu_pvalue",
-                          "X0_missing_rate", "X0_obs_count_ratio",
-                          "X0_obs_vs_full_iqr_ratio", "X0_obs_vs_full_skew_diff"]
+    invariant_features = [
+        "mechdetect_auc_complete",
+        "mechdetect_auc_shuffled",
+        "mechdetect_auc_excluded",
+        "mechdetect_delta_complete_shuffled",
+        "mechdetect_delta_complete_excluded",
+        "mechdetect_mwu_pvalue",
+        "X0_missing_rate",
+        "X0_obs_count_ratio",
+        "X0_obs_vs_full_iqr_ratio",
+        "X0_obs_vs_full_skew_diff",
+    ]
     inv_importance = fi[fi["feature"].isin(invariant_features)]["importance"].sum()
     total_importance = fi["importance"].sum()
     pct = inv_importance / total_importance * 100 if total_importance > 0 else 0
@@ -596,18 +614,23 @@ for key, meta_info in metas.items():
 
 # Salva
 with open(os.path.join(THESIS_DIR, "metas_finais.json"), "w") as f:
-    json.dump({
-        "metas": {k: {**v, "resultado": resultados_metas.get(k, {})} for k, v in metas.items()},
-        "experiment": EXPERIMENT,
-    }, f, indent=2, ensure_ascii=False)
+    json.dump(
+        {
+            "metas": {k: {**v, "resultado": resultados_metas.get(k, {})} for k, v in metas.items()},
+            "experiment": EXPERIMENT,
+        },
+        f,
+        indent=2,
+        ensure_ascii=False,
+    )
 
-print(f"\n   ✅ metas_finais.json")
+print("\n   ✅ metas_finais.json")
 
 
 # ======================================================
 # 9. NARRATIVA CONSOLIDADA
 # ======================================================
-print(f"\n📊 9. Narrativa consolidada...")
+print("\n📊 9. Narrativa consolidada...")
 
 narrative = []
 narrative.append("=" * 60)
@@ -653,8 +676,10 @@ for dt in ["sintetico", "real"]:
     hier = load_hier_data(EXPERIMENT, dt)
     if "training_summary" in hier:
         s = hier["training_summary"]
-        narrative.append(f"   [{dt}] Direta: {s.get('best_acc_direct', 'N/A'):.4f} | "
-                         f"Hierárquica: {s.get('best_acc_hier', 'N/A'):.4f}")
+        narrative.append(
+            f"   [{dt}] Direta: {s.get('best_acc_direct', 'N/A'):.4f} | "
+            f"Hierárquica: {s.get('best_acc_hier', 'N/A'):.4f}"
+        )
 
 narrative.append("\n## 5. Metas atingidas")
 n_atingidas = sum(1 for r in resultados_metas.values() if r.get("atingido", False))
@@ -668,7 +693,7 @@ with open(os.path.join(THESIS_DIR, "narrativa.txt"), "w", encoding="utf-8") as f
 print(narrative_text)
 
 print(f"\n{'='*60}")
-print(f"✅ OUTPUTS PARA TESE GERADOS!")
+print("✅ OUTPUTS PARA TESE GERADOS!")
 print(f"{'='*60}")
 print(f"💾 Salvos em: {THESIS_DIR}")
 print(f"{'='*60}")

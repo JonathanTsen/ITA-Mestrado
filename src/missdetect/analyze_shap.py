@@ -13,6 +13,7 @@ Uso:
     python analyze_shap.py --data sintetico --experiment step05_pro --llm-model gemini-3.1-pro-preview
     python analyze_shap.py --data real --experiment step05_pro --llm-model gemini-3.1-pro-preview
 """
+
 import argparse
 import json
 import os
@@ -21,20 +22,21 @@ import sys
 import warnings
 from datetime import datetime
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import shap
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.manifold import TSNE
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import GroupShuffleSplit
 from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.paths import get_output_dir, OUTPUT_BASE
+from utils.paths import OUTPUT_BASE, get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -92,6 +94,7 @@ def normalize_shap(sv_raw):
         return sv_raw
     return [sv_raw]
 
+
 # ==============================================================================
 # SPLIT
 # ==============================================================================
@@ -100,6 +103,7 @@ if groups is not None and groups.nunique() > 1:
     train_idx, test_idx = next(gss.split(X_baseline, y, groups))
 else:
     from sklearn.model_selection import train_test_split
+
     indices = np.arange(len(X_baseline))
     train_idx, test_idx = train_test_split(indices, test_size=0.25, stratify=y, random_state=42)
 
@@ -109,6 +113,7 @@ y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 def apply_smote(X_in, y_in):
     try:
         from imblearn.over_sampling import SMOTE
+
         mc = pd.Series(y_in).value_counts().min() if not hasattr(y_in, "value_counts") else y_in.value_counts().min()
         if mc >= 2:
             return SMOTE(random_state=42, k_neighbors=min(3, mc - 1)).fit_resample(X_in, y_in)
@@ -144,8 +149,7 @@ else:
 fig, axes = plt.subplots(1, 3, figsize=(24, 8))
 for i, cls_name in enumerate(["MCAR", "MAR", "MNAR"]):
     plt.sca(axes[i])
-    shap.summary_plot(shap_values_direct[i], X_te_stat, show=False, max_display=15,
-                      plot_size=None)
+    shap.summary_plot(shap_values_direct[i], X_te_stat, show=False, max_display=15, plot_size=None)
     axes[i].set_title(f"Classe {cls_name}", fontsize=12)
 plt.suptitle(f"SHAP — Direto 3-way (21 stat) — {DATA_TYPE.upper()}", fontsize=14, y=1.02)
 plt.tight_layout()
@@ -154,10 +158,12 @@ plt.close()
 
 # Mean absolute SHAP por feature (agregado)
 mean_shap_direct = np.mean([np.abs(shap_values_direct[i]).mean(axis=0) for i in range(len(shap_values_direct))], axis=0)
-df_shap_direct = pd.DataFrame({
-    "feature": X_te_stat.columns,
-    "mean_abs_shap": mean_shap_direct,
-}).sort_values("mean_abs_shap", ascending=False)
+df_shap_direct = pd.DataFrame(
+    {
+        "feature": X_te_stat.columns,
+        "mean_abs_shap": mean_shap_direct,
+    }
+).sort_values("mean_abs_shap", ascending=False)
 df_shap_direct.to_csv(os.path.join(OUT_DIR, "shap_importance_direto.csv"), index=False)
 print(f"   Top 5: {list(df_shap_direct.head(5)['feature'])}")
 
@@ -187,10 +193,12 @@ plt.savefig(os.path.join(OUT_DIR, "shap_nivel1_stat.png"), dpi=200, bbox_inches=
 plt.close()
 
 mean_shap_l1 = np.abs(shap_values_l1[1]).mean(axis=0)
-df_shap_l1 = pd.DataFrame({
-    "feature": X_te_stat.columns,
-    "mean_abs_shap_l1": mean_shap_l1,
-}).sort_values("mean_abs_shap_l1", ascending=False)
+df_shap_l1 = pd.DataFrame(
+    {
+        "feature": X_te_stat.columns,
+        "mean_abs_shap_l1": mean_shap_l1,
+    }
+).sort_values("mean_abs_shap_l1", ascending=False)
 df_shap_l1.to_csv(os.path.join(OUT_DIR, "shap_importance_nivel1.csv"), index=False)
 print(f"   Top 5 L1: {list(df_shap_l1.head(5)['feature'])}")
 
@@ -228,16 +236,18 @@ plt.savefig(os.path.join(OUT_DIR, "shap_nivel2_caafe.png"), dpi=200, bbox_inches
 plt.close()
 
 mean_shap_l2 = np.abs(shap_values_l2[1]).mean(axis=0)
-df_shap_l2 = pd.DataFrame({
-    "feature": X_te_l2.columns,
-    "mean_abs_shap_l2": mean_shap_l2,
-}).sort_values("mean_abs_shap_l2", ascending=False)
+df_shap_l2 = pd.DataFrame(
+    {
+        "feature": X_te_l2.columns,
+        "mean_abs_shap_l2": mean_shap_l2,
+    }
+).sort_values("mean_abs_shap_l2", ascending=False)
 df_shap_l2.to_csv(os.path.join(OUT_DIR, "shap_importance_nivel2_caafe.csv"), index=False)
 print(f"   Top 5 L2: {list(df_shap_l2.head(5)['feature'])}")
 
 # CAAFE features ranking no L2
 caafe_in_l2 = df_shap_l2[df_shap_l2["feature"].str.startswith("caafe_")]
-print(f"   CAAFE features no L2:")
+print("   CAAFE features no L2:")
 for _, row in caafe_in_l2.iterrows():
     rank = df_shap_l2.index.get_loc(row.name) + 1
     print(f"     #{rank}: {row['feature']} = {row['mean_abs_shap_l2']:.4f}")
@@ -267,10 +277,12 @@ plt.savefig(os.path.join(OUT_DIR, "shap_nivel2_all.png"), dpi=200, bbox_inches="
 plt.close()
 
 mean_shap_l2_all = np.abs(shap_values_l2_all[1]).mean(axis=0)
-df_shap_l2_all = pd.DataFrame({
-    "feature": X_te_l2_all.columns,
-    "mean_abs_shap_l2_all": mean_shap_l2_all,
-}).sort_values("mean_abs_shap_l2_all", ascending=False)
+df_shap_l2_all = pd.DataFrame(
+    {
+        "feature": X_te_l2_all.columns,
+        "mean_abs_shap_l2_all": mean_shap_l2_all,
+    }
+).sort_values("mean_abs_shap_l2_all", ascending=False)
 df_shap_l2_all.to_csv(os.path.join(OUT_DIR, "shap_importance_nivel2_all.csv"), index=False)
 
 
@@ -281,8 +293,7 @@ print("\n🔬 4. Comparação SHAP: L1 vs L2...")
 
 # Merge importances (apenas features comuns = stat 21)
 df_comp = df_shap_l1.merge(
-    df_shap_l2[df_shap_l2["feature"].isin(STAT_COLS)][["feature", "mean_abs_shap_l2"]],
-    on="feature", how="left"
+    df_shap_l2[df_shap_l2["feature"].isin(STAT_COLS)][["feature", "mean_abs_shap_l2"]], on="feature", how="left"
 ).fillna(0)
 df_comp["delta"] = df_comp["mean_abs_shap_l2"] - df_comp["mean_abs_shap_l1"]
 df_comp = df_comp.sort_values("delta", ascending=False)
@@ -312,10 +323,15 @@ axes[1].invert_yaxis()
 
 # Legend for L2
 from matplotlib.patches import Patch
-axes[1].legend(handles=[
-    Patch(facecolor="#2ecc71", label="Stat features"),
-    Patch(facecolor="#e74c3c", label="CAAFE features"),
-], loc="lower right", fontsize=9)
+
+axes[1].legend(
+    handles=[
+        Patch(facecolor="#2ecc71", label="Stat features"),
+        Patch(facecolor="#e74c3c", label="CAAFE features"),
+    ],
+    loc="lower right",
+    fontsize=9,
+)
 
 plt.suptitle(f"SHAP Importance: L1 vs L2 — {DATA_TYPE.upper()}", fontsize=13)
 plt.tight_layout()
@@ -371,21 +387,22 @@ if mask_nm.any():
     y_pred_hier[mask_nm] = np.where(pred_l2 == 0, 1, 2)
 
 # Error DataFrame
-df_errors = pd.DataFrame({
-    "idx": test_idx,
-    "y_true": y_test.values,
-    "y_pred": y_pred_hier,
-    "correct": (y_test.values == y_pred_hier),
-    "true_label": [CLASS_NAMES[v] for v in y_test.values],
-    "pred_label": [CLASS_NAMES[v] for v in y_pred_hier],
-})
+df_errors = pd.DataFrame(
+    {
+        "idx": test_idx,
+        "y_true": y_test.values,
+        "y_pred": y_pred_hier,
+        "correct": (y_test.values == y_pred_hier),
+        "true_label": [CLASS_NAMES[v] for v in y_test.values],
+        "pred_label": [CLASS_NAMES[v] for v in y_pred_hier],
+    }
+)
 
 # Add group info
 if groups is not None:
     df_errors["group"] = groups.iloc[test_idx].values
     # Extract dataset name
-    df_errors["dataset"] = df_errors["group"].apply(
-        lambda g: re.sub(r"^(MCAR|MAR|MNAR)_", "", str(g)))
+    df_errors["dataset"] = df_errors["group"].apply(lambda g: re.sub(r"^(MCAR|MAR|MNAR)_", "", str(g)))
 
 # Add file names if available
 files_path = os.path.join(BASELINE_DIR, "file_names.csv")
@@ -405,11 +422,15 @@ for cls_code, cls_name in CLASS_NAMES.items():
 # Error by group (dataset)
 if "group" in df_errors.columns:
     print("\n   Accuracy por dataset (top 5 melhores e piores):")
-    group_acc = df_errors.groupby("group").agg(
-        accuracy=("correct", "mean"),
-        n=("correct", "count"),
-        true_label=("true_label", "first"),
-    ).sort_values("accuracy")
+    group_acc = (
+        df_errors.groupby("group")
+        .agg(
+            accuracy=("correct", "mean"),
+            n=("correct", "count"),
+            true_label=("true_label", "first"),
+        )
+        .sort_values("accuracy")
+    )
 
     print("   PIORES:")
     for _, row in group_acc.head(5).iterrows():
@@ -424,18 +445,19 @@ if "group" in df_errors.columns:
 cm = confusion_matrix(y_test, y_pred_hier, labels=[0, 1, 2])
 fig, ax = plt.subplots(figsize=(8, 6))
 labels = ["MCAR", "MAR", "MNAR"]
-im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-ax.set_title(f"V3 Hier+CAAFE (GBT L2) — {DATA_TYPE.upper()}\n"
-             f"Acc={accuracy_score(y_test, y_pred_hier):.1%}")
-ax.set_xticks(range(3)); ax.set_xticklabels(labels)
-ax.set_yticks(range(3)); ax.set_yticklabels(labels)
-ax.set_xlabel("Predito"); ax.set_ylabel("Real")
+im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+ax.set_title(f"V3 Hier+CAAFE (GBT L2) — {DATA_TYPE.upper()}\n" f"Acc={accuracy_score(y_test, y_pred_hier):.1%}")
+ax.set_xticks(range(3))
+ax.set_xticklabels(labels)
+ax.set_yticks(range(3))
+ax.set_yticklabels(labels)
+ax.set_xlabel("Predito")
+ax.set_ylabel("Real")
 plt.colorbar(im, ax=ax)
-thresh = cm.max() / 2.
+thresh = cm.max() / 2.0
 for i in range(3):
     for j in range(3):
-        ax.text(j, i, format(cm[i, j], 'd'), ha="center", va="center",
-                color="white" if cm[i, j] > thresh else "black")
+        ax.text(j, i, format(cm[i, j], "d"), ha="center", va="center", color="white" if cm[i, j] > thresh else "black")
 plt.tight_layout()
 plt.savefig(os.path.join(OUT_DIR, "confusion_v3_hier.png"), dpi=200, bbox_inches="tight")
 plt.close()
@@ -465,8 +487,7 @@ colors_class = {0: "#3498db", 1: "#2ecc71", 2: "#e74c3c"}
 ax = axes[0]
 for cls_code, cls_name in CLASS_NAMES.items():
     mask = y_test.values == cls_code
-    ax.scatter(X_tsne[mask, 0], X_tsne[mask, 1], c=colors_class[cls_code],
-               label=cls_name, alpha=0.6, s=15)
+    ax.scatter(X_tsne[mask, 0], X_tsne[mask, 1], c=colors_class[cls_code], label=cls_name, alpha=0.6, s=15)
 ax.set_title("t-SNE — Classe Real")
 ax.legend()
 
@@ -486,6 +507,7 @@ plt.close()
 # UMAP
 try:
     import umap
+
     print("   UMAP...")
     reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=15, min_dist=0.1)
     X_umap = reducer.fit_transform(X_scaled)
@@ -495,8 +517,7 @@ try:
     ax = axes[0]
     for cls_code, cls_name in CLASS_NAMES.items():
         mask = y_test.values == cls_code
-        ax.scatter(X_umap[mask, 0], X_umap[mask, 1], c=colors_class[cls_code],
-                   label=cls_name, alpha=0.6, s=15)
+        ax.scatter(X_umap[mask, 0], X_umap[mask, 1], c=colors_class[cls_code], label=cls_name, alpha=0.6, s=15)
     ax.set_title("UMAP — Classe Real")
     ax.legend()
 
@@ -536,7 +557,7 @@ with open(os.path.join(OUT_DIR, "shap_summary.json"), "w") as f:
     json.dump(summary, f, indent=2, ensure_ascii=False)
 
 print(f"\n{'='*70}")
-print(f"✅ SHAP + ERROR ANALYSIS CONCLUÍDO!")
+print("✅ SHAP + ERROR ANALYSIS CONCLUÍDO!")
 print(f"{'='*70}")
 print(f"\n💾 Salvos em: {OUT_DIR}")
 for f_name in sorted(os.listdir(OUT_DIR)):

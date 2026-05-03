@@ -40,9 +40,7 @@ def test_statistical_features_shape():
         "X0_iqr_ratio",
         "X0_obs_skew_diff",
     }
-    assert set(feats.keys()) >= expected_keys, (
-        f"missing keys: {expected_keys - set(feats.keys())}"
-    )
+    assert set(feats.keys()) >= expected_keys, f"missing keys: {expected_keys - set(feats.keys())}"
     # Missing rate is the empirical fraction (~0.20)
     assert 0.15 < feats["X0_missing_rate"] < 0.25
 

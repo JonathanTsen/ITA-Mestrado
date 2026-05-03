@@ -25,32 +25,36 @@ Uso:
     # Com CatBoost/XGBoost + Optuna tuning
     python train_hierarchical_v3plus.py --data real --experiment step05_v3plus --routing fullprob --optimize --n-trials 100
 """
+
 import argparse
 import json
-import logging
 import os
 import sys
 import warnings
 from datetime import datetime
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 import optuna
 from catboost import CatBoostClassifier
-from scipy.stats import wilcoxon
 from sklearn.calibration import CalibratedClassifierCV
-from xgboost import XGBClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    accuracy_score, classification_report, confusion_matrix, f1_score,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
 )
 from sklearn.model_selection import (
-    GroupShuffleSplit, GroupKFold, LeaveOneGroupOut, StratifiedKFold,
+    GroupKFold,
+    GroupShuffleSplit,
+    LeaveOneGroupOut,
+    StratifiedKFold,
 )
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -59,9 +63,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from tqdm import tqdm
+from xgboost import XGBClassifier
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.paths import get_output_dir, get_comparison_dir, OUTPUT_BASE
+from utils.paths import OUTPUT_BASE, get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -71,25 +76,35 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser(description="Hierárquica V3+ (Plano 3)")
 parser.add_argument("--data", choices=["sintetico", "real"], required=True)
 parser.add_argument("--experiment", required=True)
-parser.add_argument("--llm-model", default="gemini-3.1-pro-preview",
-                    help="Nome do modelo LLM cujas features serão usadas")
-parser.add_argument("--routing", choices=["hard", "threshold", "soft3zone", "fullprob", "all"],
-                    default="all",
-                    help="Estratégia de roteamento L1→L2 (default: all = testa todas)")
-parser.add_argument("--clean-labels", choices=["none", "weight", "prune", "relabel"],
-                    default="none",
-                    help="Modo de limpeza de labels (requer clean_labels.py rodado antes)")
-parser.add_argument("--calibrate", action="store_true", default=True,
-                    help="Calibrar probabilidades com Platt scaling (default: True)")
+parser.add_argument(
+    "--llm-model", default="gemini-3.1-pro-preview", help="Nome do modelo LLM cujas features serão usadas"
+)
+parser.add_argument(
+    "--routing",
+    choices=["hard", "threshold", "soft3zone", "fullprob", "all"],
+    default="all",
+    help="Estratégia de roteamento L1→L2 (default: all = testa todas)",
+)
+parser.add_argument(
+    "--clean-labels",
+    choices=["none", "weight", "prune", "relabel"],
+    default="none",
+    help="Modo de limpeza de labels (requer clean_labels.py rodado antes)",
+)
+parser.add_argument(
+    "--calibrate", action="store_true", default=True, help="Calibrar probabilidades com Platt scaling (default: True)"
+)
 parser.add_argument("--no-calibrate", dest="calibrate", action="store_false")
-parser.add_argument("--balancing",
-                    choices=["smote", "smote_enn", "borderline", "smote_tomek", "none"],
-                    default="smote",
-                    help="Método de balanceamento de classes (default: smote)")
-parser.add_argument("--optimize", action="store_true",
-                    help="Usar Optuna para otimizar hiperparametros de CatBoost/XGBoost (~10min)")
-parser.add_argument("--n-trials", type=int, default=100,
-                    help="Numero de trials Optuna por nivel (default: 100)")
+parser.add_argument(
+    "--balancing",
+    choices=["smote", "smote_enn", "borderline", "smote_tomek", "none"],
+    default="smote",
+    help="Método de balanceamento de classes (default: smote)",
+)
+parser.add_argument(
+    "--optimize", action="store_true", help="Usar Optuna para otimizar hiperparametros de CatBoost/XGBoost (~10min)"
+)
+parser.add_argument("--n-trials", type=int, default=100, help="Numero de trials Optuna por nivel (default: 100)")
 args = parser.parse_args()
 
 DATA_TYPE = args.data
@@ -105,10 +120,7 @@ N_TRIALS = args.n_trials
 # Silenciar logs verbosos do Optuna
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-ROUTING_STRATEGIES = (
-    ["hard", "threshold", "soft3zone", "fullprob"] if ROUTING_MODE == "all"
-    else [ROUTING_MODE]
-)
+ROUTING_STRATEGIES = ["hard", "threshold", "soft3zone", "fullprob"] if ROUTING_MODE == "all" else [ROUTING_MODE]
 
 # ==============================================================================
 # PATHS
@@ -162,7 +174,7 @@ if CLEAN_MODE != "none":
             sample_weights = pd.read_csv(wp)["sample_weight"].values
             print(f"\n  Labels: pesos carregados (mean={sample_weights.mean():.3f})")
         else:
-            print(f"\n  [AVISO] sample_weights.csv nao encontrado. Rode clean_labels.py --action weight primeiro.")
+            print("\n  [AVISO] sample_weights.csv nao encontrado. Rode clean_labels.py --action weight primeiro.")
     elif CLEAN_MODE == "prune":
         xp = os.path.join(analysis_dir, "X_features_clean.csv")
         yp = os.path.join(analysis_dir, "y_labels_clean.csv")
@@ -175,8 +187,9 @@ if CLEAN_MODE != "none":
             if os.path.exists(gp):
                 groups = pd.read_csv(gp).squeeze("columns")
             # Reconstruir X_llm_full com as mesmas linhas
-            keep_mask = np.isin(np.arange(len(y)),
-                                np.where(np.isin(X_baseline.values[:, 0], X_baseline_clean.values[:, 0]))[0])
+            keep_mask = np.isin(
+                np.arange(len(y)), np.where(np.isin(X_baseline.values[:, 0], X_baseline_clean.values[:, 0]))[0]
+            )
             if keep_mask.sum() != len(y_clean):
                 # Fallback: usar quality scores para identificar as linhas mantidas
                 scores_path = os.path.join(analysis_dir, "label_quality_scores.csv")
@@ -185,7 +198,7 @@ if CLEAN_MODE != "none":
                     keep_indices = df_scores[~df_scores["is_issue"]].index.values
                     # Limitar ao prune_pct
                     if len(keep_indices) > len(y_clean):
-                        keep_indices = keep_indices[:len(y_clean)]
+                        keep_indices = keep_indices[: len(y_clean)]
                     keep_mask = np.isin(np.arange(len(y)), keep_indices)
 
             X_baseline = X_baseline[keep_mask].reset_index(drop=True)
@@ -193,17 +206,17 @@ if CLEAN_MODE != "none":
             y = y_clean
             print(f"\n  Labels: pruned {keep_mask.sum()}/{len(keep_mask)} amostras mantidas")
         else:
-            print(f"\n  [AVISO] Dados limpos nao encontrados. Rode clean_labels.py --action prune primeiro.")
+            print("\n  [AVISO] Dados limpos nao encontrados. Rode clean_labels.py --action prune primeiro.")
     elif CLEAN_MODE == "relabel":
         rp = os.path.join(analysis_dir, "y_labels_relabeled.csv")
         if os.path.exists(rp):
             y = pd.read_csv(rp).squeeze("columns")
-            print(f"\n  Labels: relabeled carregados")
+            print("\n  Labels: relabeled carregados")
         else:
-            print(f"\n  [AVISO] y_labels_relabeled.csv nao encontrado. Rode clean_labels.py --action relabel primeiro.")
+            print("\n  [AVISO] y_labels_relabeled.csv nao encontrado. Rode clean_labels.py --action relabel primeiro.")
 
 # Identificar colunas por tipo
-STAT_COLS = [c for c in X_baseline.columns]
+STAT_COLS = list(X_baseline.columns)
 CAAFE_COLS = [c for c in X_llm_full.columns if c.startswith("caafe_")]
 LLM_COLS = [c for c in X_llm_full.columns if c.startswith("llm_")]
 ADV_L2_COLS = [c for c in X_llm_full.columns if c.startswith("adv_")]
@@ -225,49 +238,43 @@ CLASS_NAMES = {0: "MCAR", 1: "MAR", 2: "MNAR"}
 def get_modelos(n_samples: int, optuna_params: dict | None = None) -> dict:
     if n_samples < 100:
         modelos = {
-            "RandomForest": RandomForestClassifier(
-                n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
+            "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
             "GradientBoosting": GradientBoostingClassifier(
-                n_estimators=50, max_depth=3, learning_rate=0.1, random_state=42),
-            "LogisticRegression": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", LogisticRegression(max_iter=3000, C=0.5, random_state=42))]),
-            "SVM_RBF": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", SVC(kernel="rbf", C=1, random_state=42, probability=True))]),
-            "KNN": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", KNeighborsClassifier(n_neighbors=3))]),
-            "MLP": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", MLPClassifier(hidden_layer_sizes=(32, 16),
-                                      max_iter=2000, random_state=42))]),
-            "NaiveBayes": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", GaussianNB())]),
+                n_estimators=50, max_depth=3, learning_rate=0.1, random_state=42
+            ),
+            "LogisticRegression": Pipeline(
+                [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, C=0.5, random_state=42))]
+            ),
+            "SVM_RBF": Pipeline(
+                [("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=1, random_state=42, probability=True))]
+            ),
+            "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=3))]),
+            "MLP": Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    ("clf", MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=2000, random_state=42)),
+                ]
+            ),
+            "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
     else:
         modelos = {
-            "RandomForest": RandomForestClassifier(
-                n_estimators=400, random_state=42, n_jobs=-1),
-            "GradientBoosting": GradientBoostingClassifier(
-                n_estimators=300, random_state=42),
-            "LogisticRegression": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", LogisticRegression(max_iter=3000, random_state=42))]),
-            "SVM_RBF": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", SVC(kernel="rbf", C=3, random_state=42, probability=True))]),
-            "KNN": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", KNeighborsClassifier(n_neighbors=5))]),
-            "MLP": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32),
-                                      max_iter=2000, random_state=42))]),
-            "NaiveBayes": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", GaussianNB())]),
+            "RandomForest": RandomForestClassifier(n_estimators=400, random_state=42, n_jobs=-1),
+            "GradientBoosting": GradientBoostingClassifier(n_estimators=300, random_state=42),
+            "LogisticRegression": Pipeline(
+                [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, random_state=42))]
+            ),
+            "SVM_RBF": Pipeline(
+                [("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=3, random_state=42, probability=True))]
+            ),
+            "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=5))]),
+            "MLP": Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=42)),
+                ]
+            ),
+            "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
 
     # STEP 02: XGBoost e CatBoost
@@ -327,10 +334,10 @@ def _optuna_xgb_objective(trial, X_train, y_train, groups_train):
     clf = XGBClassifier(**params, random_state=42, eval_metric="mlogloss", verbosity=0)
 
     from sklearn.model_selection import cross_val_score
+
     if groups_train is not None and len(np.unique(groups_train)) >= 5:
         cv = GroupKFold(n_splits=min(5, len(np.unique(groups_train))))
-        scores = cross_val_score(clf, X_train, y_train,
-                                 cv=cv, groups=groups_train, scoring="accuracy")
+        scores = cross_val_score(clf, X_train, y_train, cv=cv, groups=groups_train, scoring="accuracy")
     else:
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring="accuracy")
@@ -352,10 +359,10 @@ def _optuna_cat_objective(trial, X_train, y_train, groups_train):
     clf = CatBoostClassifier(**params, random_seed=42, verbose=0, auto_class_weights="Balanced")
 
     from sklearn.model_selection import cross_val_score
+
     if groups_train is not None and len(np.unique(groups_train)) >= 5:
         cv = GroupKFold(n_splits=min(5, len(np.unique(groups_train))))
-        scores = cross_val_score(clf, X_train, y_train,
-                                 cv=cv, groups=groups_train, scoring="accuracy")
+        scores = cross_val_score(clf, X_train, y_train, cv=cv, groups=groups_train, scoring="accuracy")
     else:
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring="accuracy")
@@ -377,17 +384,14 @@ def run_optuna_optimization(X_train, y_train, groups_train, level_name, n_trials
             study_name=f"{clf_name}_{level_name}",
         )
         study.optimize(
-            lambda trial: objective_fn(trial, X_train, y_train, groups_train),
+            lambda trial, _fn=objective_fn: _fn(trial, X_train, y_train, groups_train),
             n_trials=n_trials,
             show_progress_bar=True,
         )
         results[clf_name] = {
             "best_params": study.best_params,
             "best_value": study.best_value,
-            "history": [
-                {"number": t.number, "value": t.value, "params": t.params}
-                for t in study.trials
-            ],
+            "history": [{"number": t.number, "value": t.value, "params": t.params} for t in study.trials],
         }
         print(f"      Melhor accuracy CV: {study.best_value:.4f}")
         print(f"      Params: {study.best_params}")
@@ -404,8 +408,8 @@ def apply_balancing(X_in, y_in, method="smote"):
         return X_in, y_in
 
     try:
-        from imblearn.over_sampling import SMOTE, BorderlineSMOTE
         from imblearn.combine import SMOTEENN, SMOTETomek
+        from imblearn.over_sampling import SMOTE, BorderlineSMOTE
     except ImportError:
         return X_in, y_in
 
@@ -481,9 +485,9 @@ if groups is not None and groups.nunique() > 1:
     train_idx, test_idx = next(gss.split(X_baseline, y, groups))
 else:
     from sklearn.model_selection import train_test_split
+
     indices = np.arange(len(X_baseline))
-    train_idx, test_idx = train_test_split(
-        indices, test_size=0.25, stratify=y, random_state=42)
+    train_idx, test_idx = train_test_split(indices, test_size=0.25, stratify=y, random_state=42)
 
 y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 train_weights = sample_weights[train_idx] if sample_weights is not None else None
@@ -508,21 +512,16 @@ if OPTIMIZE:
     groups_train_opt = groups.iloc[train_idx] if groups is not None else None
 
     print("\n  Nivel 1 (MCAR vs nao-MCAR):")
-    optuna_l1 = run_optuna_optimization(
-        X_train_l1_opt, y_train_l1_opt, groups_train_opt, "L1", N_TRIALS)
+    optuna_l1 = run_optuna_optimization(X_train_l1_opt, y_train_l1_opt, groups_train_opt, "L1", N_TRIALS)
 
     # Preparar dados para L2 (MAR vs MNAR)
     mask_nm_train = y_train != 0
     X_train_l2_opt = X_llm_full[FEAT_STAT_CAAFE].iloc[train_idx][mask_nm_train.values]
     y_train_l2_opt = (y_train[mask_nm_train] == 2).astype(int)
-    groups_train_l2_opt = (
-        groups.iloc[train_idx][mask_nm_train.values]
-        if groups is not None else None
-    )
+    groups_train_l2_opt = groups.iloc[train_idx][mask_nm_train.values] if groups is not None else None
 
     print("\n  Nivel 2 (MAR vs MNAR):")
-    optuna_l2 = run_optuna_optimization(
-        X_train_l2_opt, y_train_l2_opt, groups_train_l2_opt, "L2", N_TRIALS)
+    optuna_l2 = run_optuna_optimization(X_train_l2_opt, y_train_l2_opt, groups_train_l2_opt, "L2", N_TRIALS)
 
     # Salvar resultados Optuna
     OPTUNA_PARAMS = {
@@ -531,10 +530,8 @@ if OPTIMIZE:
     }
 
     optuna_output = {
-        "L1": {k: {"best_params": v["best_params"], "best_cv_accuracy": v["best_value"]}
-               for k, v in optuna_l1.items()},
-        "L2": {k: {"best_params": v["best_params"], "best_cv_accuracy": v["best_value"]}
-               for k, v in optuna_l2.items()},
+        "L1": {k: {"best_params": v["best_params"], "best_cv_accuracy": v["best_value"]} for k, v in optuna_l1.items()},
+        "L2": {k: {"best_params": v["best_params"], "best_cv_accuracy": v["best_value"]} for k, v in optuna_l2.items()},
     }
     with open(os.path.join(HIER_DIR, "optuna_params.json"), "w") as f:
         json.dump(optuna_output, f, indent=2)
@@ -548,8 +545,8 @@ if OPTIMIZE:
                 row.update(trial["params"])
                 hist_rows.append(row)
             pd.DataFrame(hist_rows).to_csv(
-                os.path.join(HIER_DIR, f"optuna_history_{level_name}_{clf_name.lower()}.csv"),
-                index=False)
+                os.path.join(HIER_DIR, f"optuna_history_{level_name}_{clf_name.lower()}.csv"), index=False
+            )
 
     print(f"\n  Params salvos em: {HIER_DIR}/optuna_params.json")
 
@@ -589,9 +586,19 @@ def _get_optuna_params_for_level(optuna_params, level, modelo_nome):
     return None
 
 
-def run_hierarchical_v3plus(X_full, y, train_idx, test_idx, feat_l1, feat_l2,
-                            modelo_nome, routing="hard", calibrate=True,
-                            sample_weights_train=None, optuna_params=None):
+def run_hierarchical_v3plus(
+    X_full,
+    y,
+    train_idx,
+    test_idx,
+    feat_l1,
+    feat_l2,
+    modelo_nome,
+    routing="hard",
+    calibrate=True,
+    sample_weights_train=None,
+    optuna_params=None,
+):
     """Classificação hierárquica com roteamento probabilístico."""
     X_l1 = X_full[feat_l1]
     X_l2 = X_full[feat_l2]
@@ -601,7 +608,7 @@ def run_hierarchical_v3plus(X_full, y, train_idx, test_idx, feat_l1, feat_l2,
     # --- Nível 1: MCAR vs NAO-MCAR ---
     y_tr_l1 = (y_tr != 0).astype(int)
     X_tr_l1 = X_l1.iloc[train_idx]
-    X_te_l1 = X_l1.iloc[test_idx]
+    X_l1.iloc[test_idx]
 
     if sample_weights_train is not None:
         X_tr_l1_fit, y_tr_l1_fit = X_tr_l1, y_tr_l1
@@ -659,7 +666,8 @@ def run_hierarchical_v3plus(X_full, y, train_idx, test_idx, feat_l1, feat_l2,
         # Simplificação: usar threshold fixo otimizado a priori
         # Para otimização real, precisaríamos de val set separado
         optimal_thr = find_optimal_threshold(
-            m_l1, m_l2,
+            m_l1,
+            m_l2,
             X_tr_l1.values if hasattr(X_tr_l1, "values") else X_tr_l1,
             X_tr_l2.reindex(X_l2.iloc[train_idx].index).fillna(0) if len(X_tr_l2) > 0 else X_l2.iloc[train_idx],
             y_tr,
@@ -699,7 +707,7 @@ def run_hierarchical_v3plus(X_full, y, train_idx, test_idx, feat_l1, feat_l2,
     elif routing == "fullprob":
         # Sempre combinar probabilidades de ambos os níveis
         probs_l1 = m_l1.predict_proba(X_te_l1_df)[:, 1]  # P(não-MCAR)
-        prob_l2 = m_l2.predict_proba(X_te_l2_df)           # [P(MAR|nM), P(MNAR|nM)]
+        prob_l2 = m_l2.predict_proba(X_te_l2_df)  # [P(MAR|nM), P(MNAR|nM)]
 
         prob_mcar = 1 - probs_l1
         prob_mar = probs_l1 * prob_l2[:, 0]
@@ -731,7 +739,7 @@ def run_direct(X_full, y, train_idx, test_idx, feat_cols, modelo_nome):
     """Classificação direta 3-way (baseline)."""
     X_sel = X_full[feat_cols]
     X_tr, X_te = X_sel.iloc[train_idx], X_sel.iloc[test_idx]
-    y_tr, y_te = y.iloc[train_idx], y.iloc[test_idx]
+    y_tr, _y_te = y.iloc[train_idx], y.iloc[test_idx]
     X_tr_sm, y_tr_sm = apply_balancing(X_tr, y_tr, method=BALANCING)
     modelo = get_modelos(len(X_tr_sm))[modelo_nome]
     modelo.fit(X_tr_sm, y_tr_sm)
@@ -810,17 +818,23 @@ for var_name, var_cfg in VARIANTES.items():
 
     for modelo_nome in tqdm(model_names, desc=f"  {var_name}", leave=False):
         if var_cfg["tipo"] == "direto":
-            y_pred = run_direct(X_llm_full, y, train_idx, test_idx,
-                                var_cfg["features"], modelo_nome)
+            y_pred = run_direct(X_llm_full, y, train_idx, test_idx, var_cfg["features"], modelo_nome)
             acc_l1, acc_l2 = float("nan"), float("nan")
         else:
             routing = var_cfg.get("routing", "hard")
             y_pred, acc_l1, acc_l2 = run_hierarchical_v3plus(
-                X_llm_full, y, train_idx, test_idx,
-                var_cfg["features_l1"], var_cfg["features_l2"],
-                modelo_nome, routing=routing, calibrate=CALIBRATE,
+                X_llm_full,
+                y,
+                train_idx,
+                test_idx,
+                var_cfg["features_l1"],
+                var_cfg["features_l2"],
+                modelo_nome,
+                routing=routing,
+                calibrate=CALIBRATE,
                 sample_weights_train=train_weights,
-                optuna_params=OPTUNA_PARAMS)
+                optuna_params=OPTUNA_PARAMS,
+            )
 
         acc = accuracy_score(y_test, y_pred)
         report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
@@ -855,32 +869,40 @@ rows = []
 for var_name in VARIANTES:
     for modelo_nome in model_names:
         r = all_results[var_name][modelo_nome]
-        rows.append({
-            "variante": var_name,
-            "modelo": modelo_nome,
-            "accuracy": r["accuracy"],
-            "f1_macro": r["f1_macro"],
-            "recall_MCAR": r["recall_MCAR"],
-            "recall_MAR": r["recall_MAR"],
-            "recall_MNAR": r["recall_MNAR"],
-            "f1_MCAR": r["f1_MCAR"],
-            "f1_MAR": r["f1_MAR"],
-            "f1_MNAR": r["f1_MNAR"],
-            "acc_level1": r["acc_level1"],
-            "acc_level2": r["acc_level2"],
-        })
+        rows.append(
+            {
+                "variante": var_name,
+                "modelo": modelo_nome,
+                "accuracy": r["accuracy"],
+                "f1_macro": r["f1_macro"],
+                "recall_MCAR": r["recall_MCAR"],
+                "recall_MAR": r["recall_MAR"],
+                "recall_MNAR": r["recall_MNAR"],
+                "f1_MCAR": r["f1_MCAR"],
+                "f1_MAR": r["f1_MAR"],
+                "f1_MNAR": r["f1_MNAR"],
+                "acc_level1": r["acc_level1"],
+                "acc_level2": r["acc_level2"],
+            }
+        )
 
 df_all = pd.DataFrame(rows)
 df_all.to_csv(os.path.join(HIER_DIR, "todas_variantes_v3plus.csv"), index=False)
 
 # Resumo
-df_summary = df_all.groupby("variante").agg({
-    "accuracy": ["mean", "std", "max"],
-    "f1_macro": ["mean", "std", "max"],
-    "recall_MNAR": ["mean", "std", "max"],
-    "acc_level1": "mean",
-    "acc_level2": "mean",
-}).round(4)
+df_summary = (
+    df_all.groupby("variante")
+    .agg(
+        {
+            "accuracy": ["mean", "std", "max"],
+            "f1_macro": ["mean", "std", "max"],
+            "recall_MNAR": ["mean", "std", "max"],
+            "acc_level1": "mean",
+            "acc_level2": "mean",
+        }
+    )
+    .round(4)
+)
 df_summary.to_csv(os.path.join(HIER_DIR, "resumo_v3plus.csv"))
 
 # Print ranking
@@ -892,8 +914,7 @@ for var_name in VARIANTES:
     best_model = best_row["modelo"]
     mnar_recall = best_row["recall_MNAR"]
     f1 = best_row["f1_macro"]
-    print(f"  {var_name:25s}: acc={acc_max:.3f} f1={f1:.3f} "
-          f"MNAR_recall={mnar_recall:.3f} ({best_model})")
+    print(f"  {var_name:25s}: acc={acc_max:.3f} f1={f1:.3f} " f"MNAR_recall={mnar_recall:.3f} ({best_model})")
 
 
 # ==============================================================================
@@ -918,9 +939,11 @@ if "V3_hier_hard" in all_results:
             delta_acc = r_plus["accuracy"] - r_hard["accuracy"]
             delta_mnar = r_plus["recall_MNAR"] - r_hard["recall_MNAR"]
             sym = "+" if delta_acc > 0 else "-" if delta_acc < 0 else "="
-            print(f"    {sym} {modelo_nome:20s}: hard={r_hard['accuracy']:.3f} "
-                  f"{routing}={r_plus['accuracy']:.3f} "
-                  f"(acc {delta_acc:+.3f}, MNAR {delta_mnar:+.3f})")
+            print(
+                f"    {sym} {modelo_nome:20s}: hard={r_hard['accuracy']:.3f} "
+                f"{routing}={r_plus['accuracy']:.3f} "
+                f"(acc {delta_acc:+.3f}, MNAR {delta_mnar:+.3f})"
+            )
 
 
 # ==============================================================================
@@ -945,8 +968,8 @@ for routing in ROUTING_STRATEGIES:
         y_pred_hard = all_results["V3_hier_hard"][modelo_nome]["y_pred"]
         y_pred_plus = all_results[v3plus_name][modelo_nome]["y_pred"]
 
-        correct_hard = (y_pred_hard == y_test.values)
-        correct_plus = (y_pred_plus == y_test.values)
+        correct_hard = y_pred_hard == y_test.values
+        correct_plus = y_pred_plus == y_test.values
         b = np.sum(correct_hard & ~correct_plus)
         c = np.sum(~correct_hard & correct_plus)
 
@@ -959,15 +982,17 @@ for routing in ROUTING_STRATEGIES:
         sig_star = "***" if mcnemar_p < 0.001 else "**" if mcnemar_p < 0.01 else "*" if mcnemar_p < 0.05 else ""
         print(f"    {modelo_nome:20s}: b={b:3d} c={c:3d} chi2={mcnemar_stat:.2f} p={mcnemar_p:.4f} {sig_star}")
 
-        sig_rows.append({
-            "comparison": f"V3hard_vs_V3plus_{routing}",
-            "modelo": modelo_nome,
-            "hard_correct_plus_wrong": int(b),
-            "hard_wrong_plus_correct": int(c),
-            "mcnemar_chi2": mcnemar_stat,
-            "mcnemar_p": mcnemar_p,
-            "significant_005": mcnemar_p < 0.05,
-        })
+        sig_rows.append(
+            {
+                "comparison": f"V3hard_vs_V3plus_{routing}",
+                "modelo": modelo_nome,
+                "hard_correct_plus_wrong": int(b),
+                "hard_wrong_plus_correct": int(c),
+                "mcnemar_chi2": mcnemar_stat,
+                "mcnemar_p": mcnemar_p,
+                "significant_005": mcnemar_p < 0.05,
+            }
+        )
 
 if sig_rows:
     pd.DataFrame(sig_rows).to_csv(os.path.join(HIER_DIR, "significancia_v3plus.csv"), index=False)
@@ -1076,8 +1101,7 @@ if groups is not None and groups.nunique() > 2:
                             p_l2 = m_l2.predict(X_te_l2_f[mask_nm_pred])
                             y_pred_fold[mask_nm_pred] = np.where(p_l2 == 0, 1, 2)
                 else:
-                    y_pred_fold = np.where(
-                        m_l1.predict(X_l1_f.iloc[te_i]) == 0, 0, 1)
+                    y_pred_fold = np.where(m_l1.predict(X_l1_f.iloc[te_i]) == 0, 0, 1)
 
                 fold_accs.append(accuracy_score(y_te_fold, y_pred_fold))
 
@@ -1122,13 +1146,11 @@ if groups is not None and groups.nunique() > 2:
 
 # Barras comparativas: V3 hard vs V3+ routing strategies
 fig, axes = plt.subplots(1, 2, figsize=(16, 7))
-var_names_plot = [v for v in VARIANTES.keys()]
+var_names_plot = list(VARIANTES)
 n_vars = len(var_names_plot)
 width = 0.8 / n_vars
 
-for ax_idx, (metric, title) in enumerate([
-    ("accuracy", "Accuracy"), ("recall_MNAR", "MNAR Recall")
-]):
+for ax_idx, (metric, title) in enumerate([("accuracy", "Accuracy"), ("recall_MNAR", "MNAR Recall")]):
     ax = axes[ax_idx]
     x = np.arange(len(model_names))
 
@@ -1166,9 +1188,15 @@ ax.set_title(f"Accuracy Heatmap V3+ — {DATA_TYPE.upper()}")
 plt.colorbar(im, ax=ax, label="Accuracy")
 for i in range(len(var_names_list)):
     for j in range(len(model_names)):
-        ax.text(j, i, f"{heat_data[i, j]:.1%}",
-                ha="center", va="center", fontsize=7,
-                color="white" if heat_data[i, j] < 0.45 else "black")
+        ax.text(
+            j,
+            i,
+            f"{heat_data[i, j]:.1%}",
+            ha="center",
+            va="center",
+            fontsize=7,
+            color="white" if heat_data[i, j] < 0.45 else "black",
+        )
 plt.tight_layout()
 plt.savefig(os.path.join(HIER_DIR, "heatmap_v3plus.png"), dpi=300, bbox_inches="tight")
 plt.close()
@@ -1212,14 +1240,17 @@ print(f"\n{'='*70}")
 print("CONCLUIDO!")
 print(f"{'='*70}")
 
-print(f"\nRanking final (accuracy maxima):")
+print("\nRanking final (accuracy maxima):")
 ranking = sorted(
-    [(v, max(all_results[v].items(), key=lambda x: x[1]["accuracy"]))
-     for v in VARIANTES],
-    key=lambda x: x[1][1]["accuracy"], reverse=True)
+    [(v, max(all_results[v].items(), key=lambda x: x[1]["accuracy"])) for v in VARIANTES],
+    key=lambda x: x[1][1]["accuracy"],
+    reverse=True,
+)
 
 for i, (var, (modelo, metrics)) in enumerate(ranking, 1):
-    print(f"  {i}. {var:25s} {metrics['accuracy']:.3f} ({modelo}) "
-          f"MNAR={metrics['recall_MNAR']:.3f} F1={metrics['f1_macro']:.3f}")
+    print(
+        f"  {i}. {var:25s} {metrics['accuracy']:.3f} ({modelo}) "
+        f"MNAR={metrics['recall_MNAR']:.3f} F1={metrics['f1_macro']:.3f}"
+    )
 
 print(f"\nSalvos em: {HIER_DIR}")

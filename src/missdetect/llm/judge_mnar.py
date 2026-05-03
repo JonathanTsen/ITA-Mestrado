@@ -9,11 +9,11 @@ Motivação (STEP03): MCAR e MNAR são quase indistinguíveis por features
 estatísticas porque MNAR depende de X0, mas X0 está faltante justamente
 onde precisamos medi-lo — um problema circular.
 """
+
+import hashlib
+import json
 import os
 import re
-import json
-import hashlib
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -24,21 +24,15 @@ from scipy import stats as sp_stats
 class MNARJudgment(BaseModel):
     """Schema para julgamento binário MCAR vs MNAR."""
 
-    mnar_probability: float = Field(
-        default=0.5, ge=0.0, le=1.0,
-        description="0=claramente MCAR, 1=claramente MNAR"
-    )
+    mnar_probability: float = Field(default=0.5, ge=0.0, le=1.0, description="0=claramente MCAR, 1=claramente MNAR")
     censoring_evidence: float = Field(
-        default=0.0, ge=0.0, le=1.0,
-        description="Força da evidência de censura/truncamento em X0"
+        default=0.0, ge=0.0, le=1.0, description="Força da evidência de censura/truncamento em X0"
     )
     distribution_anomaly: float = Field(
-        default=0.0, ge=0.0, le=1.0,
-        description="Grau de anomalia na distribuição de X0 observado"
+        default=0.0, ge=0.0, le=1.0, description="Grau de anomalia na distribuição de X0 observado"
     )
     pattern_structured: float = Field(
-        default=0.0, ge=0.0, le=1.0,
-        description="0=missing parece aleatório, 1=missing parece estruturado"
+        default=0.0, ge=0.0, le=1.0, description="0=missing parece aleatório, 1=missing parece estruturado"
     )
 
     def to_feature_dict(self) -> dict:
@@ -67,6 +61,7 @@ class LLMJudgeMNAR:
     def _init_llm(self):
         if self.provider == "openai":
             from langchain_openai import ChatOpenAI
+
             return ChatOpenAI(
                 model_name=self.model_name,
                 api_key=os.getenv("OPENAI_API_KEY"),
@@ -74,6 +69,7 @@ class LLMJudgeMNAR:
             )
         elif self.provider == "gemini":
             from langchain_google_genai import ChatGoogleGenerativeAI
+
             return ChatGoogleGenerativeAI(
                 model=self.model_name,
                 google_api_key=os.getenv("GEMINI_API_KEY"),
@@ -86,9 +82,7 @@ class LLMJudgeMNAR:
         """Julga se o dataset é mais MCAR ou MNAR."""
         profile = self._build_dataset_profile(df)
 
-        cache_key = hashlib.md5(
-            json.dumps(profile, sort_keys=True).encode()
-        ).hexdigest()
+        cache_key = hashlib.md5(json.dumps(profile, sort_keys=True).encode()).hexdigest()
 
         if use_cache and cache_key in self._cache:
             return self._cache[cache_key]
@@ -146,10 +140,7 @@ class LLMJudgeMNAR:
 
             # KS test X0_obs vs distribuição teórica normal
             if len(X0_obs) > 20:
-                ks_stat, ks_pval = sp_stats.kstest(
-                    (X0_obs - np.mean(X0_obs)) / max(np.std(X0_obs), 1e-10),
-                    'norm'
-                )
+                ks_stat, ks_pval = sp_stats.kstest((X0_obs - np.mean(X0_obs)) / max(np.std(X0_obs), 1e-10), "norm")
                 profile["X0_normality_ks"] = round(float(ks_stat), 4)
                 profile["X0_normality_pval"] = round(float(ks_pval), 4)
 

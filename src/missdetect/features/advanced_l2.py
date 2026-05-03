@@ -8,11 +8,11 @@ Três famílias:
 
 Total: 7 features novas, usadas apenas no L2.
 """
+
 import numpy as np
 import pandas as pd
-from scipy import stats as sp_stats
 from scipy.stats import gaussian_kde, ks_2samp, spearmanr, wasserstein_distance
-from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.linear_model import LinearRegression
 
 
@@ -59,9 +59,8 @@ def _compute_imputation_divergence(df: pd.DataFrame) -> dict:
         # Método 3: MICE/Iterative
         from sklearn.experimental import enable_iterative_imputer  # noqa: F401
         from sklearn.impute import IterativeImputer
-        imp_mice = IterativeImputer(
-            max_iter=10, random_state=42, sample_posterior=False
-        ).fit_transform(X_full)[:, 0]
+
+        imp_mice = IterativeImputer(max_iter=10, random_state=42, sample_posterior=False).fit_transform(X_full)[:, 0]
 
         # Extrair apenas valores imputados (onde era NaN)
         vals = {
@@ -127,6 +126,7 @@ def _compute_conditional_independence(df: pd.DataFrame) -> dict:
         # Distance correlation (zero iff independent)
         try:
             import dcor
+
             partial_dcor = dcor.distance_correlation(residual_x0, residual_mask)
         except (ImportError, Exception):
             # Fallback: usar correlação absoluta se dcor não disponível

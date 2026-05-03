@@ -16,6 +16,7 @@ Uso:
     python train_hierarchical_variants.py --data sintetico --experiment step05_pro --llm-model gemini-3.1-pro-preview
     python train_hierarchical_variants.py --data real --experiment step05_pro --llm-model gemini-3.1-pro-preview
 """
+
 import argparse
 import json
 import os
@@ -23,19 +24,22 @@ import sys
 import warnings
 from datetime import datetime
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 from scipy.stats import wilcoxon
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    accuracy_score, classification_report, confusion_matrix, f1_score,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
 )
-from sklearn.model_selection import GroupShuffleSplit, GroupKFold, LeaveOneGroupOut
+from sklearn.model_selection import GroupShuffleSplit, LeaveOneGroupOut
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -45,7 +49,7 @@ from sklearn.svm import SVC
 from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.paths import get_output_dir, get_comparison_dir, OUTPUT_BASE
+from utils.paths import OUTPUT_BASE, get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -55,8 +59,9 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser(description="Hierárquica 6 variantes")
 parser.add_argument("--data", choices=["sintetico", "real"], required=True)
 parser.add_argument("--experiment", required=True)
-parser.add_argument("--llm-model", default="gemini-3.1-pro-preview",
-                    help="Nome do modelo LLM cujas features serão usadas")
+parser.add_argument(
+    "--llm-model", default="gemini-3.1-pro-preview", help="Nome do modelo LLM cujas features serão usadas"
+)
 args = parser.parse_args()
 
 DATA_TYPE = args.data
@@ -101,7 +106,7 @@ if os.path.exists(groups_path):
     groups = pd.read_csv(groups_path).squeeze("columns")
 
 # Identificar colunas por tipo
-STAT_COLS = [c for c in X_baseline.columns]  # 21 features
+STAT_COLS = list(X_baseline.columns)  # 21 features
 CAAFE_COLS = [c for c in X_llm_full.columns if c.startswith("caafe_")]
 LLM_COLS = [c for c in X_llm_full.columns if c.startswith("llm_")]
 ALL_COLS = list(X_llm_full.columns)
@@ -116,9 +121,9 @@ print(f"   Classes: {dict(y.value_counts().sort_index())}")
 CLASS_NAMES = {0: "MCAR", 1: "MAR", 2: "MNAR"}
 
 # Feature subsets
-FEAT_STAT = STAT_COLS                          # 21
-FEAT_STAT_CAAFE = STAT_COLS + CAAFE_COLS       # 25
-FEAT_ALL = ALL_COLS                            # 33
+FEAT_STAT = STAT_COLS  # 21
+FEAT_STAT_CAAFE = STAT_COLS + CAAFE_COLS  # 25
+FEAT_ALL = ALL_COLS  # 33
 
 # ==============================================================================
 # DEFINIÇÃO DAS 6 VARIANTES
@@ -167,55 +172,50 @@ VARIANTES = {
 def get_modelos(n_samples: int) -> dict:
     if n_samples < 100:
         return {
-            "RandomForest": RandomForestClassifier(
-                n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
+            "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42, n_jobs=-1),
             "GradientBoosting": GradientBoostingClassifier(
-                n_estimators=50, max_depth=3, learning_rate=0.1, random_state=42),
-            "LogisticRegression": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", LogisticRegression(max_iter=3000, C=0.5, random_state=42))]),
-            "SVM_RBF": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", SVC(kernel="rbf", C=1, random_state=42, probability=True))]),
-            "KNN": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", KNeighborsClassifier(n_neighbors=3))]),
-            "MLP": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", MLPClassifier(hidden_layer_sizes=(32, 16),
-                                      max_iter=2000, random_state=42))]),
-            "NaiveBayes": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", GaussianNB())]),
+                n_estimators=50, max_depth=3, learning_rate=0.1, random_state=42
+            ),
+            "LogisticRegression": Pipeline(
+                [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, C=0.5, random_state=42))]
+            ),
+            "SVM_RBF": Pipeline(
+                [("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=1, random_state=42, probability=True))]
+            ),
+            "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=3))]),
+            "MLP": Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    ("clf", MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=2000, random_state=42)),
+                ]
+            ),
+            "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
     else:
         return {
-            "RandomForest": RandomForestClassifier(
-                n_estimators=400, random_state=42, n_jobs=-1),
-            "GradientBoosting": GradientBoostingClassifier(
-                n_estimators=300, random_state=42),
-            "LogisticRegression": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", LogisticRegression(max_iter=3000, random_state=42))]),
-            "SVM_RBF": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", SVC(kernel="rbf", C=3, random_state=42, probability=True))]),
-            "KNN": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", KNeighborsClassifier(n_neighbors=5))]),
-            "MLP": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32),
-                                      max_iter=2000, random_state=42))]),
-            "NaiveBayes": Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", GaussianNB())]),
+            "RandomForest": RandomForestClassifier(n_estimators=400, random_state=42, n_jobs=-1),
+            "GradientBoosting": GradientBoostingClassifier(n_estimators=300, random_state=42),
+            "LogisticRegression": Pipeline(
+                [("scaler", StandardScaler()), ("clf", LogisticRegression(max_iter=3000, random_state=42))]
+            ),
+            "SVM_RBF": Pipeline(
+                [("scaler", StandardScaler()), ("clf", SVC(kernel="rbf", C=3, random_state=42, probability=True))]
+            ),
+            "KNN": Pipeline([("scaler", StandardScaler()), ("clf", KNeighborsClassifier(n_neighbors=5))]),
+            "MLP": Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=42)),
+                ]
+            ),
+            "NaiveBayes": Pipeline([("scaler", StandardScaler()), ("clf", GaussianNB())]),
         }
 
 
 def apply_smote(X_in, y_in):
     try:
         from imblearn.over_sampling import SMOTE
+
         min_count = y_in.value_counts().min() if hasattr(y_in, "value_counts") else pd.Series(y_in).value_counts().min()
         if min_count >= 2:
             k = min(3, min_count - 1)
@@ -234,9 +234,9 @@ if groups is not None and groups.nunique() > 1:
     train_idx, test_idx = next(gss.split(X_baseline, y, groups))
 else:
     from sklearn.model_selection import train_test_split
+
     indices = np.arange(len(X_baseline))
-    train_idx, test_idx = train_test_split(
-        indices, test_size=0.25, stratify=y, random_state=42)
+    train_idx, test_idx = train_test_split(indices, test_size=0.25, stratify=y, random_state=42)
 
 y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 y_test_l1 = (y_test != 0).astype(int)
@@ -252,7 +252,7 @@ def run_direct(X_full, y, train_idx, test_idx, feat_cols, modelo_nome):
     """Classificação direta 3-way."""
     X_sel = X_full[feat_cols]
     X_tr, X_te = X_sel.iloc[train_idx], X_sel.iloc[test_idx]
-    y_tr, y_te = y.iloc[train_idx], y.iloc[test_idx]
+    y_tr, _y_te = y.iloc[train_idx], y.iloc[test_idx]
 
     X_tr_sm, y_tr_sm = apply_smote(X_tr, y_tr)
     modelo = get_modelos(len(X_tr_sm))[modelo_nome]
@@ -324,14 +324,13 @@ for var_name, var_cfg in VARIANTES.items():
 
     for modelo_nome in tqdm(model_names, desc=f"  {var_name}", leave=False):
         if var_cfg["tipo"] == "direto":
-            y_pred = run_direct(X_llm_full, y, train_idx, test_idx,
-                                var_cfg["features"], modelo_nome)
+            y_pred = run_direct(X_llm_full, y, train_idx, test_idx, var_cfg["features"], modelo_nome)
             acc_l1 = float("nan")
             acc_l2 = float("nan")
         else:
             y_pred, acc_l1, acc_l2 = run_hierarchical(
-                X_llm_full, y, train_idx, test_idx,
-                var_cfg["features_l1"], var_cfg["features_l2"], modelo_nome)
+                X_llm_full, y, train_idx, test_idx, var_cfg["features_l1"], var_cfg["features_l2"], modelo_nome
+            )
 
         acc = accuracy_score(y_test, y_pred)
         report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
@@ -366,32 +365,40 @@ rows = []
 for var_name in VARIANTES:
     for modelo_nome in model_names:
         r = all_results[var_name][modelo_nome]
-        rows.append({
-            "variante": var_name,
-            "modelo": modelo_nome,
-            "accuracy": r["accuracy"],
-            "f1_macro": r["f1_macro"],
-            "recall_MCAR": r["recall_MCAR"],
-            "recall_MAR": r["recall_MAR"],
-            "recall_MNAR": r["recall_MNAR"],
-            "f1_MCAR": r["f1_MCAR"],
-            "f1_MAR": r["f1_MAR"],
-            "f1_MNAR": r["f1_MNAR"],
-            "acc_level1": r["acc_level1"],
-            "acc_level2": r["acc_level2"],
-        })
+        rows.append(
+            {
+                "variante": var_name,
+                "modelo": modelo_nome,
+                "accuracy": r["accuracy"],
+                "f1_macro": r["f1_macro"],
+                "recall_MCAR": r["recall_MCAR"],
+                "recall_MAR": r["recall_MAR"],
+                "recall_MNAR": r["recall_MNAR"],
+                "f1_MCAR": r["f1_MCAR"],
+                "f1_MAR": r["f1_MAR"],
+                "f1_MNAR": r["f1_MNAR"],
+                "acc_level1": r["acc_level1"],
+                "acc_level2": r["acc_level2"],
+            }
+        )
 
 df_all = pd.DataFrame(rows)
 df_all.to_csv(os.path.join(HIER_DIR, "todas_variantes.csv"), index=False)
 
 # Resumo por variante (média dos modelos)
-df_summary = df_all.groupby("variante").agg({
-    "accuracy": ["mean", "std", "max"],
-    "f1_macro": ["mean", "std", "max"],
-    "recall_MNAR": ["mean", "std", "max"],
-    "acc_level1": "mean",
-    "acc_level2": "mean",
-}).round(4)
+df_summary = (
+    df_all.groupby("variante")
+    .agg(
+        {
+            "accuracy": ["mean", "std", "max"],
+            "f1_macro": ["mean", "std", "max"],
+            "recall_MNAR": ["mean", "std", "max"],
+            "acc_level1": "mean",
+            "acc_level2": "mean",
+        }
+    )
+    .round(4)
+)
 df_summary.to_csv(os.path.join(HIER_DIR, "resumo_variantes.csv"))
 
 print("\n📊 Accuracy média por variante:")
@@ -401,8 +408,10 @@ for var_name in VARIANTES:
     acc_max = subset["accuracy"].max()
     mnar_mean = subset["recall_MNAR"].mean()
     best_model = subset.loc[subset["accuracy"].idxmax(), "modelo"]
-    print(f"   {var_name:25s}: acc_mean={acc_mean:.3f} acc_max={acc_max:.3f} "
-          f"(by {best_model}) MNAR_recall_mean={mnar_mean:.3f}")
+    print(
+        f"   {var_name:25s}: acc_mean={acc_mean:.3f} acc_max={acc_max:.3f} "
+        f"(by {best_model}) MNAR_recall_mean={mnar_mean:.3f}"
+    )
 
 
 # ==============================================================================
@@ -433,9 +442,11 @@ for modelo_nome in model_names:
     delta_acc = v4["accuracy"] - v1["accuracy"]
     delta_mnar = v4["recall_MNAR"] - v1["recall_MNAR"]
     sym = "✅" if delta_acc > 0 else "❌" if delta_acc < 0 else "➖"
-    print(f"  {sym} {modelo_nome:20s}: V1={v1['accuracy']:.3f} V4={v4['accuracy']:.3f} "
-          f"(Δ={delta_acc:+.3f}) | MNAR: V1={v1['recall_MNAR']:.3f} V4={v4['recall_MNAR']:.3f} "
-          f"(Δ={delta_mnar:+.3f})")
+    print(
+        f"  {sym} {modelo_nome:20s}: V1={v1['accuracy']:.3f} V4={v4['accuracy']:.3f} "
+        f"(Δ={delta_acc:+.3f}) | MNAR: V1={v1['recall_MNAR']:.3f} V4={v4['recall_MNAR']:.3f} "
+        f"(Δ={delta_mnar:+.3f})"
+    )
 
 df_comparison = pd.DataFrame(comparison_rows)
 df_comparison.to_csv(os.path.join(HIER_DIR, "comparacao_por_modelo.csv"), index=False)
@@ -454,8 +465,8 @@ for modelo_nome in model_names:
     y_pred_v4 = all_results["V4_hier_llm_n2"][modelo_nome]["y_pred"]
 
     # McNemar: conta discordâncias
-    correct_v1 = (y_pred_v1 == y_test.values)
-    correct_v4 = (y_pred_v4 == y_test.values)
+    correct_v1 = y_pred_v1 == y_test.values
+    correct_v4 = y_pred_v4 == y_test.values
     b = np.sum(correct_v1 & ~correct_v4)  # V1 certo, V4 errado
     c = np.sum(~correct_v1 & correct_v4)  # V1 errado, V4 certo
 
@@ -463,31 +474,36 @@ for modelo_nome in model_names:
     if b + c > 0:
         mcnemar_stat = (abs(b - c) - 1) ** 2 / (b + c)
         from scipy.stats import chi2
+
         mcnemar_p = 1 - chi2.cdf(mcnemar_stat, df=1)
     else:
         mcnemar_stat = 0.0
         mcnemar_p = 1.0
 
     sig_star = "***" if mcnemar_p < 0.001 else "**" if mcnemar_p < 0.01 else "*" if mcnemar_p < 0.05 else ""
-    print(f"  {modelo_nome:20s}: V1→V4  b={b:3d}  c={c:3d}  McNemar χ²={mcnemar_stat:.2f}  p={mcnemar_p:.4f} {sig_star}")
+    print(
+        f"  {modelo_nome:20s}: V1→V4  b={b:3d}  c={c:3d}  McNemar χ²={mcnemar_stat:.2f}  p={mcnemar_p:.4f} {sig_star}"
+    )
 
-    sig_rows.append({
-        "modelo": modelo_nome,
-        "v1_correct_v4_wrong": int(b),
-        "v1_wrong_v4_correct": int(c),
-        "mcnemar_chi2": mcnemar_stat,
-        "mcnemar_p": mcnemar_p,
-        "significant_005": mcnemar_p < 0.05,
-    })
+    sig_rows.append(
+        {
+            "modelo": modelo_nome,
+            "v1_correct_v4_wrong": int(b),
+            "v1_wrong_v4_correct": int(c),
+            "mcnemar_chi2": mcnemar_stat,
+            "mcnemar_p": mcnemar_p,
+            "significant_005": mcnemar_p < 0.05,
+        }
+    )
 
 df_sig = pd.DataFrame(sig_rows)
 df_sig.to_csv(os.path.join(HIER_DIR, "significancia_mcnemar.csv"), index=False)
 
 # Wilcoxon: comparação pareada de accuracy entre variantes (sobre os 7 modelos)
-print(f"\n  Wilcoxon signed-rank (V1 vs V4, sobre 7 modelos):")
+print("\n  Wilcoxon signed-rank (V1 vs V4, sobre 7 modelos):")
 accs_v1 = [all_results["V1_direto_stat"][m]["accuracy"] for m in model_names]
 accs_v4 = [all_results["V4_hier_llm_n2"][m]["accuracy"] for m in model_names]
-diffs = [a4 - a1 for a1, a4 in zip(accs_v1, accs_v4)]
+diffs = [a4 - a1 for a1, a4 in zip(accs_v1, accs_v4, strict=False)]
 if any(d != 0 for d in diffs):
     try:
         stat_w, p_w = wilcoxon(accs_v1, accs_v4)
@@ -496,27 +512,27 @@ if any(d != 0 for d in diffs):
         print(f"    Erro: {e}")
         p_w = 1.0
 else:
-    print(f"    Sem diferença entre V1 e V4")
+    print("    Sem diferença entre V1 e V4")
     p_w = 1.0
 
 # Wilcoxon V2 vs V4 (hierárquica pura vs hierárquica+LLM)
 accs_v2 = [all_results["V2_hier_stat"][m]["accuracy"] for m in model_names]
-diffs_v2v4 = [a4 - a2 for a2, a4 in zip(accs_v2, accs_v4)]
+diffs_v2v4 = [a4 - a2 for a2, a4 in zip(accs_v2, accs_v4, strict=False)]
 if any(d != 0 for d in diffs_v2v4):
     try:
         stat_w2, p_w2 = wilcoxon(accs_v2, accs_v4)
-        print(f"\n  Wilcoxon V2 vs V4 (efeito do LLM no N2):")
+        print("\n  Wilcoxon V2 vs V4 (efeito do LLM no N2):")
         print(f"    statistic={stat_w2:.4f}, p={p_w2:.4f}")
     except Exception as e:
         print(f"    Erro: {e}")
 
 # Wilcoxon V4 vs V5 (LLM só N2 vs LLM em ambos)
 accs_v5 = [all_results["V5_hier_llm_ambos"][m]["accuracy"] for m in model_names]
-diffs_v4v5 = [a4 - a5 for a4, a5 in zip(accs_v4, accs_v5)]
+diffs_v4v5 = [a4 - a5 for a4, a5 in zip(accs_v4, accs_v5, strict=False)]
 if any(d != 0 for d in diffs_v4v5):
     try:
         stat_w3, p_w3 = wilcoxon(accs_v4, accs_v5)
-        print(f"\n  Wilcoxon V4 vs V5 (LLM só N2 vs ambos):")
+        print("\n  Wilcoxon V4 vs V5 (LLM só N2 vs ambos):")
         print(f"    statistic={stat_w3:.4f}, p={p_w3:.4f}")
     except Exception as e:
         print(f"    Erro: {e}")
@@ -633,13 +649,21 @@ bars = ax.bar(x, best_accs, color=bar_colors)
 ax.set_ylabel("Acurácia (melhor modelo)")
 ax.set_title(f"6 Variantes — {DATA_TYPE.upper()} (LLM: {LLM_MODEL})")
 ax.set_xticks(x)
-ax.set_xticklabels([f"{v}\n({m})" for v, m in zip(var_names, best_models)],
-                    rotation=45, ha="right", fontsize=7)
+ax.set_xticklabels(
+    [f"{v}\n({m})" for v, m in zip(var_names, best_models, strict=False)], rotation=45, ha="right", fontsize=7
+)
 ax.set_ylim([0, 1.05])
 ax.axhline(y=0.333, color="gray", linestyle="--", alpha=0.3, label="Acaso (33.3%)")
-for bar, acc in zip(bars, best_accs):
-    ax.text(bar.get_x() + bar.get_width()/2., acc + 0.01,
-            f'{acc:.1%}', ha='center', va='bottom', fontsize=9, fontweight='bold')
+for bar, acc in zip(bars, best_accs, strict=False):
+    ax.text(
+        bar.get_x() + bar.get_width() / 2.0,
+        acc + 0.01,
+        f"{acc:.1%}",
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        fontweight="bold",
+    )
 ax.legend()
 plt.tight_layout()
 plt.savefig(os.path.join(HIER_DIR, "variantes_accuracy.png"), dpi=300, bbox_inches="tight")
@@ -652,16 +676,25 @@ x = np.arange(len(model_names))
 
 # Accuracy
 ax1 = axes[0]
-for i, (var, color, label) in enumerate([
-    ("V1_direto_stat", "#3498db", "V1: Direto"),
-    ("V2_hier_stat", "#2ecc71", "V2: Hier puro"),
-    ("V4_hier_llm_n2", "#e74c3c", "V4: Hier+LLM N2"),
-]):
+for i, (var, color, label) in enumerate(
+    [
+        ("V1_direto_stat", "#3498db", "V1: Direto"),
+        ("V2_hier_stat", "#2ecc71", "V2: Hier puro"),
+        ("V4_hier_llm_n2", "#e74c3c", "V4: Hier+LLM N2"),
+    ]
+):
     accs = [all_results[var][m]["accuracy"] for m in model_names]
-    bars = ax1.bar(x + i*width, accs, width, label=label, color=color)
-    for bar, acc in zip(bars, accs):
-        ax1.text(bar.get_x() + bar.get_width()/2., acc + 0.005,
-                f'{acc:.1%}', ha='center', va='bottom', fontsize=6, rotation=90)
+    bars = ax1.bar(x + i * width, accs, width, label=label, color=color)
+    for bar, acc in zip(bars, accs, strict=False):
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            acc + 0.005,
+            f"{acc:.1%}",
+            ha="center",
+            va="bottom",
+            fontsize=6,
+            rotation=90,
+        )
 ax1.set_ylabel("Acurácia")
 ax1.set_title("Accuracy: V1 vs V2 vs V4")
 ax1.set_xticks(x + width)
@@ -672,16 +705,25 @@ ax1.axhline(y=0.333, color="gray", linestyle="--", alpha=0.3)
 
 # Recall MNAR
 ax2 = axes[1]
-for i, (var, color, label) in enumerate([
-    ("V1_direto_stat", "#3498db", "V1: Direto"),
-    ("V2_hier_stat", "#2ecc71", "V2: Hier puro"),
-    ("V4_hier_llm_n2", "#e74c3c", "V4: Hier+LLM N2"),
-]):
+for i, (var, color, label) in enumerate(
+    [
+        ("V1_direto_stat", "#3498db", "V1: Direto"),
+        ("V2_hier_stat", "#2ecc71", "V2: Hier puro"),
+        ("V4_hier_llm_n2", "#e74c3c", "V4: Hier+LLM N2"),
+    ]
+):
     recalls = [all_results[var][m]["recall_MNAR"] for m in model_names]
-    bars = ax2.bar(x + i*width, recalls, width, label=label, color=color)
-    for bar, rec in zip(bars, recalls):
-        ax2.text(bar.get_x() + bar.get_width()/2., rec + 0.005,
-                f'{rec:.1%}', ha='center', va='bottom', fontsize=6, rotation=90)
+    bars = ax2.bar(x + i * width, recalls, width, label=label, color=color)
+    for bar, rec in zip(bars, recalls, strict=False):
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            rec + 0.005,
+            f"{rec:.1%}",
+            ha="center",
+            va="bottom",
+            fontsize=6,
+            rotation=90,
+        )
 ax2.set_ylabel("Recall MNAR")
 ax2.set_title("Recall MNAR: V1 vs V2 vs V4")
 ax2.set_xticks(x + width)
@@ -695,19 +737,22 @@ plt.savefig(os.path.join(HIER_DIR, "v1_vs_v2_vs_v4.png"), dpi=300, bbox_inches="
 plt.close()
 
 # 3. Confusion matrix do melhor V4
-best_v4_model = max(all_results["V4_hier_llm_n2"].items(),
-                     key=lambda x: x[1]["accuracy"])[0]
+best_v4_model = max(all_results["V4_hier_llm_n2"].items(), key=lambda x: x[1]["accuracy"])[0]
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 labels = ["MCAR", "MAR", "MNAR"]
 
-for ax, (title, var) in zip(axes, [
-    ("V1: Direto", "V1_direto_stat"),
-    ("V2: Hier puro", "V2_hier_stat"),
-    ("V4: Hier+LLM N2", "V4_hier_llm_n2"),
-]):
+for ax, (title, var) in zip(
+    axes,
+    [
+        ("V1: Direto", "V1_direto_stat"),
+        ("V2: Hier puro", "V2_hier_stat"),
+        ("V4: Hier+LLM N2", "V4_hier_llm_n2"),
+    ],
+    strict=False,
+):
     res = all_results[var][best_v4_model]
     cm = res["confusion"]
-    im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
     ax.set_title(f"{title} — {best_v4_model}\nAcc={res['accuracy']:.1%}")
     ax.set_xticks(range(3))
     ax.set_xticklabels(labels)
@@ -715,12 +760,12 @@ for ax, (title, var) in zip(axes, [
     ax.set_yticklabels(labels)
     ax.set_xlabel("Predito")
     ax.set_ylabel("Real")
-    thresh = cm.max() / 2.
+    thresh = cm.max() / 2.0
     for i in range(3):
         for j in range(3):
-            ax.text(j, i, format(cm[i, j], 'd'),
-                    ha="center", va="center",
-                    color="white" if cm[i, j] > thresh else "black")
+            ax.text(
+                j, i, format(cm[i, j], "d"), ha="center", va="center", color="white" if cm[i, j] > thresh else "black"
+            )
 
 plt.suptitle(f"Confusion Matrices — {DATA_TYPE.upper()} ({best_v4_model})", fontsize=12)
 plt.tight_layout()
@@ -743,9 +788,15 @@ ax.set_title(f"Accuracy Heatmap — {DATA_TYPE.upper()}")
 plt.colorbar(im, ax=ax, label="Accuracy")
 for i in range(len(var_names)):
     for j in range(len(model_names)):
-        ax.text(j, i, f"{heat_data[i, j]:.1%}",
-                ha="center", va="center", fontsize=7,
-                color="white" if heat_data[i, j] < 0.5 else "black")
+        ax.text(
+            j,
+            i,
+            f"{heat_data[i, j]:.1%}",
+            ha="center",
+            va="center",
+            fontsize=7,
+            color="white" if heat_data[i, j] < 0.5 else "black",
+        )
 plt.tight_layout()
 plt.savefig(os.path.join(HIER_DIR, "heatmap_variantes.png"), dpi=300, bbox_inches="tight")
 plt.close()
@@ -777,8 +828,7 @@ for var_name in VARIANTES:
         "best_accuracy": float(best_m[1]["accuracy"]),
         "best_f1_macro": float(best_m[1]["f1_macro"]),
         "best_recall_MNAR": float(best_m[1]["recall_MNAR"]),
-        "mean_accuracy": float(np.mean([all_results[var_name][m]["accuracy"]
-                                         for m in model_names])),
+        "mean_accuracy": float(np.mean([all_results[var_name][m]["accuracy"] for m in model_names])),
     }
 
 with open(os.path.join(HIER_DIR, "training_summary.json"), "w") as f:
@@ -789,18 +839,18 @@ with open(os.path.join(HIER_DIR, "training_summary.json"), "w") as f:
 # RESUMO FINAL
 # ==============================================================================
 print(f"\n{'='*70}")
-print(f"✅ CLASSIFICAÇÃO HIERÁRQUICA — 6 VARIANTES CONCLUÍDA!")
+print("✅ CLASSIFICAÇÃO HIERÁRQUICA — 6 VARIANTES CONCLUÍDA!")
 print(f"{'='*70}")
 
-print(f"\n🏆 Ranking por accuracy máxima:")
+print("\n🏆 Ranking por accuracy máxima:")
 ranking = sorted(
-    [(v, max(all_results[v].items(), key=lambda x: x[1]["accuracy"]))
-     for v in VARIANTES],
-    key=lambda x: x[1][1]["accuracy"], reverse=True)
+    [(v, max(all_results[v].items(), key=lambda x: x[1]["accuracy"])) for v in VARIANTES],
+    key=lambda x: x[1][1]["accuracy"],
+    reverse=True,
+)
 
 for i, (var, (modelo, metrics)) in enumerate(ranking, 1):
-    print(f"   {i}. {var:25s} {metrics['accuracy']:.3f} ({modelo}) "
-          f"MNAR_recall={metrics['recall_MNAR']:.3f}")
+    print(f"   {i}. {var:25s} {metrics['accuracy']:.3f} ({modelo}) " f"MNAR_recall={metrics['recall_MNAR']:.3f}")
 
 # Verifica tese: V4 > V2 > V1 e V4 > V5?
 v1_best = max(r["accuracy"] for r in all_results["V1_direto_stat"].values())
@@ -808,17 +858,31 @@ v2_best = max(r["accuracy"] for r in all_results["V2_hier_stat"].values())
 v4_best = max(r["accuracy"] for r in all_results["V4_hier_llm_n2"].values())
 v5_best = max(r["accuracy"] for r in all_results["V5_hier_llm_ambos"].values())
 
-print(f"\n📊 Verificação da tese:")
-print(f"   V4 > V1 (hier+LLM > direto)?      {'✅ SIM' if v4_best > v1_best else '❌ NÃO'} ({v4_best:.3f} vs {v1_best:.3f})")
-print(f"   V4 > V2 (LLM ajuda no N2)?         {'✅ SIM' if v4_best > v2_best else '❌ NÃO'} ({v4_best:.3f} vs {v2_best:.3f})")
-print(f"   V4 > V5 (LLM só N2 > em ambos)?    {'✅ SIM' if v4_best > v5_best else '❌ NÃO'} ({v4_best:.3f} vs {v5_best:.3f})")
-print(f"   V2 > V1 (hierárquica já melhora)?   {'✅ SIM' if v2_best > v1_best else '❌ NÃO'} ({v2_best:.3f} vs {v1_best:.3f})")
+print("\n📊 Verificação da tese:")
+print(
+    f"   V4 > V1 (hier+LLM > direto)?      {'✅ SIM' if v4_best > v1_best else '❌ NÃO'} ({v4_best:.3f} vs {v1_best:.3f})"
+)
+print(
+    f"   V4 > V2 (LLM ajuda no N2)?         {'✅ SIM' if v4_best > v2_best else '❌ NÃO'} ({v4_best:.3f} vs {v2_best:.3f})"
+)
+print(
+    f"   V4 > V5 (LLM só N2 > em ambos)?    {'✅ SIM' if v4_best > v5_best else '❌ NÃO'} ({v4_best:.3f} vs {v5_best:.3f})"
+)
+print(
+    f"   V2 > V1 (hierárquica já melhora)?   {'✅ SIM' if v2_best > v1_best else '❌ NÃO'} ({v2_best:.3f} vs {v1_best:.3f})"
+)
 
 print(f"\n💾 Salvos em: {HIER_DIR}")
-for f_name in ["todas_variantes.csv", "resumo_variantes.csv",
-               "comparacao_por_modelo.csv", "significancia_mcnemar.csv",
-               "variantes_accuracy.png", "v1_vs_v2_vs_v4.png",
-               "confusion_v1_v2_v4.png", "heatmap_variantes.png",
-               "training_summary.json"]:
+for f_name in [
+    "todas_variantes.csv",
+    "resumo_variantes.csv",
+    "comparacao_por_modelo.csv",
+    "significancia_mcnemar.csv",
+    "variantes_accuracy.png",
+    "v1_vs_v2_vs_v4.png",
+    "confusion_v1_v2_v4.png",
+    "heatmap_variantes.png",
+    "training_summary.json",
+]:
     print(f"   - {f_name}")
 print(f"{'='*70}")

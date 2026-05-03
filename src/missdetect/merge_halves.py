@@ -6,6 +6,7 @@ este script concatena os CSVs e re-imputa colunas LLM com mediana global.
 Uso:
     uv run python merge_halves.py
 """
+
 import os
 import sys
 
@@ -30,18 +31,15 @@ def main() -> None:
     os.makedirs(OUT, exist_ok=True)
 
     X = pd.concat(
-        [pd.read_csv(os.path.join(P1, "X_features.csv")),
-         pd.read_csv(os.path.join(P2, "X_features.csv"))],
+        [pd.read_csv(os.path.join(P1, "X_features.csv")), pd.read_csv(os.path.join(P2, "X_features.csv"))],
         ignore_index=True,
     )
     y = pd.concat(
-        [pd.read_csv(os.path.join(P1, "y_labels.csv")),
-         pd.read_csv(os.path.join(P2, "y_labels.csv"))],
+        [pd.read_csv(os.path.join(P1, "y_labels.csv")), pd.read_csv(os.path.join(P2, "y_labels.csv"))],
         ignore_index=True,
     )
     g = pd.concat(
-        [pd.read_csv(os.path.join(P1, "groups.csv")),
-         pd.read_csv(os.path.join(P2, "groups.csv"))],
+        [pd.read_csv(os.path.join(P1, "groups.csv")), pd.read_csv(os.path.join(P2, "groups.csv"))],
         ignore_index=True,
     )
 
@@ -55,7 +53,7 @@ def main() -> None:
     y.to_csv(os.path.join(OUT, "y_labels.csv"), index=False)
     g.to_csv(os.path.join(OUT, "groups.csv"), index=False)
 
-    print(f"✅ Merge concluído")
+    print("✅ Merge concluído")
     print(f"   Linhas: {len(X)}")
     print(f"   Grupos únicos: {g['group'].nunique()}")
     print(f"   Distribuição de classes:\n{y['label'].value_counts().sort_index()}")

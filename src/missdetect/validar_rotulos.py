@@ -12,6 +12,7 @@ Uso:
     cd "IC - ITA 2/Scripts/v2_improved"
     uv run python validar_rotulos.py --data real [--experiment <name>]
 """
+
 import os
 import sys
 import warnings
@@ -31,8 +32,9 @@ _, DATA_TYPE, _, EXPERIMENT = parse_common_args()
 VALIDATION_DIR = os.path.join(get_comparison_dir(DATA_TYPE, EXPERIMENT), "validacao_rotulos")
 os.makedirs(VALIDATION_DIR, exist_ok=True)
 
-PROCESSADO_DIR = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__)))), "Dataset", "real_data", "processado")
+PROCESSADO_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Dataset", "real_data", "processado"
+)
 
 print("=" * 60)
 print("VALIDACAO DE ROTULOS — 3 TESTES ESTATISTICOS")
@@ -49,6 +51,7 @@ def test_little_mcar(df: pd.DataFrame) -> float:
     """Aplica Little's MCAR test. Retorna p-valor."""
     try:
         from missmecha import MCARTest
+
         p_value = MCARTest.little_mcar_test(df)
         return float(p_value)
     except Exception as e:
@@ -121,8 +124,7 @@ def test_mnar_ks(df: pd.DataFrame) -> dict:
 # ======================================================
 # DIAGNÓSTICO
 # ======================================================
-def diagnose(label: str, little_p: float, max_corr: float, mar_sig: bool,
-             ks_p: float) -> tuple[str, str]:
+def diagnose(label: str, little_p: float, max_corr: float, mar_sig: bool, ks_p: float) -> tuple[str, str]:
     """Retorna (diagnóstico, rótulo_recomendado)."""
     mcar_consistent = little_p > 0.05 if not np.isnan(little_p) else None
     ks_significant = ks_p < 0.05 if not np.isnan(ks_p) else False
@@ -191,7 +193,9 @@ for mechanism in ["MCAR", "MAR", "MNAR"]:
                 best_col = col
 
         mar_sig = mar_p_min < 0.05 and abs(max_corr) > 0.1
-        print(f"    [MAR corr] max|corr|={abs(max_corr):.4f} ({best_col}), p={mar_p_min:.4f} -> {'evidencia MAR' if mar_sig else 'sem evidencia'}")
+        print(
+            f"    [MAR corr] max|corr|={abs(max_corr):.4f} ({best_col}), p={mar_p_min:.4f} -> {'evidencia MAR' if mar_sig else 'sem evidencia'}"
+        )
 
         # Teste 3: KS test MNAR
         ks_results = test_mnar_ks(df)
@@ -207,20 +211,22 @@ for mechanism in ["MCAR", "MAR", "MNAR"]:
         if recommended != mechanism:
             print(f"    *** ROTULO RECOMENDADO: {recommended} (atual: {mechanism}) ***")
 
-        all_results.append({
-            "arquivo": fname,
-            "rotulo_atual": mechanism,
-            "n_rows": len(df),
-            "missing_rate": round(missing_rate, 4),
-            "little_p": round(little_p, 6) if not np.isnan(little_p) else np.nan,
-            "max_corr_Xi": round(max_corr, 4),
-            "corr_col": best_col,
-            "mar_p_min": round(mar_p_min, 6),
-            "ks_stat": round(ks_stat, 4) if not np.isnan(ks_stat) else np.nan,
-            "ks_p": round(ks_p, 6) if not np.isnan(ks_p) else np.nan,
-            "diagnostico": diagnosis,
-            "rotulo_recomendado": recommended,
-        })
+        all_results.append(
+            {
+                "arquivo": fname,
+                "rotulo_atual": mechanism,
+                "n_rows": len(df),
+                "missing_rate": round(missing_rate, 4),
+                "little_p": round(little_p, 6) if not np.isnan(little_p) else np.nan,
+                "max_corr_Xi": round(max_corr, 4),
+                "corr_col": best_col,
+                "mar_p_min": round(mar_p_min, 6),
+                "ks_stat": round(ks_stat, 4) if not np.isnan(ks_stat) else np.nan,
+                "ks_p": round(ks_p, 6) if not np.isnan(ks_p) else np.nan,
+                "diagnostico": diagnosis,
+                "rotulo_recomendado": recommended,
+            }
+        )
 
 # ======================================================
 # SALVA RESULTADOS
@@ -246,13 +252,15 @@ with open(report_path, "w", encoding="utf-8") as f:
         f.write(f"  Rotulo recomendado: {row['rotulo_recomendado']}\n\n")
 
 print(f"\n{'='*60}")
-print(f"VALIDACAO CONCLUIDA!")
+print("VALIDACAO CONCLUIDA!")
 print(f"{'='*60}")
 print(f"Resultados: {csv_path}")
 print(f"Relatorio: {report_path}")
 
 # Resumo
-n_consistent = sum(1 for r in all_results if "CONSISTENTE" in r["diagnostico"] and "INCONSISTENTE" not in r["diagnostico"])
+n_consistent = sum(
+    1 for r in all_results if "CONSISTENTE" in r["diagnostico"] and "INCONSISTENTE" not in r["diagnostico"]
+)
 n_inconsistent = sum(1 for r in all_results if "INCONSISTENTE" in r["diagnostico"])
 n_total = len(all_results)
 print(f"\nResumo: {n_consistent}/{n_total} consistentes, {n_inconsistent}/{n_total} inconsistentes")

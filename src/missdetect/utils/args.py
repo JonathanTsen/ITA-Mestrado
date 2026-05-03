@@ -1,6 +1,7 @@
 """
 Parsing centralizado de argumentos CLI do pipeline v2.
 """
+
 import sys
 
 # Abordagens LLM disponíveis (STEP04)

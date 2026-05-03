@@ -32,6 +32,7 @@ Uso:
   uv run python forensic_ablation.py --experiment ctx_aware \\
       --llm-model gemini-3-flash-preview
 """
+
 import argparse
 import json
 import os
@@ -59,7 +60,7 @@ from sklearn.svm import SVC
 from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.paths import get_output_dir  # noqa: E402
+from utils.paths import get_output_dir
 
 warnings.filterwarnings("ignore")
 
@@ -75,14 +76,12 @@ DOMAIN_PRIOR_COL = "llm_ctx_domain_prior"
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Forensic Ablation (Steps 2 & 4)")
-    p.add_argument("--experiment", default="ctx_aware",
-                   help="Nome do experimento com os CSVs já extraídos")
-    p.add_argument("--llm-model", default="gemini-3-flash-preview",
-                   help="Modelo LLM usado na extração (subdiretório ml_com_llm/)")
-    p.add_argument("--data", default="real", choices=["real", "sintetico"],
-                   help="Tipo de dado (default: real)")
-    p.add_argument("--n-bootstrap", type=int, default=N_BOOTSTRAP,
-                   help="Iterações de bootstrap para CI 95%%")
+    p.add_argument("--experiment", default="ctx_aware", help="Nome do experimento com os CSVs já extraídos")
+    p.add_argument(
+        "--llm-model", default="gemini-3-flash-preview", help="Modelo LLM usado na extração (subdiretório ml_com_llm/)"
+    )
+    p.add_argument("--data", default="real", choices=["real", "sintetico"], help="Tipo de dado (default: real)")
+    p.add_argument("--n-bootstrap", type=int, default=N_BOOTSTRAP, help="Iterações de bootstrap para CI 95%%")
     return p.parse_args()
 
 
@@ -107,10 +106,13 @@ def get_models(has_llm_features: bool, n_features: int) -> dict:
 
     return {
         "RandomForest": RandomForestClassifier(
-            n_estimators=400, random_state=SEED, n_jobs=-1,
+            n_estimators=400,
+            random_state=SEED,
+            n_jobs=-1,
         ),
         "GradientBoosting": GradientBoostingClassifier(
-            n_estimators=300, random_state=SEED,
+            n_estimators=300,
+            random_state=SEED,
         ),
         "LogisticRegression": _pipe(
             LogisticRegression(max_iter=3000, random_state=SEED),
@@ -121,8 +123,7 @@ def get_models(has_llm_features: bool, n_features: int) -> dict:
         ),
         "KNN": _pipe(KNeighborsClassifier(n_neighbors=5)),
         "MLP": _pipe(
-            MLPClassifier(hidden_layer_sizes=(128, 64, 32),
-                          max_iter=2000, random_state=SEED),
+            MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=2000, random_state=SEED),
         ),
         "NaiveBayes": _pipe(GaussianNB(), enable_pca=False),
     }
@@ -199,14 +200,16 @@ def run_cv(
                 continue
 
             for i, global_idx in enumerate(X_te.index):
-                predictions.append({
-                    "modelo": name,
-                    "fold": fold_idx,
-                    "test_group": groups_te.iloc[i],
-                    "sample_idx": int(global_idx),
-                    "y_true": int(y_te.iloc[i]),
-                    "y_pred": int(y_pred[i]),
-                })
+                predictions.append(
+                    {
+                        "modelo": name,
+                        "fold": fold_idx,
+                        "test_group": groups_te.iloc[i],
+                        "sample_idx": int(global_idx),
+                        "y_true": int(y_te.iloc[i]),
+                        "y_pred": int(y_pred[i]),
+                    }
+                )
 
     return {
         "predictions": predictions,
@@ -239,20 +242,20 @@ def summarize_predictions(preds: list[dict], n_bootstrap: int) -> pd.DataFrame:
         for _ in range(n_bootstrap):
             idx = rng.choice(n, n, replace=True)
             boot_accs.append(accuracy_score(y_true[idx], y_pred[idx]))
-            boot_f1s.append(
-                f1_score(y_true[idx], y_pred[idx], average="macro", zero_division=0)
-            )
+            boot_f1s.append(f1_score(y_true[idx], y_pred[idx], average="macro", zero_division=0))
 
-        rows.append({
-            "modelo": name,
-            "n_preds": int(n),
-            "accuracy": float(acc),
-            "accuracy_ci_lo": float(np.percentile(boot_accs, 2.5)),
-            "accuracy_ci_hi": float(np.percentile(boot_accs, 97.5)),
-            "f1_macro": float(f1m),
-            "f1_macro_ci_lo": float(np.percentile(boot_f1s, 2.5)),
-            "f1_macro_ci_hi": float(np.percentile(boot_f1s, 97.5)),
-        })
+        rows.append(
+            {
+                "modelo": name,
+                "n_preds": int(n),
+                "accuracy": float(acc),
+                "accuracy_ci_lo": float(np.percentile(boot_accs, 2.5)),
+                "accuracy_ci_hi": float(np.percentile(boot_accs, 97.5)),
+                "f1_macro": float(f1m),
+                "f1_macro_ci_lo": float(np.percentile(boot_f1s, 2.5)),
+                "f1_macro_ci_hi": float(np.percentile(boot_f1s, 97.5)),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -269,13 +272,15 @@ def per_dataset_accuracy(preds: list[dict]) -> pd.DataFrame:
         # Classe verdadeira do grupo é constante por dataset (todos bootstraps
         # do mesmo dataset têm o mesmo rótulo)
         true_class_id = int(y_true[0])
-        rows.append({
-            "modelo": name,
-            "test_group": group,
-            "true_class": CLASS_NAMES[true_class_id],
-            "n_samples": int(len(y_true)),
-            "accuracy": float(accuracy_score(y_true, y_pred)),
-        })
+        rows.append(
+            {
+                "modelo": name,
+                "test_group": group,
+                "true_class": CLASS_NAMES[true_class_id],
+                "n_samples": int(len(y_true)),
+                "accuracy": float(accuracy_score(y_true, y_pred)),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -290,7 +295,7 @@ def plot_heatmap(df_summary: pd.DataFrame, out_path: str, title: str) -> None:
     models = sorted(df_summary["modelo"].unique())
 
     fig, axes = plt.subplots(1, len(cvs), figsize=(7 * len(cvs), 5), squeeze=False)
-    for ax, cv in zip(axes[0], cvs):
+    for ax, cv in zip(axes[0], cvs, strict=False):
         sub = df_summary[df_summary["cv"] == cv]
         mat = np.zeros((len(scenarios), len(models)))
         for i, s in enumerate(scenarios):
@@ -309,9 +314,9 @@ def plot_heatmap(df_summary: pd.DataFrame, out_path: str, title: str) -> None:
             for j in range(len(models)):
                 v = mat[i, j]
                 if not np.isnan(v):
-                    ax.text(j, i, f"{v:.1%}",
-                            ha="center", va="center", fontsize=7,
-                            color="white" if v < 0.55 else "black")
+                    ax.text(
+                        j, i, f"{v:.1%}", ha="center", va="center", fontsize=7, color="white" if v < 0.55 else "black"
+                    )
     plt.tight_layout()
     plt.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close()
@@ -331,9 +336,15 @@ def plot_lodo_per_dataset(df_lodo: pd.DataFrame, out_path: str, best_model: str)
     fig, ax = plt.subplots(figsize=(max(12, len(datasets) * 0.55), 6))
     for i, s in enumerate(scenarios):
         rows = sub[sub["cenario"] == s].set_index("test_group").reindex(datasets)
-        ax.bar(x + i * width, rows["accuracy"].fillna(0).to_numpy(),
-               width, label=s, color=colors.get(s, None), edgecolor="black",
-               linewidth=0.3)
+        ax.bar(
+            x + i * width,
+            rows["accuracy"].fillna(0).to_numpy(),
+            width,
+            label=s,
+            color=colors.get(s),
+            edgecolor="black",
+            linewidth=0.3,
+        )
 
     ax.axhline(y=0.333, color="gray", linestyle="--", alpha=0.5, label="Acaso (33.3%)")
     ax.set_xticks(x + width * (len(scenarios) - 1) / 2)
@@ -431,15 +442,13 @@ def main() -> None:
         for cv_name, cv_splitter in cv_strategies.items():
             for s_name, s_cfg in scenarios.items():
                 X_s = s_cfg["X"]
-                has_llm = any(
-                    c.startswith("llm_") or c.startswith("emb_")
-                    for c in X_s.columns
-                )
+                has_llm = any(c.startswith("llm_") or c.startswith("emb_") for c in X_s.columns)
                 result = run_cv(X_s, y, groups, cv_splitter, has_llm)
 
                 # Agregados por modelo
                 summary = summarize_predictions(
-                    result["predictions"], n_bootstrap=args.n_bootstrap,
+                    result["predictions"],
+                    n_bootstrap=args.n_bootstrap,
                 )
                 for _, row in summary.iterrows():
                     r = row.to_dict()
@@ -467,7 +476,9 @@ def main() -> None:
     # ------------------------------------------------------------------
     delta_rows = []
     pivot = df_summary.pivot_table(
-        index=["cv", "modelo"], columns="cenario", values="accuracy",
+        index=["cv", "modelo"],
+        columns="cenario",
+        values="accuracy",
     )
 
     for (cv, modelo), row in pivot.iterrows():
@@ -475,16 +486,16 @@ def main() -> None:
         if "C_full" in row and "C_no_prior" in row:
             d["delta_full_minus_no_prior"] = float(row["C_full"] - row["C_no_prior"])
         if "C_full" in row and "C_only_prior" in row:
-            d["delta_full_minus_only_prior"] = float(
-                row["C_full"] - row["C_only_prior"]
-            )
+            d["delta_full_minus_only_prior"] = float(row["C_full"] - row["C_only_prior"])
         delta_rows.append(d)
 
     df_deltas_scn = pd.DataFrame(delta_rows)
 
     # Delta entre CVs (GroupKFold - LODO) para cada (modelo, cenario)
     cv_pivot = df_summary.pivot_table(
-        index=["cenario", "modelo"], columns="cv", values="accuracy",
+        index=["cenario", "modelo"],
+        columns="cv",
+        values="accuracy",
     )
     cv_delta_rows = []
     for (cenario, modelo), row in cv_pivot.iterrows():
@@ -499,18 +510,22 @@ def main() -> None:
     # ------------------------------------------------------------------
     # SALVAR
     # ------------------------------------------------------------------
-    df_summary.sort_values(["cv", "cenario", "accuracy"], ascending=[True, True, False])\
-        .to_csv(os.path.join(out_dir, "forensic_summary.csv"), index=False)
+    df_summary.sort_values(["cv", "cenario", "accuracy"], ascending=[True, True, False]).to_csv(
+        os.path.join(out_dir, "forensic_summary.csv"), index=False
+    )
 
     if not df_lodo.empty:
-        df_lodo.sort_values(["cenario", "modelo", "test_group"])\
-            .to_csv(os.path.join(out_dir, "lodo_per_dataset.csv"), index=False)
+        df_lodo.sort_values(["cenario", "modelo", "test_group"]).to_csv(
+            os.path.join(out_dir, "lodo_per_dataset.csv"), index=False
+        )
 
     df_deltas_scn.to_csv(
-        os.path.join(out_dir, "forensic_deltas_cenarios.csv"), index=False,
+        os.path.join(out_dir, "forensic_deltas_cenarios.csv"),
+        index=False,
     )
     df_deltas_cv.to_csv(
-        os.path.join(out_dir, "forensic_deltas_cv.csv"), index=False,
+        os.path.join(out_dir, "forensic_deltas_cv.csv"),
+        index=False,
     )
 
     # ------------------------------------------------------------------
@@ -524,15 +539,11 @@ def main() -> None:
 
     if not df_lodo.empty:
         # Melhor modelo = maior accuracy média sobre LODO no cenário C_full
-        c_full_lodo = df_summary[
-            (df_summary["cenario"] == "C_full") & (df_summary["cv"] == "LODO")
-        ]
+        c_full_lodo = df_summary[(df_summary["cenario"] == "C_full") & (df_summary["cv"] == "LODO")]
         if not c_full_lodo.empty:
-            best_model = c_full_lodo.sort_values("accuracy", ascending=False)\
-                .iloc[0]["modelo"]
+            best_model = c_full_lodo.sort_values("accuracy", ascending=False).iloc[0]["modelo"]
         else:
-            best_model = df_summary.sort_values("accuracy", ascending=False)\
-                .iloc[0]["modelo"]
+            best_model = df_summary.sort_values("accuracy", ascending=False).iloc[0]["modelo"]
 
         plot_lodo_per_dataset(
             df_lodo,
@@ -551,9 +562,7 @@ def main() -> None:
         "n_samples": int(len(X_all)),
         "n_features_full": int(X_all.shape[1]),
         "n_groups": int(n_groups_total),
-        "scenarios": {s: {"n_features": int(cfg["X"].shape[1]),
-                           "desc": cfg["desc"]}
-                      for s, cfg in scenarios.items()},
+        "scenarios": {s: {"n_features": int(cfg["X"].shape[1]), "desc": cfg["desc"]} for s, cfg in scenarios.items()},
         "cv_strategies": list(cv_strategies.keys()),
         "n_bootstrap": int(args.n_bootstrap),
         "seed": SEED,
@@ -573,16 +582,16 @@ def main() -> None:
     for cv_name in cv_strategies:
         print(f"\n? {cv_name}")
         for s_name in scenarios:
-            sub = df_summary[
-                (df_summary["cv"] == cv_name) & (df_summary["cenario"] == s_name)
-            ]
+            sub = df_summary[(df_summary["cv"] == cv_name) & (df_summary["cenario"] == s_name)]
             if sub.empty:
                 continue
             mean_acc = sub["accuracy"].mean()
             max_acc = sub["accuracy"].max()
             best = sub.loc[sub["accuracy"].idxmax(), "modelo"]
-            print(f"  {s_name:15s} (n_feats={sub['n_features'].iloc[0]:3d}): "
-                  f"mean={mean_acc:.3f}  max={max_acc:.3f} ({best})")
+            print(
+                f"  {s_name:15s} (n_feats={sub['n_features'].iloc[0]:3d}): "
+                f"mean={mean_acc:.3f}  max={max_acc:.3f} ({best})"
+            )
 
     print(f"\n{'=' * 70}")
     print("?? HIPÓTESES DO FORENSIC DOC — confronto com números observados")
@@ -600,18 +609,26 @@ def main() -> None:
 
     if gk_full is not None and gk_nop is not None:
         drop = gk_full - gk_nop
-        print(f"  H1 GroupKFold-5: C_full - C_no_prior = {drop:+.3f} "
-              f"({gk_full:.3f} vs {gk_nop:.3f}) "
-              f"{'? vazamento confirmado' if drop >= 0.20 else '?? vazamento moderado/ausente'}")
+        print(
+            f"  H1 GroupKFold-5: C_full - C_no_prior = {drop:+.3f} "
+            f"({gk_full:.3f} vs {gk_nop:.3f}) "
+            f"{'? vazamento confirmado' if drop >= 0.20 else '?? vazamento moderado/ausente'}"
+        )
     if lodo_full is not None:
-        print(f"  H2 LODO C_full : {lodo_full:.3f} "
-              f"{'? generaliza' if lodo_full >= 0.65 else '?? generalização fraca'}")
+        print(
+            f"  H2 LODO C_full : {lodo_full:.3f} "
+            f"{'? generaliza' if lodo_full >= 0.65 else '?? generalização fraca'}"
+        )
     if lodo_nop is not None:
-        print(f"  H3 LODO C_no_prior : {lodo_nop:.3f} "
-              f"{'?? colapso sem metadata' if lodo_nop < 0.45 else '? segura sem prior'}")
+        print(
+            f"  H3 LODO C_no_prior : {lodo_nop:.3f} "
+            f"{'?? colapso sem metadata' if lodo_nop < 0.45 else '? segura sem prior'}"
+        )
     if lodo_only is not None:
-        print(f"  H4 LODO C_only_prior: {lodo_only:.3f} "
-              f"{'?? LLM sozinho já resolve' if lodo_only >= 0.80 else '?? prior não basta'}")
+        print(
+            f"  H4 LODO C_only_prior: {lodo_only:.3f} "
+            f"{'?? LLM sozinho já resolve' if lodo_only >= 0.80 else '?? prior não basta'}"
+        )
 
     print(f"\n?? Artefatos salvos em: {out_dir}")
     print(f"{'=' * 70}")

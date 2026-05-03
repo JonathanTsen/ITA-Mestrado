@@ -17,9 +17,10 @@ Executa por tipo de dado:
 4. Comparação de resultados
 5. (se --data all) Comparação cruzada sintético vs real
 """
+
 import os
-import sys
 import subprocess
+import sys
 
 MODELS = ["none", "gemini-3-flash-preview"]
 TEST_MODE = "--test" in sys.argv
@@ -64,6 +65,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Salvar metadata do experimento
 sys.path.insert(0, SCRIPT_DIR)
 from utils.paths import save_experiment_config
+
 save_experiment_config(EXPERIMENT)
 
 print("=" * 60)
@@ -89,11 +91,11 @@ for data_type in DATA_TYPES:
 
     # Se dados reais, regenerar amostras bootstrap
     if data_type == "real":
-        print(f"\n🔄 Gerando amostras bootstrap dos dados reais...")
+        print("\n🔄 Gerando amostras bootstrap dos dados reais...")
         bootstrap_script = os.path.join(SCRIPT_DIR, "..", "subdividir_dados_reais.py")
         result = subprocess.run([sys.executable, bootstrap_script], cwd=SCRIPT_DIR)
         if result.returncode != 0:
-            print(f"❌ Erro ao gerar bootstraps")
+            print("❌ Erro ao gerar bootstraps")
             continue
 
     for model in MODELS:
@@ -104,11 +106,21 @@ for data_type in DATA_TYPES:
         print(f"{'=' * 60}")
 
         # 1. Extração de features
-        print(f"\n🔧 Extraindo features...")
-        cmd = [sys.executable, os.path.join(SCRIPT_DIR, "extract_features.py"),
-               "--model", model, "--data", data_type, "--experiment", EXPERIMENT,
-               "--llm-approach", LLM_APPROACH,
-               "--metadata-variant", METADATA_VARIANT]
+        print("\n🔧 Extraindo features...")
+        cmd = [
+            sys.executable,
+            os.path.join(SCRIPT_DIR, "extract_features.py"),
+            "--model",
+            model,
+            "--data",
+            data_type,
+            "--experiment",
+            EXPERIMENT,
+            "--llm-approach",
+            LLM_APPROACH,
+            "--metadata-variant",
+            METADATA_VARIANT,
+        ]
         if TEST_MODE:
             cmd.append("--test")
 
@@ -118,9 +130,17 @@ for data_type in DATA_TYPES:
             continue
 
         # 2. Treinamento
-        print(f"\n🤖 Treinando modelos...")
-        cmd = [sys.executable, os.path.join(SCRIPT_DIR, "train_model.py"),
-               "--model", model, "--data", data_type, "--experiment", EXPERIMENT]
+        print("\n🤖 Treinando modelos...")
+        cmd = [
+            sys.executable,
+            os.path.join(SCRIPT_DIR, "train_model.py"),
+            "--model",
+            model,
+            "--data",
+            data_type,
+            "--experiment",
+            EXPERIMENT,
+        ]
 
         result = subprocess.run(cmd, cwd=SCRIPT_DIR)
         if result.returncode != 0:
@@ -134,8 +154,14 @@ for data_type in DATA_TYPES:
     print(f"📊 COMPARANDO RESULTADOS ({data_type.upper()})")
     print(f"{'=' * 60}")
 
-    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "compare_results.py"),
-           "--data", data_type, "--experiment", EXPERIMENT]
+    cmd = [
+        sys.executable,
+        os.path.join(SCRIPT_DIR, "compare_results.py"),
+        "--data",
+        data_type,
+        "--experiment",
+        EXPERIMENT,
+    ]
     subprocess.run(cmd, cwd=SCRIPT_DIR)
 
     # 4. Ensemble adaptativo (requer baseline + LLM)
@@ -144,8 +170,14 @@ for data_type in DATA_TYPES:
         print(f"🔀 ENSEMBLE ADAPTATIVO ({data_type.upper()})")
         print(f"{'=' * 60}")
 
-        cmd = [sys.executable, os.path.join(SCRIPT_DIR, "ensemble_model.py"),
-               "--data", data_type, "--experiment", EXPERIMENT]
+        cmd = [
+            sys.executable,
+            os.path.join(SCRIPT_DIR, "ensemble_model.py"),
+            "--data",
+            data_type,
+            "--experiment",
+            EXPERIMENT,
+        ]
         subprocess.run(cmd, cwd=SCRIPT_DIR)
 
     # 5. Validação de rótulos (apenas dados reais)
@@ -154,8 +186,14 @@ for data_type in DATA_TYPES:
         print(f"🔬 VALIDAÇÃO DE RÓTULOS ({data_type.upper()})")
         print(f"{'=' * 60}")
 
-        cmd = [sys.executable, os.path.join(SCRIPT_DIR, "validar_rotulos.py"),
-               "--data", data_type, "--experiment", EXPERIMENT]
+        cmd = [
+            sys.executable,
+            os.path.join(SCRIPT_DIR, "validar_rotulos.py"),
+            "--data",
+            data_type,
+            "--experiment",
+            EXPERIMENT,
+        ]
         subprocess.run(cmd, cwd=SCRIPT_DIR)
 
     # 6. Classificação MNAR Focused vs Diffuse
@@ -163,8 +201,14 @@ for data_type in DATA_TYPES:
     print(f"🔍 CLASSIFICAÇÃO MNAR FOCUSED vs DIFFUSE ({data_type.upper()})")
     print(f"{'=' * 60}")
 
-    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "classificar_mnar.py"),
-           "--data", data_type, "--experiment", EXPERIMENT]
+    cmd = [
+        sys.executable,
+        os.path.join(SCRIPT_DIR, "classificar_mnar.py"),
+        "--data",
+        data_type,
+        "--experiment",
+        EXPERIMENT,
+    ]
     subprocess.run(cmd, cwd=SCRIPT_DIR)
 
     # 7. Classificação Hierárquica + LOGO CV (STEP05)
@@ -172,29 +216,35 @@ for data_type in DATA_TYPES:
     print(f"🔀 CLASSIFICAÇÃO HIERÁRQUICA + LOGO CV ({data_type.upper()})")
     print(f"{'=' * 60}")
 
-    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "train_hierarchical.py"),
-           "--model", "none", "--data", data_type, "--experiment", EXPERIMENT]
+    cmd = [
+        sys.executable,
+        os.path.join(SCRIPT_DIR, "train_hierarchical.py"),
+        "--model",
+        "none",
+        "--data",
+        data_type,
+        "--experiment",
+        EXPERIMENT,
+    ]
     subprocess.run(cmd, cwd=SCRIPT_DIR)
 
 # 8. Comparação cruzada (se rodou ambos)
 if len(DATA_TYPES) > 1:
     print(f"\n{'=' * 60}")
-    print(f"🔄 COMPARAÇÃO CRUZADA: SINTÉTICO vs REAL")
+    print("🔄 COMPARAÇÃO CRUZADA: SINTÉTICO vs REAL")
     print(f"{'=' * 60}")
 
-    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "compare_results.py"),
-           "--compare-all", "--experiment", EXPERIMENT]
+    cmd = [sys.executable, os.path.join(SCRIPT_DIR, "compare_results.py"), "--compare-all", "--experiment", EXPERIMENT]
     subprocess.run(cmd, cwd=SCRIPT_DIR)
 
 # 9. Geração de outputs para tese (STEP05)
 print(f"\n{'=' * 60}")
-print(f"📝 GERAÇÃO DE OUTPUTS PARA TESE")
+print("📝 GERAÇÃO DE OUTPUTS PARA TESE")
 print(f"{'=' * 60}")
 
-cmd = [sys.executable, os.path.join(SCRIPT_DIR, "generate_thesis_outputs.py"),
-       "--experiment", EXPERIMENT]
+cmd = [sys.executable, os.path.join(SCRIPT_DIR, "generate_thesis_outputs.py"), "--experiment", EXPERIMENT]
 subprocess.run(cmd, cwd=SCRIPT_DIR)
 
 print(f"\n{'=' * 60}")
-print(f"✅ PIPELINE COMPLETO FINALIZADO!")
+print("✅ PIPELINE COMPLETO FINALIZADO!")
 print(f"{'=' * 60}")

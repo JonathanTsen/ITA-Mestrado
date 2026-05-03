@@ -19,8 +19,9 @@ Uso:
     cd "IC - ITA 2/Scripts"
     python coletar_dados_reais.py
 """
-import os
+
 import io
+import os
 import warnings
 
 import numpy as np
@@ -30,6 +31,7 @@ warnings.filterwarnings("ignore")
 
 # Fix SSL para macOS (certificados não instalados)
 import ssl
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -86,8 +88,7 @@ def normalize_col(df: pd.DataFrame, col: str, observed_only: bool = False):
         df.loc[df[col].notna(), col] = 0.5
 
 
-def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str],
-                      pad_to: int = 5) -> pd.DataFrame:
+def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str], pad_to: int = 5) -> pd.DataFrame:
     out = pd.DataFrame()
     out["X0"] = df[x0_col].values
     for i, col in enumerate(other_cols, start=1):
@@ -102,14 +103,14 @@ def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str],
     return out
 
 
-def process_and_save(df: pd.DataFrame, mechanism: str, name: str,
-                     jitter_cols: list[str] | None = None):
+def process_and_save(df: pd.DataFrame, mechanism: str, name: str, jitter_cols: list[str] | None = None):
     df = cap_missing_rate(df)
     normalize_col(df, "X0", observed_only=True)
     for col in ["X1", "X2", "X3", "X4"]:
         normalize_col(df, col)
     if jitter_cols:
         from preparar_dados_reais import add_jitter
+
         df = add_jitter(df, jitter_cols)
     fname = f"{mechanism}_{name}.txt"
     path = os.path.join(OUTPUT_DIR, mechanism, fname)
@@ -120,6 +121,7 @@ def process_and_save(df: pd.DataFrame, mechanism: str, name: str,
 
 def _ssl_context():
     import ssl
+
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -129,6 +131,7 @@ def _ssl_context():
 def download_csv(url: str) -> pd.DataFrame:
     """Baixa CSV de uma URL."""
     import urllib.request
+
     print(f"    Baixando: {url[:80]}...")
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as resp:
@@ -138,6 +141,7 @@ def download_csv(url: str) -> pd.DataFrame:
 
 def download_text(url: str) -> str:
     import urllib.request
+
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as resp:
         return resp.read().decode("utf-8", errors="replace")
@@ -150,13 +154,24 @@ print("\n=== MCAR: Wisconsin Breast Cancer ===")
 try:
     url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/breast-cancer-wisconsin.data"
     text = download_text(url)
-    names = ["id", "clump_thickness", "cell_size", "cell_shape", "marginal_adhesion",
-             "epithelial_size", "bare_nuclei", "bland_chromatin", "normal_nucleoli",
-             "mitoses", "class"]
+    names = [
+        "id",
+        "clump_thickness",
+        "cell_size",
+        "cell_shape",
+        "marginal_adhesion",
+        "epithelial_size",
+        "bare_nuclei",
+        "bland_chromatin",
+        "normal_nucleoli",
+        "mitoses",
+        "class",
+    ]
     wbc = pd.read_csv(io.StringIO(text), header=None, names=names, na_values="?")
 
     df_mcar1 = select_and_rename(
-        wbc, x0_col="bare_nuclei",
+        wbc,
+        x0_col="bare_nuclei",
         other_cols=["clump_thickness", "cell_size", "cell_shape", "marginal_adhesion"],
     )
     process_and_save(df_mcar1, "MCAR", "breastcancer_barenuclei")
@@ -180,11 +195,11 @@ try:
         heart = pd.read_csv(io.StringIO(text2))
 
     df_mcar2 = select_and_rename(
-        heart, x0_col="ca",
+        heart,
+        x0_col="ca",
         other_cols=["age", "trestbps", "chol", "thalach"],
     )
-    process_and_save(df_mcar2, "MCAR", "heartdisease_ca",
-                     jitter_cols=["X0"])
+    process_and_save(df_mcar2, "MCAR", "heartdisease_ca", jitter_cols=["X0"])
     print("  OK!")
 except Exception as e:
     print(f"  ERRO: {e}")
@@ -199,7 +214,8 @@ try:
 
     # Age: 177 NaN (19.9%) - MAR: 3rd class passageiros tem mais missing
     df_mar1 = select_and_rename(
-        titanic, x0_col="Age",
+        titanic,
+        x0_col="Age",
         other_cols=["Pclass", "SibSp", "Parch", "Fare"],
     )
     process_and_save(df_mar1, "MAR", "titanic_age")
@@ -214,11 +230,11 @@ print("\n=== MAR: Heart Disease Cleveland (thal) ===")
 try:
     if heart is not None and "thal" in heart.columns:
         df_mar2 = select_and_rename(
-            heart, x0_col="thal",
+            heart,
+            x0_col="thal",
             other_cols=["age", "cp", "thalach", "oldpeak"],
         )
-        process_and_save(df_mar2, "MAR", "heartdisease_thal",
-                         jitter_cols=["X0"])
+        process_and_save(df_mar2, "MAR", "heartdisease_thal", jitter_cols=["X0"])
         print("  OK!")
     else:
         print("  SKIP: heart dataset não carregado ou sem coluna 'thal'")
@@ -256,9 +272,9 @@ try:
 
     if hemo_col:
         # Preditores: primeiras colunas numéricas sem muitos NaN
-        pred_candidates = [c for c in ckd.columns
-                          if c != hemo_col and ckd[c].isna().mean() < 0.1
-                          and ckd[c].nunique() > 3]
+        pred_candidates = [
+            c for c in ckd.columns if c != hemo_col and ckd[c].isna().mean() < 0.1 and ckd[c].nunique() > 3
+        ]
         pred_cols = pred_candidates[:4]
         if len(pred_cols) >= 2:
             df_mnar1 = select_and_rename(ckd, x0_col=hemo_col, other_cols=pred_cols)
@@ -278,11 +294,24 @@ print("\n=== MNAR: Adult Income (capital-gain) ===")
 try:
     url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/adult-all.csv"
     text = download_text(url)
-    names = ["age", "workclass", "fnlwgt", "education", "education_num",
-             "marital_status", "occupation", "relationship", "race", "sex",
-             "capital_gain", "capital_loss", "hours_per_week", "native_country", "income"]
-    adult = pd.read_csv(io.StringIO(text), header=None, names=names,
-                        na_values=" ?", skipinitialspace=True)
+    names = [
+        "age",
+        "workclass",
+        "fnlwgt",
+        "education",
+        "education_num",
+        "marital_status",
+        "occupation",
+        "relationship",
+        "race",
+        "sex",
+        "capital_gain",
+        "capital_loss",
+        "hours_per_week",
+        "native_country",
+        "income",
+    ]
+    adult = pd.read_csv(io.StringIO(text), header=None, names=names, na_values=" ?", skipinitialspace=True)
 
     adult_proc = adult.copy()
     adult_proc.loc[adult_proc["capital_gain"] == 0, "capital_gain"] = np.nan
@@ -290,7 +319,8 @@ try:
     adult_sample = adult_proc.sample(n=1000, random_state=42)
 
     df_mnar2 = select_and_rename(
-        adult_sample, x0_col="capital_gain",
+        adult_sample,
+        x0_col="capital_gain",
         other_cols=["age", "education_num", "hours_per_week", "capital_loss"],
     )
     process_and_save(df_mnar2, "MNAR", "adult_capitalgain")

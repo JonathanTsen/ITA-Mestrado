@@ -13,15 +13,16 @@ Uso:
     cd "IC - ITA 2/Scripts/v2_improved"
     uv run python classificar_mnar.py [--data sintetico|real] [--experiment <name>]
 """
+
 import os
 import sys
 import warnings
 
 import numpy as np
 import pandas as pd
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -68,8 +69,10 @@ def compute_mask_auc(df: pd.DataFrame, use_predictors: bool) -> float:
     try:
         scores = cross_val_score(
             LogisticRegression(max_iter=500, random_state=42),
-            X, mask, cv=min(5, mask.sum(), (1 - mask).sum()),
-            scoring="roc_auc"
+            X,
+            mask,
+            cv=min(5, mask.sum(), (1 - mask).sum()),
+            scoring="roc_auc",
         )
         return float(np.mean(scores))
     except Exception:
@@ -91,6 +94,7 @@ files = sorted([f for f in os.listdir(mnar_dir) if f.endswith(".txt")])
 # Para dados reais com bootstrap, agrupar por dataset original
 if DATA_TYPE == "real":
     import re
+
     groups = {}
     for f in files:
         group = re.sub(r"_boot\d+\.txt$", "", f)
@@ -129,14 +133,16 @@ for group_name, group_files in file_groups.items():
     print(f"    Delta: {delta:.4f}")
     print(f"    -> {classification} MNAR")
 
-    results.append({
-        "dataset": group_name,
-        "auc_complete": round(mean_complete, 4),
-        "auc_excluded": round(mean_excluded, 4),
-        "delta": round(delta, 4),
-        "classification": classification,
-        "n_samples": len(sample_files),
-    })
+    results.append(
+        {
+            "dataset": group_name,
+            "auc_complete": round(mean_complete, 4),
+            "auc_excluded": round(mean_excluded, 4),
+            "delta": round(delta, 4),
+            "classification": classification,
+            "n_samples": len(sample_files),
+        }
+    )
 
 # ======================================================
 # SALVA RESULTADOS
@@ -146,7 +152,7 @@ csv_path = os.path.join(OUTPUT_DIR, "mnar_focused_vs_diffuse.csv")
 df_results.to_csv(csv_path, index=False)
 
 print(f"\n{'='*60}")
-print(f"CLASSIFICACAO CONCLUIDA!")
+print("CLASSIFICACAO CONCLUIDA!")
 print(f"{'='*60}")
 print(f"Resultados: {csv_path}")
 

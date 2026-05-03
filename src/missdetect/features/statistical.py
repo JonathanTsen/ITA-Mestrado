@@ -4,6 +4,7 @@ Features estatísticas invariantes para classificação de mecanismos de missing
 Features invariantes ao dataset: medem propriedades relativas (ratios, diffs)
 em vez de valores absolutos, evitando fingerprints do dataset.
 """
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats

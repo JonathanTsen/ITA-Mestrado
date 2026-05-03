@@ -1,6 +1,7 @@
 """
 Centraliza paths do projeto para todos os scripts do pipeline v2.
 """
+
 import os
 
 # utils/ está em Scripts/v2_improved/utils/
@@ -8,9 +9,9 @@ import os
 # BASE_DIR = IC - ITA 2/ (3 níveis acima de _THIS_DIR)
 # SCRIPT_DIR = Scripts/ (2 níveis acima de _THIS_DIR)
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-V2_DIR = os.path.dirname(_THIS_DIR)                        # Scripts/v2_improved/
+V2_DIR = os.path.dirname(_THIS_DIR)  # Scripts/v2_improved/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_THIS_DIR)))  # IC - ITA 2/
-SCRIPT_DIR = os.path.dirname(os.path.dirname(_THIS_DIR))   # Scripts/
+SCRIPT_DIR = os.path.dirname(os.path.dirname(_THIS_DIR))  # Scripts/
 
 OUTPUT_BASE = os.path.join(BASE_DIR, "Output", "v2_improved")
 

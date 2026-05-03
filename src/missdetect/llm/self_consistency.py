@@ -29,10 +29,12 @@ Extracted features (8):
   - llm_sc_surprise: Mean surprise_factor across perspectives
 """
 
+import contextlib
 import hashlib
 import json
 import os
 import re
+import typing
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
@@ -40,10 +42,10 @@ import pandas as pd
 from pydantic import BaseModel, Field
 from scipy import stats as sp_stats
 
-
 # ======================================================
 # SCHEMAS
 # ======================================================
+
 
 class PerspectiveResponse(BaseModel):
     """Output from a single perspective."""
@@ -53,15 +55,21 @@ class PerspectiveResponse(BaseModel):
         description="Most likely mechanism: MCAR, MAR, or MNAR",
     )
     domain_confidence: float = Field(
-        default=0.33, ge=0.0, le=1.0,
+        default=0.33,
+        ge=0.0,
+        le=1.0,
         description="Confidence in the classification",
     )
     stats_consistent_with_domain: float = Field(
-        default=0.5, ge=0.0, le=1.0,
+        default=0.5,
+        ge=0.0,
+        le=1.0,
         description="1=statistics consistent with classification, 0=inconsistent",
     )
     surprise_factor: float = Field(
-        default=0.0, ge=0.0, le=1.0,
+        default=0.0,
+        ge=0.0,
+        le=1.0,
         description="1=very surprising/unexpected, 0=expected",
     )
     reasoning: str = Field(
@@ -77,10 +85,11 @@ MECHANISM_TO_SCORE = {"MCAR": 0.0, "MAR": 0.5, "MNAR": 1.0}
 # MAIN CLASS
 # ======================================================
 
+
 class SelfConsistencyExtractor:
     """Self-Consistency extractor with 5 specialized perspectives and CISC voting."""
 
-    PERSPECTIVE_NAMES = ["statistical", "domain", "process", "adversarial", "censoring"]
+    PERSPECTIVE_NAMES: typing.ClassVar[list[str]] = ["statistical", "domain", "process", "adversarial", "censoring"]
 
     def __init__(
         self,
@@ -105,29 +114,26 @@ class SelfConsistencyExtractor:
             "neutral": "real_datasets_metadata_neutral.json",
         }.get(metadata_variant)
         if real_metadata_file is None:
-            raise ValueError(
-                f"metadata_variant desconhecido: {metadata_variant!r}. "
-                f"Use 'default' ou 'neutral'."
-            )
-        self._real_metadata = self._load_json(
-            os.path.join(data_dir, real_metadata_file)
-        )
-        self._synthetic_metadata = self._load_json(
-            os.path.join(data_dir, "synthetic_variants_metadata.json")
-        )
+            raise ValueError(f"metadata_variant desconhecido: {metadata_variant!r}. " f"Use 'default' ou 'neutral'.")
+        self._real_metadata = self._load_json(os.path.join(data_dir, real_metadata_file))
+        self._synthetic_metadata = self._load_json(os.path.join(data_dir, "synthetic_variants_metadata.json"))
         print(f"  [SC] Metadata variant: {metadata_variant} ({real_metadata_file})")
         print(f"  [SC] Perspectives: {self.n_perspectives}, temperature: {self.temperature}")
 
         # Load original stats for real data
         stats_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "..", "Dataset", "real_data", "processado", "stats_originais.json",
+            "..",
+            "Dataset",
+            "real_data",
+            "processado",
+            "stats_originais.json",
         )
         self._original_stats = self._load_json(os.path.normpath(stats_path))
 
     def _load_json(self, path: str) -> dict:
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return json.load(f)
         print(f"  Warning: metadata not found at {path}")
         return {}
@@ -135,6 +141,7 @@ class SelfConsistencyExtractor:
     def _init_llm(self):
         if self.provider == "openai":
             from langchain_openai import ChatOpenAI
+
             return ChatOpenAI(
                 model_name=self.model_name,
                 api_key=os.getenv("OPENAI_API_KEY"),
@@ -142,6 +149,7 @@ class SelfConsistencyExtractor:
             )
         elif self.provider == "gemini":
             from langchain_google_genai import ChatGoogleGenerativeAI
+
             return ChatGoogleGenerativeAI(
                 model=self.model_name,
                 google_api_key=os.getenv("GEMINI_API_KEY"),
@@ -166,8 +174,7 @@ class SelfConsistencyExtractor:
 
         cache_key = hashlib.md5(
             json.dumps(
-                {"stats": stats, "filename": filename, "data_type": data_type,
-                 "_v": "sc1", "_n": self.n_perspectives},
+                {"stats": stats, "filename": filename, "data_type": data_type, "_v": "sc1", "_n": self.n_perspectives},
                 sort_keys=True,
             ).encode()
         ).hexdigest()
@@ -220,7 +227,7 @@ class SelfConsistencyExtractor:
 
     def _call_all_perspectives(self, prompts: dict[str, str]) -> list[PerspectiveResponse]:
         """Call all perspectives in parallel and return responses."""
-        perspectives_to_call = self.PERSPECTIVE_NAMES[:self.n_perspectives]
+        perspectives_to_call = self.PERSPECTIVE_NAMES[: self.n_perspectives]
         responses = [None] * len(perspectives_to_call)
 
         with ThreadPoolExecutor(max_workers=self.n_perspectives) as executor:
@@ -313,18 +320,12 @@ class SelfConsistencyExtractor:
 
         winner = max(votes, key=votes.get)
         aggregated_confidence = votes[winner]
-        n_agree = sum(
-            1 for r in responses if r.domain_mechanism_prior == winner
-        )
+        n_agree = sum(1 for r in responses if r.domain_mechanism_prior == winner)
         agreement_ratio = n_agree / len(responses) if responses else 0.0
 
         # Mean stats_consistency and surprise across perspectives
-        mean_stats_consistency = float(np.mean(
-            [r.stats_consistent_with_domain for r in responses]
-        ))
-        mean_surprise = float(np.mean(
-            [r.surprise_factor for r in responses]
-        ))
+        mean_stats_consistency = float(np.mean([r.stats_consistent_with_domain for r in responses]))
+        mean_surprise = float(np.mean([r.surprise_factor for r in responses]))
 
         return {
             "llm_sc_domain_prior": MECHANISM_TO_SCORE.get(winner, 0.5),
@@ -389,9 +390,7 @@ Observed statistics:
 - Correlation mask-X1: {stats.get('corr_mask_X1', 0):.4f}
 - Correlation mask-X2: {stats.get('corr_mask_X2', 0):.4f}"""
 
-    def _build_real_prompts(
-        self, metadata: dict, stats: dict, orig_stats: dict
-    ) -> dict[str, str]:
+    def _build_real_prompts(self, metadata: dict, stats: dict, orig_stats: dict) -> dict[str, str]:
         """Build all 5 perspective prompts for real data."""
         header = self._build_real_header(metadata, stats, orig_stats)
         x0_var = metadata.get("x0_variable", "X0")
@@ -536,9 +535,7 @@ based on the correlation evidence.
     # PROMPT BUILDERS — SYNTHETIC DATA
     # --------------------------------------------------
 
-    def _build_synthetic_header(
-        self, stats: dict, variant_info: dict, dist_info: dict
-    ) -> str:
+    def _build_synthetic_header(self, stats: dict, variant_info: dict, dist_info: dict) -> str:
         dist_name = dist_info.get("description", "unknown")
         mr = variant_info.get("missing_rate", "?")
 
@@ -560,9 +557,7 @@ Statistics:
 - Correlation mask-X2: {stats.get('corr_mask_X2', 0):.4f}
 - X1 mean diff (missing vs observed): {stats.get('X1_mean_diff', 0):.4f}"""
 
-    def _build_synthetic_prompts(
-        self, stats: dict, variant_info: dict, dist_info: dict
-    ) -> dict[str, str]:
+    def _build_synthetic_prompts(self, stats: dict, variant_info: dict, dist_info: dict) -> dict[str, str]:
         """Build all 5 perspective prompts for synthetic data."""
         header = self._build_synthetic_header(stats, variant_info, dist_info)
         json_schema = self._json_schema_block()
@@ -694,9 +689,7 @@ Look for signs of value-dependent missingness:
             stats["X0_obs_mean"] = round(float(np.mean(X0_obs)), 4)
             stats["X0_obs_std"] = round(float(np.std(X0_obs)), 4)
             stats["X0_obs_skew"] = round(float(sp_stats.skew(X0_obs)), 4)
-            stats["X0_obs_kurtosis"] = round(
-                float(sp_stats.kurtosis(X0_obs, fisher=True)), 4
-            )
+            stats["X0_obs_kurtosis"] = round(float(sp_stats.kurtosis(X0_obs, fisher=True)), 4)
 
             # Estimate X0 for missing rows via regression on X1-X4.
             # When R² is too low (< 0.1), regression predictions collapse
@@ -742,9 +735,7 @@ Look for signs of value-dependent missingness:
                 xi = df[col].values
                 if np.std(xi) > 0 and np.std(mask) > 0:
                     corr = np.corrcoef(mask, xi)[0, 1]
-                    stats[f"corr_mask_{col}"] = (
-                        round(float(corr), 4) if not np.isnan(corr) else 0.0
-                    )
+                    stats[f"corr_mask_{col}"] = round(float(corr), 4) if not np.isnan(corr) else 0.0
                 else:
                     stats[f"corr_mask_{col}"] = 0.0
 
@@ -753,9 +744,7 @@ Look for signs of value-dependent missingness:
             X1_miss = X1[mask == 1]
             X1_obs = X1[mask == 0]
             if len(X1_miss) > 0 and len(X1_obs) > 0:
-                stats["X1_mean_diff"] = round(
-                    float(np.mean(X1_miss) - np.mean(X1_obs)), 4
-                )
+                stats["X1_mean_diff"] = round(float(np.mean(X1_miss) - np.mean(X1_obs)), 4)
             else:
                 stats["X1_mean_diff"] = 0.0
 
@@ -815,10 +804,8 @@ Look for signs of value-dependent missingness:
 
         for p in parts:
             if p.startswith("mr"):
-                try:
+                with contextlib.suppress(ValueError):
                     result["missing_rate"] = int(p[2:])
-                except ValueError:
-                    pass
 
         return result
 

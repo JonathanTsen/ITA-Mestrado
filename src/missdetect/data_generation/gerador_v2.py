@@ -16,9 +16,10 @@ Uso:
     uv run python gerador_v2.py [--n-per-variant 100]
 """
 
+import argparse
 import os
 import shutil
-import argparse
+
 import numpy as np
 import pandas as pd
 
@@ -47,6 +48,7 @@ DIST_NAMES = list(DISTRIBUTIONS.keys())
 # ======================================================
 
 # --- MCAR ---
+
 
 def mcar_uniform(X: pd.DataFrame, rate: float, rng: np.random.Generator) -> pd.DataFrame:
     """Tipo 1: cada célula de X0 tem prob independente de ser missing."""
@@ -96,6 +98,7 @@ MCAR_VARIANTS = {
 
 # --- MAR ---
 
+
 def mar_logistic(X: pd.DataFrame, rate: float, rng: np.random.Generator) -> pd.DataFrame:
     """Tipo 1: P(X0 missing) = sigmoid(β * standardize(X1))."""
     out = X.copy()
@@ -138,10 +141,9 @@ def mar_quantile_group(X: pd.DataFrame, rate: float, rng: np.random.Generator) -
     x1 = out["X1"]
     q25, q50, q75 = x1.quantile([0.25, 0.5, 0.75])
     # Prob de missing aumenta com X1
-    probs = np.where(x1 <= q25, rate * 0.2,
-            np.where(x1 <= q50, rate * 0.6,
-            np.where(x1 <= q75, rate * 1.4,
-                     rate * 2.0)))
+    probs = np.where(
+        x1 <= q25, rate * 0.2, np.where(x1 <= q50, rate * 0.6, np.where(x1 <= q75, rate * 1.4, rate * 2.0))
+    )
     probs = np.clip(probs, 0, 1)
     mask = rng.random(len(out)) < probs
     if mask.sum() == 0:
@@ -176,6 +178,7 @@ MAR_VARIANTS = {
 
 
 # --- MNAR ---
+
 
 def mnar_self_logistic(X: pd.DataFrame, rate: float, rng: np.random.Generator) -> pd.DataFrame:
     """Tipo 1: P(X0 missing) = sigmoid(β * standardize(X0))."""
@@ -251,6 +254,7 @@ ALL_VARIANTS = {
 # GERAÇÃO
 # ======================================================
 
+
 def generate_base_data(rng: np.random.Generator, dist_name: str) -> pd.DataFrame:
     """Gera matriz base com distribuição especificada."""
     dist_fn = DISTRIBUTIONS[dist_name]
@@ -260,10 +264,8 @@ def generate_base_data(rng: np.random.Generator, dist_name: str) -> pd.DataFrame
 
 def main():
     parser = argparse.ArgumentParser(description="Gerador v2 com múltiplas variantes MissMecha")
-    parser.add_argument("--n-per-variant", type=int, default=100,
-                        help="Datasets por variante (default: 100)")
-    parser.add_argument("--clean", action="store_true", default=True,
-                        help="Limpar pastas de saída antes de gerar")
+    parser.add_argument("--n-per-variant", type=int, default=100, help="Datasets por variante (default: 100)")
+    parser.add_argument("--clean", action="store_true", default=True, help="Limpar pastas de saída antes de gerar")
     args = parser.parse_args()
 
     N_PER_VARIANT = args.n_per_variant

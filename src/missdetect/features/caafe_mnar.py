@@ -12,6 +12,7 @@ Estas features atacam esse problema circular com medidas indiretas:
 3. X0_kurtosis_excess — excesso de curtose em X0 observado
 4. conditional_entropy_X0_mask — entropia condicional mask|X0 discretizado
 """
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
@@ -58,13 +59,9 @@ def extract_caafe_mnar_features(df: pd.DataFrame) -> dict:
         if len(rates) >= 2:
             # Razão entre maior e menor taxa — MNAR terá alta variância
             rates = np.array(rates)
-            feats["caafe_missing_rate_by_quantile"] = float(
-                rates.max() / max(rates.min(), 1e-10)
-            )
+            feats["caafe_missing_rate_by_quantile"] = float(rates.max() / max(rates.min(), 1e-10))
             # Cap para evitar explosão quando min rate ≈ 0
-            feats["caafe_missing_rate_by_quantile"] = min(
-                feats["caafe_missing_rate_by_quantile"], 20.0
-            )
+            feats["caafe_missing_rate_by_quantile"] = min(feats["caafe_missing_rate_by_quantile"], 20.0)
         else:
             feats["caafe_missing_rate_by_quantile"] = 1.0
     except Exception:
@@ -85,9 +82,7 @@ def extract_caafe_mnar_features(df: pd.DataFrame) -> dict:
 
             if n_lower + n_upper > 0:
                 # 0 = simétrico, >0 ou <0 = assimétrico
-                feats["caafe_tail_asymmetry"] = float(
-                    abs(n_upper - n_lower) / (n_lower + n_upper)
-                )
+                feats["caafe_tail_asymmetry"] = float(abs(n_upper - n_lower) / (n_lower + n_upper))
             else:
                 feats["caafe_tail_asymmetry"] = 0.0
         else:
@@ -122,9 +117,7 @@ def extract_caafe_mnar_features(df: pd.DataFrame) -> dict:
 
             # H(mask) — entropia marginal
             p_miss = n_missing / n_total
-            h_mask = -p_miss * np.log2(max(p_miss, 1e-10)) - (1 - p_miss) * np.log2(
-                max(1 - p_miss, 1e-10)
-            )
+            h_mask = -p_miss * np.log2(max(p_miss, 1e-10)) - (1 - p_miss) * np.log2(max(1 - p_miss, 1e-10))
 
             # H(mask|X0) — entropia condicional
             h_cond = 0.0
@@ -135,18 +128,14 @@ def extract_caafe_mnar_features(df: pd.DataFrame) -> dict:
                     p_miss_bin = mask[bin_mask].mean()
                     p_bin = n_bin / n_total
                     if 0 < p_miss_bin < 1:
-                        h_bin = -p_miss_bin * np.log2(p_miss_bin) - (
-                            1 - p_miss_bin
-                        ) * np.log2(1 - p_miss_bin)
+                        h_bin = -p_miss_bin * np.log2(p_miss_bin) - (1 - p_miss_bin) * np.log2(1 - p_miss_bin)
                     else:
                         h_bin = 0.0
                     h_cond += p_bin * h_bin
 
             # Informação mútua normalizada: 0 = independente, 1 = totalmente dependente
             if h_mask > 1e-10:
-                feats["caafe_cond_entropy_X0_mask"] = float(
-                    (h_mask - h_cond) / h_mask
-                )
+                feats["caafe_cond_entropy_X0_mask"] = float((h_mask - h_cond) / h_mask)
             else:
                 feats["caafe_cond_entropy_X0_mask"] = 0.0
         else:

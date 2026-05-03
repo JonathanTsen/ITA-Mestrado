@@ -57,6 +57,7 @@ for mech in ["MCAR", "MAR", "MNAR"]:
 # UTILIDADES
 # ======================================================
 
+
 def impute_with_sample(series: pd.Series) -> pd.Series:
     observed = series.dropna().values
     mask = series.isna()
@@ -84,8 +85,7 @@ def cap_missing_rate(df: pd.DataFrame, target: float = TARGET_MISSING_RATE) -> p
     return df
 
 
-def select_columns(df_raw: pd.DataFrame, x0_col: str,
-                   aux_cols: list[str] | None = None) -> pd.DataFrame:
+def select_columns(df_raw: pd.DataFrame, x0_col: str, aux_cols: list[str] | None = None) -> pd.DataFrame:
     out = pd.DataFrame()
     out["X0"] = pd.to_numeric(df_raw[x0_col], errors="coerce").values
 
@@ -107,7 +107,7 @@ def select_columns(df_raw: pd.DataFrame, x0_col: str,
 
 def normalize_and_save(df: pd.DataFrame, mechanism: str, name: str) -> str | None:
     if df["X0"].isna().sum() == 0:
-        print(f"    SKIP: sem missing em X0")
+        print("    SKIP: sem missing em X0")
         return None
 
     df = cap_missing_rate(df)
@@ -134,9 +134,9 @@ def normalize_and_save(df: pd.DataFrame, mechanism: str, name: str) -> str | Non
     return path
 
 
-def process_openml(openml_name: str, version: int, x0_col: str,
-                   mechanism: str, dataset_name: str,
-                   aux_cols: list[str] | None = None) -> bool:
+def process_openml(
+    openml_name: str, version: int, x0_col: str, mechanism: str, dataset_name: str, aux_cols: list[str] | None = None
+) -> bool:
     try:
         print(f"\n  Baixando {openml_name} v{version} (OpenML)...")
         data = fetch_openml(name=openml_name, version=version, as_frame=True, parser="auto")
@@ -151,8 +151,9 @@ def process_openml(openml_name: str, version: int, x0_col: str,
         return False
 
 
-def process_url(url: str, x0_col: str, mechanism: str, dataset_name: str,
-                aux_cols: list[str] | None = None, **kwargs) -> bool:
+def process_url(
+    url: str, x0_col: str, mechanism: str, dataset_name: str, aux_cols: list[str] | None = None, **kwargs
+) -> bool:
     try:
         print(f"\n  Baixando {dataset_name} (URL)...")
         df_raw = pd.read_csv(url, **kwargs)
@@ -185,43 +186,61 @@ print("MCAR — Missing por falha administrativa/logística")
 print(f"{'='*50}")
 
 # cylinder-bands: dados de manufatura, missing por falha de sensor
-if process_openml("cylinder-bands", 2, "blade_pressure", "MCAR", "cylinderbands_bladepressure",
-                  aux_cols=["press_speed", "ink_temperature", "viscosity", "roughness"]):
+if process_openml(
+    "cylinder-bands",
+    2,
+    "blade_pressure",
+    "MCAR",
+    "cylinderbands_bladepressure",
+    aux_cols=["press_speed", "ink_temperature", "viscosity", "roughness"],
+):
     success_count += 1
 
 # cylinder-bands: ESA_Voltage
-if process_openml("cylinder-bands", 2, "ESA_Voltage", "MCAR", "cylinderbands_esavoltage",
-                  aux_cols=["press_speed", "ink_temperature", "viscosity", "roughness"]):
+if process_openml(
+    "cylinder-bands",
+    2,
+    "ESA_Voltage",
+    "MCAR",
+    "cylinderbands_esavoltage",
+    aux_cols=["press_speed", "ink_temperature", "viscosity", "roughness"],
+):
     success_count += 1
 
 # hypothyroid: T4U (exame tireoidiano não solicitado - MCAR plausível para exames de rotina)
-if process_openml("hypothyroid", 1, "T4U", "MCAR", "hypothyroid_t4u",
-                  aux_cols=["age", "TSH", "TT4", "FTI"]):
+if process_openml("hypothyroid", 1, "T4U", "MCAR", "hypothyroid_t4u", aux_cols=["age", "TSH", "TT4", "FTI"]):
     success_count += 1
 
 # autoMpg: horsepower (dados não registrados aleatoriamente)
-if process_openml("autoMpg", 1, "horsepower", "MCAR", "autompg_horsepower",
-                  aux_cols=["displacement", "weight", "acceleration", "cylinders"]):
+if process_openml(
+    "autoMpg",
+    1,
+    "horsepower",
+    "MCAR",
+    "autompg_horsepower",
+    aux_cols=["displacement", "weight", "acceleration", "cylinders"],
+):
     success_count += 1
 
 # hepatitis: ALK_PHOSPHATE — teste de fosfatase alcalina, parte do painel hepático
 # de rotina. Em dados dos anos 1980, testes eram aleatoriamente omitidos por
 # limitação de volume de amostra sanguínea ou backlog laboratorial, não pela
 # condição do paciente. 18.7% missing → cap 10%.
-if process_openml("hepatitis", 1, "ALK_PHOSPHATE", "MCAR", "hepatitis_alkphosphate",
-                  aux_cols=["AGE", "BILIRUBIN", "SGOT", "PROTIME"]):
+if process_openml(
+    "hepatitis", 1, "ALK_PHOSPHATE", "MCAR", "hepatitis_alkphosphate", aux_cols=["AGE", "BILIRUBIN", "SGOT", "PROTIME"]
+):
     success_count += 1
 
 # hepatitis: ALBUMIN — teste de proteína sérica de rotina. 10.3% missing,
 # omitido aleatoriamente nos mesmos contextos que ALK_PHOSPHATE.
-if process_openml("hepatitis", 1, "ALBUMIN", "MCAR", "hepatitis_albumin",
-                  aux_cols=["AGE", "BILIRUBIN", "SGOT", "ALK_PHOSPHATE"]):
+if process_openml(
+    "hepatitis", 1, "ALBUMIN", "MCAR", "hepatitis_albumin", aux_cols=["AGE", "BILIRUBIN", "SGOT", "ALK_PHOSPHATE"]
+):
     success_count += 1
 
 # credit-approval: A14 — campo contínuo em aplicação de cartão de crédito.
 # Dados anonimizados, missing (1.9%) por incompletude aleatória do formulário.
-if process_openml("credit-approval", 1, "A14", "MCAR", "creditapproval_a14",
-                  aux_cols=["A2", "A3", "A8", "A15"]):
+if process_openml("credit-approval", 1, "A14", "MCAR", "creditapproval_a14", aux_cols=["A2", "A3", "A8", "A15"]):
     success_count += 1
 
 # arrhythmia: P — REMOVIDO após validação estatística (2026-04-20).
@@ -234,8 +253,9 @@ if process_openml("credit-approval", 1, "A14", "MCAR", "creditapproval_a14",
 # echoMonths: epss — E-point septal separation no ecocardiograma. 10.8%
 # missing por qualidade de imagem insuficiente (janela acústica ruim),
 # independente do valor real da medida.
-if process_openml("echoMonths", 1, "epss", "MCAR", "echomonths_epss",
-                  aux_cols=["age", "fractional", "lvdd", "wall_score"]):
+if process_openml(
+    "echoMonths", 1, "epss", "MCAR", "echomonths_epss", aux_cols=["age", "fractional", "lvdd", "wall_score"]
+):
     success_count += 1
 
 # ==============================
@@ -248,36 +268,40 @@ print("MAR — Missing depende de variáveis observáveis")
 print(f"{'='*50}")
 
 # sick (thyroid): T3 — teste solicitado com base em sintomas (MAR)
-if process_openml("sick", 1, "T3", "MAR", "sick_t3",
-                  aux_cols=["age", "TSH", "TT4", "FTI"]):
+if process_openml("sick", 1, "T3", "MAR", "sick_t3", aux_cols=["age", "TSH", "TT4", "FTI"]):
     success_count += 1
 
 # sick: TSH — idem
-if process_openml("sick", 1, "TSH", "MAR", "sick_tsh",
-                  aux_cols=["age", "T3", "TT4", "FTI"]):
+if process_openml("sick", 1, "TSH", "MAR", "sick_tsh", aux_cols=["age", "T3", "TT4", "FTI"]):
     success_count += 1
 
 # chronic-kidney-disease: hemo — exame depende da severidade do caso
-if process_openml("chronic-kidney-disease", 1, "hemo", "MAR", "kidney_hemo",
-                  aux_cols=["bp", "age", "bgr", "bu"]):
+if process_openml("chronic-kidney-disease", 1, "hemo", "MAR", "kidney_hemo", aux_cols=["bp", "age", "bgr", "bu"]):
     success_count += 1
 
 # heart-h: chol — colesterol não medido depende de fatores clínicos
-if process_openml("heart-h", 1, "chol", "MAR", "hearth_chol",
-                  aux_cols=["age", "trestbps", "thalach", "oldpeak"]):
+if process_openml("heart-h", 1, "chol", "MAR", "hearth_chol", aux_cols=["age", "trestbps", "thalach", "oldpeak"]):
     success_count += 1
 
 # Titanic (URL direta, versão completa)
 if process_url(
     "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
-    x0_col="Age", mechanism="MAR", dataset_name="titanic_age_v2",
+    x0_col="Age",
+    mechanism="MAR",
+    dataset_name="titanic_age_v2",
     aux_cols=["Pclass", "SibSp", "Parch", "Fare"],
 ):
     success_count += 1
 
 # colic: respiratory_rate — exame depende da severidade
-if process_openml("colic", 1, "respiratory_rate", "MAR", "colic_resprate",
-                  aux_cols=["pulse", "rectal_temperature", "packed_cell_volume", "total_protein"]):
+if process_openml(
+    "colic",
+    1,
+    "respiratory_rate",
+    "MAR",
+    "colic_resprate",
+    aux_cols=["pulse", "rectal_temperature", "packed_cell_volume", "total_protein"],
+):
     success_count += 1
 
 # ==============================
@@ -290,23 +314,33 @@ print("MNAR — Missing depende do valor faltante")
 print(f"{'='*50}")
 
 # chronic-kidney-disease: pot (potássio) — valores extremos não reportados
-if process_openml("chronic-kidney-disease", 1, "pot", "MNAR", "kidney_pot",
-                  aux_cols=["bp", "age", "bgr", "bu"]):
+if process_openml("chronic-kidney-disease", 1, "pot", "MNAR", "kidney_pot", aux_cols=["bp", "age", "bgr", "bu"]):
     success_count += 1
 
 # chronic-kidney-disease: sod (sódio) — idem
-if process_openml("chronic-kidney-disease", 1, "sod", "MNAR", "kidney_sod",
-                  aux_cols=["bp", "age", "bgr", "bu"]):
+if process_openml("chronic-kidney-disease", 1, "sod", "MNAR", "kidney_sod", aux_cols=["bp", "age", "bgr", "bu"]):
     success_count += 1
 
 # colic: nasogastric_reflux_PH — valor difícil de medir em extremos
-if process_openml("colic", 1, "nasogastric_reflux_PH", "MNAR", "colic_refluxph",
-                  aux_cols=["pulse", "rectal_temperature", "packed_cell_volume", "total_protein"]):
+if process_openml(
+    "colic",
+    1,
+    "nasogastric_reflux_PH",
+    "MNAR",
+    "colic_refluxph",
+    aux_cols=["pulse", "rectal_temperature", "packed_cell_volume", "total_protein"],
+):
     success_count += 1
 
 # cylinder-bands: varnish_pct — qualidade-dependente
-if process_openml("cylinder-bands", 2, "varnish_pct", "MNAR", "cylinderbands_varnishpct",
-                  aux_cols=["press_speed", "ink_temperature", "viscosity", "roughness"]):
+if process_openml(
+    "cylinder-bands",
+    2,
+    "varnish_pct",
+    "MNAR",
+    "cylinderbands_varnishpct",
+    aux_cols=["press_speed", "ink_temperature", "viscosity", "roughness"],
+):
     success_count += 1
 
 # hypothyroid: TBG — exame solicitado apenas quando resultado esperado é anormal (MNAR)
@@ -319,8 +353,9 @@ if process_openml("cylinder-bands", 2, "varnish_pct", "MNAR", "cylinderbands_var
 # MNAR porque o teste é solicitado quando o médico suspeita de distúrbio de
 # coagulação (i.e., espera valor anormal). Pacientes com protime normal
 # simplesmente não fazem o exame.
-if process_openml("hepatitis", 1, "PROTIME", "MNAR", "hepatitis_protime",
-                  aux_cols=["AGE", "BILIRUBIN", "SGOT", "ALBUMIN"]):
+if process_openml(
+    "hepatitis", 1, "PROTIME", "MNAR", "hepatitis_protime", aux_cols=["AGE", "BILIRUBIN", "SGOT", "ALBUMIN"]
+):
     success_count += 1
 
 # colic v2: packed_cell_volume — REMOVIDO após validação (2026-04-20).
@@ -333,6 +368,7 @@ if process_openml("hepatitis", 1, "PROTIME", "MNAR", "hepatitis_protime",
 # não MNAR. Justificativa de domínio insuficiente para classificar como MNAR.
 # if process_openml("colic", 2, "total_protein", "MNAR", "colic_totalprotein", ...):
 
+
 # Pima: SkinThickness — espessura de dobra cutânea tricipital.
 # MNAR clássico: pacientes obesas não podem ser medidas com compassos
 # padrão (limite ~45mm). Quanto maior a espessura real, maior a probabilidade
@@ -341,21 +377,30 @@ def process_pima_skin():
     try:
         print("\n  Baixando Pima SkinThickness (URL)...")
         url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
-        cols = ["Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
-                "Insulin", "BMI", "DiabetesPedigreeFunction", "Age", "Outcome"]
+        cols = [
+            "Pregnancies",
+            "Glucose",
+            "BloodPressure",
+            "SkinThickness",
+            "Insulin",
+            "BMI",
+            "DiabetesPedigreeFunction",
+            "Age",
+            "Outcome",
+        ]
         df_raw = pd.read_csv(url, names=cols)
         print(f"    Shape: {df_raw.shape}")
 
         # Converter zeros para NaN (zeros são biologicamente impossíveis)
         df_raw["SkinThickness"] = df_raw["SkinThickness"].replace(0, np.nan)
 
-        df = select_columns(df_raw, "SkinThickness",
-                            aux_cols=["Pregnancies", "Glucose", "BMI", "Age"])
+        df = select_columns(df_raw, "SkinThickness", aux_cols=["Pregnancies", "Glucose", "BMI", "Age"])
         result = normalize_and_save(df, "MNAR", "pima_skinthickness")
         return result is not None
     except Exception as e:
         print(f"    ERRO: {e}")
         return False
+
 
 if process_pima_skin():
     success_count += 1

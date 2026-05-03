@@ -23,6 +23,7 @@ Uso:
 """
 
 import os
+
 import numpy as np
 import pandas as pd
 
@@ -43,6 +44,7 @@ for mech in ["MCAR", "MAR", "MNAR"]:
 # Funções auxiliares
 # ======================================================================
 
+
 def impute_with_sample(series: pd.Series) -> pd.Series:
     """Replace NaN with random samples from observed values (preserves variance)."""
     observed = series.dropna().values
@@ -55,8 +57,7 @@ def impute_with_sample(series: pd.Series) -> pd.Series:
     return series
 
 
-def cap_missing_rate(df: pd.DataFrame,
-                     target: float = TARGET_MISSING_RATE) -> pd.DataFrame:
+def cap_missing_rate(df: pd.DataFrame, target: float = TARGET_MISSING_RATE) -> pd.DataFrame:
     """Reduce X0 missing rate to target by imputing excess NaN with observed samples.
 
     A random subset of NaN positions is kept, preserving the original mechanism
@@ -83,8 +84,7 @@ def cap_missing_rate(df: pd.DataFrame,
     return df
 
 
-def add_jitter(df: pd.DataFrame, columns: list[str],
-               scale: float = JITTER_SCALE) -> pd.DataFrame:
+def add_jitter(df: pd.DataFrame, columns: list[str], scale: float = JITTER_SCALE) -> pd.DataFrame:
     """Add small Gaussian noise to ordinal columns to simulate continuity."""
     df = df.copy()
     for col in columns:
@@ -105,8 +105,7 @@ def normalize_col(df: pd.DataFrame, col: str, observed_only: bool = False):
         df.loc[df[col].notna(), col] = 0.5
 
 
-def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str],
-                      pad_to: int = 5) -> pd.DataFrame:
+def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str], pad_to: int = 5) -> pd.DataFrame:
     """Select columns, rename to X0..X4, impute predictor NaN with samples."""
     out = pd.DataFrame()
     out["X0"] = df[x0_col].values
@@ -128,8 +127,7 @@ def select_and_rename(df: pd.DataFrame, x0_col: str, other_cols: list[str],
     return out
 
 
-def process_and_save(df: pd.DataFrame, mechanism: str, name: str,
-                     jitter_cols: list[str] | None = None):
+def process_and_save(df: pd.DataFrame, mechanism: str, name: str, jitter_cols: list[str] | None = None):
     """Cap missing rate → normalize → jitter (optional) → save."""
     df = cap_missing_rate(df)
 
@@ -157,7 +155,8 @@ tao = pd.read_csv(tao_path)
 # Variante 1: humidity como X0 (93 NaN, 12.6%)
 print("  Variante: humidity")
 df_mcar = select_and_rename(
-    tao, x0_col="humidity",
+    tao,
+    x0_col="humidity",
     other_cols=["sea.surface.temp", "air.temp", "uwind", "vwind"],
 )
 process_and_save(df_mcar, "MCAR", "oceanbuoys_humidity")
@@ -165,7 +164,8 @@ process_and_save(df_mcar, "MCAR", "oceanbuoys_humidity")
 # Variante 2: air.temp como X0 (81 NaN, 11.0%)
 print("  Variante: air.temp")
 df_mcar2 = select_and_rename(
-    tao, x0_col="air.temp",
+    tao,
+    x0_col="air.temp",
     other_cols=["sea.surface.temp", "humidity", "uwind", "vwind"],
 )
 process_and_save(df_mcar2, "MCAR", "oceanbuoys_airtemp")
@@ -180,7 +180,8 @@ aq = pd.read_csv(aq_path)
 
 # Ozone: 37 NaN (24.2%), missingness correlaciona com Wind e Temp (MAR)
 df_mar = select_and_rename(
-    aq, x0_col="Ozone",
+    aq,
+    x0_col="Ozone",
     other_cols=["Wind", "Temp", "Solar.R", "Month"],
 )
 process_and_save(df_mar, "MAR", "airquality_ozone")
@@ -192,7 +193,8 @@ process_and_save(df_mar, "MAR", "airquality_ozone")
 print("\n=== MAR: Mammographic Mass ===")
 mammo_path = os.path.join(DATASET_DIR, "MAR", "mammographic_mass_raw.csv")
 mammo = pd.read_csv(
-    mammo_path, header=None,
+    mammo_path,
+    header=None,
     names=["BIRADS", "Age", "Shape", "Margin", "Density", "Severity"],
     na_values="?",
 )
@@ -202,13 +204,13 @@ mammo_clean = mammo.dropna(subset=["BIRADS", "Age", "Shape", "Margin"]).copy()
 
 # Density: 56 NaN (6.3%), missingness depende de BIRADS e Age (MAR)
 df_mar2 = select_and_rename(
-    mammo_clean, x0_col="Density",
+    mammo_clean,
+    x0_col="Density",
     other_cols=["BIRADS", "Age", "Shape", "Margin"],
 )
 # Jitter em variáveis ordinais (X0=Density, X1=BIRADS, X3=Shape, X4=Margin)
 # X2=Age é contínua, não precisa de jitter
-process_and_save(df_mar2, "MAR", "mammographic_density",
-                 jitter_cols=["X0", "X1", "X3", "X4"])
+process_and_save(df_mar2, "MAR", "mammographic_density", jitter_cols=["X0", "X1", "X3", "X4"])
 
 
 # ======================================================================
@@ -217,9 +219,19 @@ process_and_save(df_mar2, "MAR", "mammographic_density",
 print("\n=== MNAR: Pima Diabetes (Insulin) ===")
 pima_path = os.path.join(DATASET_DIR, "MNAR", "pima_diabetes_raw.csv")
 pima = pd.read_csv(
-    pima_path, header=None,
-    names=["Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
-           "Insulin", "BMI", "DiabetesPedigree", "Age", "Outcome"],
+    pima_path,
+    header=None,
+    names=[
+        "Pregnancies",
+        "Glucose",
+        "BloodPressure",
+        "SkinThickness",
+        "Insulin",
+        "BMI",
+        "DiabetesPedigree",
+        "Age",
+        "Outcome",
+    ],
 )
 # Zeros biologicamente impossíveis → NaN
 pima_proc = pima.copy()
@@ -230,7 +242,8 @@ pima_proc["BMI"] = pima_proc["BMI"].replace(0, np.nan)
 
 # Insulin: 374 NaN (48.7%) → será capped para ~10%
 df_mnar = select_and_rename(
-    pima_proc, x0_col="Insulin",
+    pima_proc,
+    x0_col="Insulin",
     other_cols=["Glucose", "BloodPressure", "BMI", "Age"],
 )
 process_and_save(df_mnar, "MNAR", "pima_insulin")
@@ -251,7 +264,8 @@ mroz_proc["wc_num"] = (mroz_proc["wc"] == "yes").astype(float)
 
 # lwg: 325 NaN (43.2%) → será capped para ~10%
 df_mnar2 = select_and_rename(
-    mroz_proc, x0_col="lwg",
+    mroz_proc,
+    x0_col="lwg",
     other_cols=["age", "inc", "k5", "wc_num"],
 )
 process_and_save(df_mnar2, "MNAR", "mroz_wages")
@@ -273,5 +287,7 @@ for mech in ["MCAR", "MAR", "MNAR"]:
         miss = df["X0"].isna().mean() * 100
         x0_unique = df["X0"].dropna().nunique()
         complete = sum(1 for c in df.columns if c != "X0" and df[c].isna().sum() == 0)
-        print(f"  {f}: {df.shape[0]} rows, X0 missing={miss:.1f}%, "
-              f"X0 unique={x0_unique}, {complete} preditoras completas")
+        print(
+            f"  {f}: {df.shape[0]} rows, X0 missing={miss:.1f}%, "
+            f"X0 unique={x0_unique}, {complete} preditoras completas"
+        )

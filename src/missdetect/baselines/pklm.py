@@ -17,20 +17,20 @@ Uso como feature (chamado por extract_features.py):
     from baselines.pklm import pklm_test
     result = pklm_test(df, missing_col='X0', n_permutations=100)
 """
+
 import argparse
 import json
 import os
 import sys
 import warnings
 from datetime import datetime
-from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from sklearn.model_selection import StratifiedKFold
@@ -162,8 +162,11 @@ def _cv_predict_proba(X, y, n_estimators, rng):
         if len(np.unique(y[test_idx])) < 2:
             continue
         clf = RandomForestClassifier(
-            n_estimators=n_estimators, max_depth=5,
-            min_samples_leaf=10, random_state=rng.randint(0, 2**31), n_jobs=-1,
+            n_estimators=n_estimators,
+            max_depth=5,
+            min_samples_leaf=10,
+            random_state=rng.randint(0, 2**31),
+            n_jobs=-1,
         )
         clf.fit(X[train_idx], y[train_idx])
         pred = clf.predict_proba(X[test_idx])
@@ -277,34 +280,36 @@ if __name__ == "__main__":
                 if "X0" not in df.columns:
                     df.columns = [f"X{i}" for i in range(df.shape[1])]
 
-                prediction, pklm_result = pklm_classify_dataset(
-                    df, missing_col="X0", n_permutations=N_PERM
-                )
+                prediction, pklm_result = pklm_classify_dataset(df, missing_col="X0", n_permutations=N_PERM)
 
-                results.append({
-                    "file": fname,
-                    "true_label": class_name,
-                    "true_code": CLASS_MAP[class_name],
-                    "pred_label": prediction,
-                    "pred_code": CLASS_MAP[prediction],
-                    "pklm_statistic": pklm_result["pklm_statistic"],
-                    "pklm_pvalue": pklm_result["pklm_pvalue"],
-                    "rejects_mcar": pklm_result["rejects_mcar"],
-                    "pklm_log_statistic": pklm_result["pklm_log_statistic"],
-                })
+                results.append(
+                    {
+                        "file": fname,
+                        "true_label": class_name,
+                        "true_code": CLASS_MAP[class_name],
+                        "pred_label": prediction,
+                        "pred_code": CLASS_MAP[prediction],
+                        "pklm_statistic": pklm_result["pklm_statistic"],
+                        "pklm_pvalue": pklm_result["pklm_pvalue"],
+                        "rejects_mcar": pklm_result["rejects_mcar"],
+                        "pklm_log_statistic": pklm_result["pklm_log_statistic"],
+                    }
+                )
             except Exception as e:
                 print(f"    ⚠️ Erro em {fname}: {e}")
-                results.append({
-                    "file": fname,
-                    "true_label": class_name,
-                    "true_code": CLASS_MAP[class_name],
-                    "pred_label": "MCAR",
-                    "pred_code": 0,
-                    "pklm_statistic": 0.0,
-                    "pklm_pvalue": 1.0,
-                    "rejects_mcar": False,
-                    "pklm_log_statistic": 0.0,
-                })
+                results.append(
+                    {
+                        "file": fname,
+                        "true_label": class_name,
+                        "true_code": CLASS_MAP[class_name],
+                        "pred_label": "MCAR",
+                        "pred_code": 0,
+                        "pklm_statistic": 0.0,
+                        "pklm_pvalue": 1.0,
+                        "rejects_mcar": False,
+                        "pklm_log_statistic": 0.0,
+                    }
+                )
 
     df_results = pd.DataFrame(results)
 
@@ -317,8 +322,11 @@ if __name__ == "__main__":
     acc = accuracy_score(y_true, y_pred)
     f1_macro = f1_score(y_true, y_pred, average="macro", zero_division=0)
     report = classification_report(
-        y_true, y_pred, target_names=["MCAR", "MAR", "MNAR"],
-        output_dict=True, zero_division=0,
+        y_true,
+        y_pred,
+        target_names=["MCAR", "MAR", "MNAR"],
+        output_dict=True,
+        zero_division=0,
     )
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
 
@@ -327,13 +335,13 @@ if __name__ == "__main__":
     print(f"{'='*70}")
     print(f"   Accuracy: {acc:.4f}")
     print(f"   F1 Macro: {f1_macro:.4f}")
-    print(f"\n   Per class:")
+    print("\n   Per class:")
     for cls in ["MCAR", "MAR", "MNAR"]:
         r = report[cls]
         print(f"     {cls}: P={r['precision']:.3f} R={r['recall']:.3f} F1={r['f1-score']:.3f} (n={int(r['support'])})")
 
-    print(f"\n   Confusion Matrix:")
-    print(f"          Pred MCAR  MAR  MNAR")
+    print("\n   Confusion Matrix:")
+    print("          Pred MCAR  MAR  MNAR")
     for i, cls in enumerate(["MCAR", "MAR", "MNAR"]):
         print(f"   {cls:5s}  {cm[i][0]:5d} {cm[i][1]:4d} {cm[i][2]:5d}")
 
@@ -341,7 +349,7 @@ if __name__ == "__main__":
     # TESTE MCAR BINÁRIO (poder e tipo I)
     # ==============================================================================
     print(f"\n{'='*70}")
-    print(f"📊 PKLM COMO TESTE BINÁRIO (MCAR vs não-MCAR)")
+    print("📊 PKLM COMO TESTE BINÁRIO (MCAR vs não-MCAR)")
     print(f"{'='*70}")
 
     df_results["is_mcar_true"] = df_results["true_label"] == "MCAR"
@@ -364,7 +372,7 @@ if __name__ == "__main__":
         print(f"     {cls}: taxa de rejeição = {rej_rate:.1%}")
 
     # PKLM statistic stats
-    print(f"\n   PKLM statistic (média por classe real):")
+    print("\n   PKLM statistic (média por classe real):")
     for cls in ["MCAR", "MAR", "MNAR"]:
         sub = df_results[df_results["true_label"] == cls]
         print(
@@ -381,14 +389,16 @@ if __name__ == "__main__":
     metrics_rows = []
     for cls in ["MCAR", "MAR", "MNAR"]:
         r = report[cls]
-        metrics_rows.append({
-            "modelo": "PKLM",
-            "classe": cls,
-            "precision": r["precision"],
-            "recall": r["recall"],
-            "f1": r["f1-score"],
-            "support": int(r["support"]),
-        })
+        metrics_rows.append(
+            {
+                "modelo": "PKLM",
+                "classe": cls,
+                "precision": r["precision"],
+                "recall": r["recall"],
+                "f1": r["f1-score"],
+                "support": int(r["support"]),
+            }
+        )
     pd.DataFrame(metrics_rows).to_csv(os.path.join(OUT_DIR, "metrics_per_class.csv"), index=False)
 
     print(f"\n   Distribuição predições: {dict(df_results['pred_label'].value_counts())}")
@@ -410,8 +420,11 @@ if __name__ == "__main__":
     for i in range(3):
         for j in range(3):
             ax.text(
-                j, i, format(cm[i, j], "d"),
-                ha="center", va="center",
+                j,
+                i,
+                format(cm[i, j], "d"),
+                ha="center",
+                va="center",
                 color="white" if cm[i, j] > thresh else "black",
             )
     plt.tight_layout()
@@ -422,7 +435,7 @@ if __name__ == "__main__":
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     # PKLM statistic
-    for cls, color in zip(["MCAR", "MAR", "MNAR"], ["#3498db", "#2ecc71", "#e74c3c"]):
+    for cls, color in zip(["MCAR", "MAR", "MNAR"], ["#3498db", "#2ecc71", "#e74c3c"], strict=False):
         vals = df_results[df_results["true_label"] == cls]["pklm_statistic"]
         axes[0].hist(vals, alpha=0.5, label=cls, color=color, bins=20)
     axes[0].set_title("PKLM Statistic (KL Divergence)")
@@ -430,7 +443,7 @@ if __name__ == "__main__":
     axes[0].set_xlabel("JSD")
 
     # PKLM p-value
-    for cls, color in zip(["MCAR", "MAR", "MNAR"], ["#3498db", "#2ecc71", "#e74c3c"]):
+    for cls, color in zip(["MCAR", "MAR", "MNAR"], ["#3498db", "#2ecc71", "#e74c3c"], strict=False):
         vals = df_results[df_results["true_label"] == cls]["pklm_pvalue"]
         axes[1].hist(vals, alpha=0.5, label=cls, color=color, bins=20)
     axes[1].axvline(x=0.05, color="red", linestyle="--", label="α=0.05")

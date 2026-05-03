@@ -12,10 +12,10 @@ Usa sentence-transformers local (all-MiniLM-L6-v2) por ser:
 - Determinístico (cacheável)
 - Rápido (CPU)
 """
+
 import hashlib
 import json
 import os
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -32,7 +32,7 @@ class EmbeddingFeatureExtractor:
     3. Retorna componentes do embedding (PCA é feito no treinamento)
     """
 
-    def __init__(self, n_components: int = 10, cache_dir: Optional[str] = None):
+    def __init__(self, n_components: int = 10, cache_dir: str | None = None):
         self.n_components = n_components
         self._model = None
         self._cache: dict = {}
@@ -46,6 +46,7 @@ class EmbeddingFeatureExtractor:
         """Lazy load do modelo de embeddings."""
         if self._model is None:
             from sentence_transformers import SentenceTransformer
+
             self._model = SentenceTransformer("all-MiniLM-L6-v2")
         return self._model
 
@@ -55,7 +56,7 @@ class EmbeddingFeatureExtractor:
             cache_path = os.path.join(self._cache_dir, ".embedding_cache.json")
             if os.path.exists(cache_path):
                 try:
-                    with open(cache_path, "r") as f:
+                    with open(cache_path) as f:
                         self._disk_cache = json.load(f)
                 except Exception:
                     self._disk_cache = {}
@@ -98,12 +99,9 @@ class EmbeddingFeatureExtractor:
 
         # Truncate to n_components (PCA será aplicado no treinamento se necessário)
         # O embedding do MiniLM tem 384 dims — usamos os primeiros n_components
-        emb_values = embedding[:self.n_components].astype(float)
+        emb_values = embedding[: self.n_components].astype(float)
 
-        result = {
-            f"emb_{i}": float(emb_values[i])
-            for i in range(len(emb_values))
-        }
+        result = {f"emb_{i}": float(emb_values[i]) for i in range(len(emb_values))}
 
         if use_cache:
             self._cache[cache_key] = result
@@ -146,8 +144,7 @@ class EmbeddingFeatureExtractor:
 
             p5, p25, p50, p75, p95 = np.percentile(X0_obs, [5, 25, 50, 75, 95])
             parts.append(
-                f"X0 percentiles: p5={p5:.3f}, p25={p25:.3f}, "
-                f"p50={p50:.3f}, p75={p75:.3f}, p95={p95:.3f}."
+                f"X0 percentiles: p5={p5:.3f}, p25={p25:.3f}, " f"p50={p50:.3f}, p75={p75:.3f}, p95={p95:.3f}."
             )
 
         # Correlações mask-Xi

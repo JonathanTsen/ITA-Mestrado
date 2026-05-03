@@ -16,7 +16,6 @@ Usage:
 
 import json
 import os
-import sys
 
 import numpy as np
 import pandas as pd
@@ -84,9 +83,19 @@ def try_load_raw_stats(mechanism: str, name: str) -> dict | None:
     try:
         if "pima" in raw_file:
             df = pd.read_csv(
-                raw_path, header=None,
-                names=["Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
-                       "Insulin", "BMI", "DiabetesPedigree", "Age", "Outcome"],
+                raw_path,
+                header=None,
+                names=[
+                    "Pregnancies",
+                    "Glucose",
+                    "BloodPressure",
+                    "SkinThickness",
+                    "Insulin",
+                    "BMI",
+                    "DiabetesPedigree",
+                    "Age",
+                    "Outcome",
+                ],
             )
             df["Insulin"] = df["Insulin"].replace(0, np.nan)
         elif "mroz" in raw_file:
@@ -94,7 +103,8 @@ def try_load_raw_stats(mechanism: str, name: str) -> dict | None:
             df.loc[df["lfp"] == "no", "lwg"] = np.nan
         elif "mammographic" in raw_file:
             df = pd.read_csv(
-                raw_path, header=None,
+                raw_path,
+                header=None,
                 names=["BIRADS", "Age", "Shape", "Margin", "Density", "Severity"],
                 na_values="?",
             )
@@ -128,7 +138,7 @@ def main():
 
             # Extract dataset name (e.g., "pima_insulin" from "MNAR_pima_insulin.txt")
             dataset_key = fname.replace(".txt", "")
-            name = dataset_key[len(mechanism) + 1:]  # Remove "MNAR_" prefix
+            name = dataset_key[len(mechanism) + 1 :]  # Remove "MNAR_" prefix
 
             # Try raw data first
             raw_stats = try_load_raw_stats(mechanism, name)

@@ -8,13 +8,14 @@ Estas features são baseadas nas definições teóricas dos mecanismos:
 
 6 features originais + 5 novas features para detecção de MNAR.
 """
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
 
 
 def extract_discriminative_features(df: pd.DataFrame) -> dict:
@@ -35,19 +36,19 @@ def extract_discriminative_features(df: pd.DataFrame) -> dict:
         Dict com 11 features discriminativas
     """
     feats = {}
-    
+
     mask = df["X0"].isna().astype(int).values
     n_missing = mask.sum()
     n_total = len(mask)
-    
+
     if n_missing == 0 or n_missing == n_total:
         return _default_discriminative_features()
-    
+
     # =========================================
     # 1. MODELO PREDITIVO: AUC e coef_X1_abs
     # =========================================
     X_predictors = df[["X1", "X2", "X3", "X4"]].values
-    
+
     try:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_predictors)
@@ -76,26 +77,26 @@ def extract_discriminative_features(df: pd.DataFrame) -> dict:
     except Exception:
         feats["auc_mask_from_Xobs"] = 0.5
         feats["coef_X1_abs"] = 0.0
-    
+
     # =========================================
     # 2. TESTE MAR: X1 vs mask
     # =========================================
     X1 = df["X1"].values
-    
+
     # log p-valor da correlação
     if np.std(X1) > 0:
         _, pval_X1_mask = stats.pointbiserialr(mask, X1)
         feats["log_pval_X1_mask"] = -np.log10(max(pval_X1_mask, 1e-100))
     else:
         feats["log_pval_X1_mask"] = 0.0
-    
+
     # Diferença de média e Mann-Whitney
     X1_when_missing = X1[mask == 1]
     X1_when_observed = X1[mask == 0]
-    
+
     if len(X1_when_missing) > 0 and len(X1_when_observed) > 0:
         feats["X1_mean_diff"] = np.mean(X1_when_missing) - np.mean(X1_when_observed)
-        
+
         try:
             _, u_pval = stats.mannwhitneyu(X1_when_missing, X1_when_observed, alternative="two-sided")
             feats["X1_mannwhitney_pval"] = u_pval
@@ -104,7 +105,7 @@ def extract_discriminative_features(df: pd.DataFrame) -> dict:
     else:
         feats["X1_mean_diff"] = 0.0
         feats["X1_mannwhitney_pval"] = 1.0
-    
+
     # =========================================
     # 3. LITTLE'S MCAR TEST PROXY
     # =========================================
@@ -114,11 +115,11 @@ def extract_discriminative_features(df: pd.DataFrame) -> dict:
             xi = df[col].values
             xi_when_missing = xi[mask == 1]
             xi_when_observed = xi[mask == 0]
-            
+
             if len(xi_when_missing) > 0 and len(xi_when_observed) > 0:
                 ks_stat, _ = stats.ks_2samp(xi_when_missing, xi_when_observed)
                 chi2_sum += ks_stat
-        
+
         feats["little_proxy_score"] = chi2_sum / 4
     except Exception:
         feats["little_proxy_score"] = 0.0

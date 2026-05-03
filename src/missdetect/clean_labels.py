@@ -12,25 +12,26 @@ Uso:
     python clean_labels.py --experiment step05_pro --action weight
     python clean_labels.py --experiment step05_pro --action relabel
 """
+
 import argparse
 import json
 import os
 import sys
 import warnings
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import cross_val_predict, GroupKFold, StratifiedKFold
+from sklearn.model_selection import GroupKFold, StratifiedKFold, cross_val_predict
 
 warnings.filterwarnings("ignore")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.paths import get_output_dir, OUTPUT_BASE
+from utils.paths import OUTPUT_BASE, get_output_dir
 
 CLASS_NAMES = {0: "MCAR", 1: "MAR", 2: "MNAR"}
 
@@ -72,8 +73,7 @@ def get_clean_data(experiment, data_type="real", mode="weight"):
 def main():
     parser = argparse.ArgumentParser(description="Cleanlab: limpeza de labels ruidosos")
     parser.add_argument("--experiment", required=True)
-    parser.add_argument("--action", choices=["report", "prune", "weight", "relabel"],
-                        default="report")
+    parser.add_argument("--action", choices=["report", "prune", "weight", "relabel"], default="report")
     parser.add_argument("--prune-pct", type=float, default=15.0)
     parser.add_argument("--data", choices=["sintetico", "real"], default="real")
     args = parser.parse_args()
@@ -122,20 +122,23 @@ def main():
     else:
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         pred_probs = cross_val_predict(clf, X, y, cv=cv, method="predict_proba")
-        print(f"  CV: StratifiedKFold(5)")
+        print("  CV: StratifiedKFold(5)")
 
     # Cleanlab
     print("\n  Analisando qualidade dos labels com Cleanlab...")
-    from cleanlab.rank import get_label_quality_scores
-    from cleanlab.filter import find_label_issues
     from cleanlab.count import compute_confident_joint
+    from cleanlab.filter import find_label_issues
+    from cleanlab.rank import get_label_quality_scores
 
     label_quality_scores = get_label_quality_scores(
-        labels=y.values, pred_probs=pred_probs, method="self_confidence",
+        labels=y.values,
+        pred_probs=pred_probs,
+        method="self_confidence",
     )
 
     issue_indices = find_label_issues(
-        labels=y.values, pred_probs=pred_probs,
+        labels=y.values,
+        pred_probs=pred_probs,
         return_indices_ranked_by="self_confidence",
         n_jobs=1,  # Evita multiprocessing no macOS
     )
@@ -147,7 +150,7 @@ def main():
     # Confident Joint
     confident_joint = compute_confident_joint(labels=y.values, pred_probs=pred_probs)
 
-    print(f"\n  Confident Joint (label dado x label estimado):")
+    print("\n  Confident Joint (label dado x label estimado):")
     print(f"  {'':>10s} | pred MCAR | pred MAR | pred MNAR")
     for i, name in CLASS_NAMES.items():
         row = confident_joint[i]
@@ -160,7 +163,7 @@ def main():
 
     dataset_quality = []
     if groups is not None:
-        print(f"\n  Qualidade por dataset:")
+        print("\n  Qualidade por dataset:")
         for dataset_name in sorted(groups.unique()):
             mask = groups == dataset_name
             n_samples = mask.sum()
@@ -176,23 +179,27 @@ def main():
             agrees = original_name == predicted_name
 
             sym = "OK" if agrees else "!!"
-            print(f"  [{sym}] {dataset_name:40s}: quality={avg_quality:.3f} "
-                  f"issues={n_issues_ds:3d}/{n_samples} ({pct_issues_ds:4.1f}%) "
-                  f"label={original_name:5s} -> pred={predicted_name:5s}")
+            print(
+                f"  [{sym}] {dataset_name:40s}: quality={avg_quality:.3f} "
+                f"issues={n_issues_ds:3d}/{n_samples} ({pct_issues_ds:4.1f}%) "
+                f"label={original_name:5s} -> pred={predicted_name:5s}"
+            )
 
-            dataset_quality.append({
-                "dataset": dataset_name,
-                "n_samples": int(n_samples),
-                "avg_quality": float(avg_quality),
-                "min_quality": float(min_quality),
-                "n_issues": int(n_issues_ds),
-                "pct_issues": float(pct_issues_ds),
-                "original_label": int(original_label),
-                "original_name": original_name,
-                "predicted_label": int(most_predicted),
-                "predicted_name": predicted_name,
-                "label_agrees": agrees,
-            })
+            dataset_quality.append(
+                {
+                    "dataset": dataset_name,
+                    "n_samples": int(n_samples),
+                    "avg_quality": float(avg_quality),
+                    "min_quality": float(min_quality),
+                    "n_issues": int(n_issues_ds),
+                    "pct_issues": float(pct_issues_ds),
+                    "original_label": int(original_label),
+                    "original_name": original_name,
+                    "predicted_label": int(most_predicted),
+                    "predicted_name": predicted_name,
+                    "label_agrees": agrees,
+                }
+            )
 
     df_quality = pd.DataFrame(dataset_quality)
     df_quality.to_csv(os.path.join(ANALYSIS_DIR, "quality_by_dataset.csv"), index=False)
@@ -201,18 +208,20 @@ def main():
     print(f"\n  Datasets com label discordante: {n_disagree}/{len(df_quality)}")
 
     # Salvar scores
-    df_scores = pd.DataFrame({
-        "index": np.arange(len(y)),
-        "label_original": y.values,
-        "label_name": [CLASS_NAMES[v] for v in y.values],
-        "quality_score": label_quality_scores,
-        "is_issue": is_issue,
-        "suggested_label": suggested_labels,
-        "suggested_name": [CLASS_NAMES[v] for v in suggested_labels],
-        "prob_MCAR": pred_probs[:, 0],
-        "prob_MAR": pred_probs[:, 1],
-        "prob_MNAR": pred_probs[:, 2],
-    })
+    df_scores = pd.DataFrame(
+        {
+            "index": np.arange(len(y)),
+            "label_original": y.values,
+            "label_name": [CLASS_NAMES[v] for v in y.values],
+            "quality_score": label_quality_scores,
+            "is_issue": is_issue,
+            "suggested_label": suggested_labels,
+            "suggested_name": [CLASS_NAMES[v] for v in suggested_labels],
+            "prob_MCAR": pred_probs[:, 0],
+            "prob_MAR": pred_probs[:, 1],
+            "prob_MNAR": pred_probs[:, 2],
+        }
+    )
     if groups is not None:
         df_scores["group"] = groups.values
 
@@ -230,13 +239,10 @@ def main():
         keep_mask = np.ones(len(y), dtype=bool)
         keep_mask[remove_idx] = False
 
-        X[keep_mask].reset_index(drop=True).to_csv(
-            os.path.join(ANALYSIS_DIR, "X_features_clean.csv"), index=False)
-        y[keep_mask].reset_index(drop=True).to_csv(
-            os.path.join(ANALYSIS_DIR, "y_labels_clean.csv"), index=False)
+        X[keep_mask].reset_index(drop=True).to_csv(os.path.join(ANALYSIS_DIR, "X_features_clean.csv"), index=False)
+        y[keep_mask].reset_index(drop=True).to_csv(os.path.join(ANALYSIS_DIR, "y_labels_clean.csv"), index=False)
         if groups is not None:
-            groups[keep_mask].reset_index(drop=True).to_csv(
-                os.path.join(ANALYSIS_DIR, "groups_clean.csv"), index=False)
+            groups[keep_mask].reset_index(drop=True).to_csv(os.path.join(ANALYSIS_DIR, "groups_clean.csv"), index=False)
 
         y_clean = y[keep_mask]
         print(f"\n  PRUNE: Removidas {n_remove} amostras ({PRUNE_PCT:.0f}%)")
@@ -245,10 +251,11 @@ def main():
 
     elif ACTION == "weight":
         weights = np.clip(label_quality_scores.copy(), 0.1, 1.0)
-        pd.DataFrame({"sample_weight": weights}).to_csv(
-            os.path.join(ANALYSIS_DIR, "sample_weights.csv"), index=False)
-        print(f"\n  WEIGHT: Pesos salvos (min={weights.min():.3f}, "
-              f"mean={weights.mean():.3f}, max={weights.max():.3f})")
+        pd.DataFrame({"sample_weight": weights}).to_csv(os.path.join(ANALYSIS_DIR, "sample_weights.csv"), index=False)
+        print(
+            f"\n  WEIGHT: Pesos salvos (min={weights.min():.3f}, "
+            f"mean={weights.mean():.3f}, max={weights.max():.3f})"
+        )
 
     elif ACTION == "relabel":
         y_relabeled = y.copy()
@@ -260,13 +267,17 @@ def main():
         print(f"  Antes:  {dict(y.value_counts().sort_index())}")
         print(f"  Depois: {dict(y_relabeled.value_counts().sort_index())}")
     else:
-        print(f"\n  REPORT: Apenas relatorio gerado (use --action para aplicar correcoes)")
+        print("\n  REPORT: Apenas relatorio gerado (use --action para aplicar correcoes)")
 
     # Gráficos
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     axes[0].hist(label_quality_scores, bins=50, color="#3498db", edgecolor="white", alpha=0.8)
-    axes[0].axvline(x=np.percentile(label_quality_scores, PRUNE_PCT),
-                    color="red", linestyle="--", label=f"Percentil {PRUNE_PCT:.0f}%")
+    axes[0].axvline(
+        x=np.percentile(label_quality_scores, PRUNE_PCT),
+        color="red",
+        linestyle="--",
+        label=f"Percentil {PRUNE_PCT:.0f}%",
+    )
     axes[0].set_xlabel("Label Quality Score")
     axes[0].set_ylabel("Frequencia")
     axes[0].set_title("Distribuicao de Quality Scores")
@@ -296,9 +307,15 @@ def main():
     plt.colorbar(im, ax=ax)
     for i in range(3):
         for j in range(3):
-            ax.text(j, i, str(confident_joint[i, j]),
-                    ha="center", va="center", fontsize=14,
-                    color="white" if confident_joint[i, j] > confident_joint.max() / 2 else "black")
+            ax.text(
+                j,
+                i,
+                str(confident_joint[i, j]),
+                ha="center",
+                va="center",
+                fontsize=14,
+                color="white" if confident_joint[i, j] > confident_joint.max() / 2 else "black",
+            )
     plt.tight_layout()
     plt.savefig(os.path.join(ANALYSIS_DIR, "confident_joint.png"), dpi=300, bbox_inches="tight")
     plt.close()
@@ -328,10 +345,7 @@ def main():
         "pct_issues": float(pct_issues),
         "mean_quality": float(label_quality_scores.mean()),
         "median_quality": float(np.median(label_quality_scores)),
-        "quality_by_class": {
-            CLASS_NAMES[cls]: float(label_quality_scores[y == cls].mean())
-            for cls in CLASS_NAMES
-        },
+        "quality_by_class": {CLASS_NAMES[cls]: float(label_quality_scores[y == cls].mean()) for cls in CLASS_NAMES},
     }
     if groups is not None:
         summary["n_datasets_disagreeing"] = int(n_disagree)
@@ -341,7 +355,7 @@ def main():
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
     print(f"\n{'='*70}")
-    print(f"CLEANLAB CONCLUIDO!")
+    print("CLEANLAB CONCLUIDO!")
     print(f"{'='*70}")
     print(f"Salvos em: {ANALYSIS_DIR}")
     for f_name in sorted(os.listdir(ANALYSIS_DIR)):

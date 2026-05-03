@@ -10,13 +10,14 @@ Abordagem de 3 tarefas AUC-ROC que medem a capacidade preditiva do missing:
 Usa LogisticRegression (rápido) — o sinal discriminativo está nos deltas
 entre tarefas, não no AUC absoluto.
 """
+
 import numpy as np
 import pandas as pd
+from scipy import stats
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
-from scipy import stats
+from sklearn.preprocessing import StandardScaler
 
 
 def extract_mechdetect_features(df: pd.DataFrame) -> dict:
@@ -49,9 +50,7 @@ def extract_mechdetect_features(df: pd.DataFrame) -> dict:
     mask_shuffled = mask.copy()
     rng.shuffle(mask_shuffled)
 
-    fold_aucs_c, fold_aucs_s, fold_aucs_e = _compute_all_tasks(
-        X_complete, X_excluded, mask, mask_shuffled, n_folds
-    )
+    fold_aucs_c, fold_aucs_s, fold_aucs_e = _compute_all_tasks(X_complete, X_excluded, mask, mask_shuffled, n_folds)
 
     auc_complete = float(np.mean(fold_aucs_c)) if fold_aucs_c else 0.5
     auc_shuffled = float(np.mean(fold_aucs_s)) if fold_aucs_s else 0.5
@@ -60,9 +59,7 @@ def extract_mechdetect_features(df: pd.DataFrame) -> dict:
     mwu_pvalue = 1.0
     if len(fold_aucs_c) >= 2 and len(fold_aucs_s) >= 2:
         try:
-            _, mwu_pvalue = stats.mannwhitneyu(
-                fold_aucs_c, fold_aucs_s, alternative="two-sided"
-            )
+            _, mwu_pvalue = stats.mannwhitneyu(fold_aucs_c, fold_aucs_s, alternative="two-sided")
             mwu_pvalue = float(mwu_pvalue)
         except Exception:
             pass
@@ -99,18 +96,13 @@ def _compute_all_tasks(X_complete, X_excluded, mask, mask_shuffled, n_folds):
             if len(np.unique(mask[test_idx])) < 2:
                 continue
 
-            aucs_c.append(_fit_and_auc(
-                X_complete[train_idx], mask[train_idx],
-                X_complete[test_idx], mask[test_idx]
-            ))
-            aucs_s.append(_fit_and_auc(
-                X_complete[train_idx], mask_shuffled[train_idx],
-                X_complete[test_idx], mask_shuffled[test_idx]
-            ))
-            aucs_e.append(_fit_and_auc(
-                X_excluded[train_idx], mask[train_idx],
-                X_excluded[test_idx], mask[test_idx]
-            ))
+            aucs_c.append(_fit_and_auc(X_complete[train_idx], mask[train_idx], X_complete[test_idx], mask[test_idx]))
+            aucs_s.append(
+                _fit_and_auc(
+                    X_complete[train_idx], mask_shuffled[train_idx], X_complete[test_idx], mask_shuffled[test_idx]
+                )
+            )
+            aucs_e.append(_fit_and_auc(X_excluded[train_idx], mask[train_idx], X_excluded[test_idx], mask[test_idx]))
     except Exception:
         pass
 

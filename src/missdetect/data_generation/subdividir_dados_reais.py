@@ -11,12 +11,14 @@ Isso resolve dois problemas do chunking sequencial:
 IMPORTANTE: Bootstraps do mesmo arquivo compartilham linhas. O train_model.py
 deve usar GroupShuffleSplit para evitar data leakage no split treino/teste.
 """
+
 import os
-import pandas as pd
 import shutil
 
-CHUNK_SIZE = 100       # linhas por amostra
-N_BOOTSTRAP = 50       # amostras por arquivo original
+import pandas as pd
+
+CHUNK_SIZE = 100  # linhas por amostra
+N_BOOTSTRAP = 50  # amostras por arquivo original
 MIN_MISSING_RATE = 0.01  # descarta amostras com <1% missing
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -44,9 +46,7 @@ def gerar_bootstrap():
 
             for i in range(N_BOOTSTRAP):
                 # Reamostragem com reposicao (bootstrap)
-                amostra = df.sample(n=min(CHUNK_SIZE, len(df)),
-                                    replace=True,
-                                    random_state=42 + i)
+                amostra = df.sample(n=min(CHUNK_SIZE, len(df)), replace=True, random_state=42 + i)
 
                 # Verifica taxa de missing minima
                 missing_rate = amostra["X0"].isna().mean()
@@ -54,8 +54,7 @@ def gerar_bootstrap():
                     continue
 
                 out_name = f"{base_name}_boot{i+1:03d}.txt"
-                amostra.to_csv(os.path.join(output_dir, out_name),
-                               sep="\t", index=False)
+                amostra.to_csv(os.path.join(output_dir, out_name), sep="\t", index=False)
                 gerados += 1
                 total += 1
 

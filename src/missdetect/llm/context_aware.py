@@ -18,6 +18,7 @@ Extracted features (9):
   - llm_ctx_stats_agreement: Stats agree with causal DAG (1=agree, 0.5=inconclusive, 0=contradict)
 """
 
+import contextlib
 import hashlib
 import json
 import os
@@ -28,10 +29,10 @@ import pandas as pd
 from pydantic import BaseModel, Field
 from scipy import stats as sp_stats
 
-
 # ======================================================
 # SCHEMAS
 # ======================================================
+
 
 class ContextAnalysis(BaseModel):
     """Step 1 output: analysis with context."""
@@ -41,19 +42,27 @@ class ContextAnalysis(BaseModel):
         description="Most likely mechanism given the domain: MCAR, MAR, or MNAR",
     )
     domain_confidence: float = Field(
-        default=0.33, ge=0.0, le=1.0,
+        default=0.33,
+        ge=0.0,
+        le=1.0,
         description="Confidence in the domain-based classification",
     )
     stats_consistent_with_domain: float = Field(
-        default=0.5, ge=0.0, le=1.0,
+        default=0.5,
+        ge=0.0,
+        le=1.0,
         description="1=statistics consistent with domain expectation, 0=inconsistent",
     )
     surprise_factor: float = Field(
-        default=0.0, ge=0.0, le=1.0,
+        default=0.0,
+        ge=0.0,
+        le=1.0,
         description="1=very surprising/unexpected data, 0=within expectations",
     )
     stats_dag_agreement: float = Field(
-        default=0.5, ge=0.0, le=1.0,
+        default=0.5,
+        ge=0.0,
+        le=1.0,
         description="1=statistics agree with causal DAG, 0.5=inconclusive, 0=contradict",
     )
     reasoning: str = Field(
@@ -70,11 +79,15 @@ class CounterAnalysis(BaseModel):
         description="Revised mechanism after counter-argument",
     )
     revised_confidence: float = Field(
-        default=0.33, ge=0.0, le=1.0,
+        default=0.33,
+        ge=0.0,
+        le=1.0,
         description="Revised confidence",
     )
     counter_argument_strength: float = Field(
-        default=0.5, ge=0.0, le=1.0,
+        default=0.5,
+        ge=0.0,
+        le=1.0,
         description="1=very strong counter-argument, 0=weak",
     )
     mechanism_changed: bool = Field(
@@ -92,7 +105,9 @@ class CausalCause(BaseModel):
         description="A=independent of all variables (MCAR), B=depends on observed Xi (MAR), C=depends on X0 itself (MNAR)",
     )
     plausibility: float = Field(
-        default=0.5, ge=0.0, le=1.0,
+        default=0.5,
+        ge=0.0,
+        le=1.0,
         description="How plausible is this cause (0=implausible, 1=very plausible)",
     )
 
@@ -122,6 +137,7 @@ CAUSE_TYPE_TO_SCORE = {"A": 0.0, "B": 0.5, "C": 1.0}
 # MAIN CLASS
 # ======================================================
 
+
 class LLMContextAwareExtractor:
     """LLM feature extractor with domain context and counter-argumentation."""
 
@@ -144,28 +160,25 @@ class LLMContextAwareExtractor:
             "neutral": "real_datasets_metadata_neutral.json",
         }.get(metadata_variant)
         if real_metadata_file is None:
-            raise ValueError(
-                f"metadata_variant desconhecido: {metadata_variant!r}. "
-                f"Use 'default' ou 'neutral'."
-            )
-        self._real_metadata = self._load_json(
-            os.path.join(data_dir, real_metadata_file)
-        )
-        self._synthetic_metadata = self._load_json(
-            os.path.join(data_dir, "synthetic_variants_metadata.json")
-        )
+            raise ValueError(f"metadata_variant desconhecido: {metadata_variant!r}. " f"Use 'default' ou 'neutral'.")
+        self._real_metadata = self._load_json(os.path.join(data_dir, real_metadata_file))
+        self._synthetic_metadata = self._load_json(os.path.join(data_dir, "synthetic_variants_metadata.json"))
         print(f"  📖 Metadata variant: {metadata_variant} ({real_metadata_file})")
 
         # Load original stats for real data
         stats_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "..", "Dataset", "real_data", "processado", "stats_originais.json",
+            "..",
+            "Dataset",
+            "real_data",
+            "processado",
+            "stats_originais.json",
         )
         self._original_stats = self._load_json(os.path.normpath(stats_path))
 
     def _load_json(self, path: str) -> dict:
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return json.load(f)
         print(f"  Warning: metadata not found at {path}")
         return {}
@@ -173,6 +186,7 @@ class LLMContextAwareExtractor:
     def _init_llm(self):
         if self.provider == "openai":
             from langchain_openai import ChatOpenAI
+
             return ChatOpenAI(
                 model_name=self.model_name,
                 api_key=os.getenv("OPENAI_API_KEY"),
@@ -180,6 +194,7 @@ class LLMContextAwareExtractor:
             )
         elif self.provider == "gemini":
             from langchain_google_genai import ChatGoogleGenerativeAI
+
             return ChatGoogleGenerativeAI(
                 model=self.model_name,
                 google_api_key=os.getenv("GEMINI_API_KEY"),
@@ -247,19 +262,13 @@ class LLMContextAwareExtractor:
             return self._extract_generic(stats)
 
         # Step 1: Causal DAG elicitation
-        dag = self._call_dag_step(
-            self._build_real_dag_prompt(metadata, stats, orig_stats)
-        )
+        dag = self._call_dag_step(self._build_real_dag_prompt(metadata, stats, orig_stats))
 
         # Step 2: DAG-informed classification
-        step2 = self._call_step1(
-            self._build_real_classification_prompt(metadata, stats, orig_stats, dag)
-        )
+        step2 = self._call_step1(self._build_real_classification_prompt(metadata, stats, orig_stats, dag))
 
         # Step 3: Counter-argumentation with DAG context
-        step3 = self._call_step2(
-            self._build_counter_prompt(step2, stats, dag)
-        )
+        step3 = self._call_step2(self._build_counter_prompt(step2, stats, dag))
 
         return self._combine_features(dag, step2, step3)
 
@@ -275,19 +284,13 @@ class LLMContextAwareExtractor:
         dist_info = self._get_distribution_info(variant_info.get("variant_key", ""))
 
         # Step 1: Causal DAG elicitation (NO mechanism leak)
-        dag = self._call_dag_step(
-            self._build_synthetic_dag_prompt(stats, variant_info, dist_info)
-        )
+        dag = self._call_dag_step(self._build_synthetic_dag_prompt(stats, variant_info, dist_info))
 
         # Step 2: DAG-informed classification
-        step2 = self._call_step1(
-            self._build_synthetic_classification_prompt(stats, variant_info, dist_info, dag)
-        )
+        step2 = self._call_step1(self._build_synthetic_classification_prompt(stats, variant_info, dist_info, dag))
 
         # Step 3: Counter-argumentation with DAG context
-        step3 = self._call_step2(
-            self._build_counter_prompt(step2, stats, dag)
-        )
+        step3 = self._call_step2(self._build_counter_prompt(step2, stats, dag))
 
         return self._combine_features(dag, step2, step3)
 
@@ -418,9 +421,7 @@ Return ONLY a valid JSON:
 }}
 ```"""
 
-    def _build_synthetic_dag_prompt(
-        self, stats: dict, variant_info: dict, dist_info: dict
-    ) -> str:
+    def _build_synthetic_dag_prompt(self, stats: dict, variant_info: dict, dist_info: dict) -> str:
         dist_name = dist_info.get("description", "unknown")
         mr = variant_info.get("missing_rate", "?")
 
@@ -475,8 +476,8 @@ Return ONLY a valid JSON:
         self, metadata: dict, stats: dict, orig_stats: dict, dag: CausalDAGAnalysis
     ) -> str:
         header = self._build_real_header(metadata, stats, orig_stats)
-        x0_var = metadata.get("x0_variable", "X0")
-        domain = metadata.get("domain", "unknown")
+        metadata.get("x0_variable", "X0")
+        metadata.get("domain", "unknown")
         dag_section = self._format_dag_section(dag)
 
         return f"""{header}
@@ -585,20 +586,15 @@ Return ONLY a valid JSON:
         for i, cause in enumerate(dag.causes, 1):
             label = type_labels.get(cause.cause_type, "?")
             lines.append(
-                f"  {i}. [{cause.cause_type}/{label}] {cause.description} "
-                f"(plausibility={cause.plausibility:.2f})"
+                f"  {i}. [{cause.cause_type}/{label}] {cause.description} " f"(plausibility={cause.plausibility:.2f})"
             )
         most_label = type_labels.get(dag.most_plausible_cause_type, "?")
-        lines.append(
-            f"\nMost plausible cause type: {dag.most_plausible_cause_type} ({most_label})"
-        )
+        lines.append(f"\nMost plausible cause type: {dag.most_plausible_cause_type} ({most_label})")
         if dag.reasoning:
             lines.append(f"Reasoning: {dag.reasoning}")
         return "\n".join(lines)
 
-    def _build_counter_prompt(
-        self, step2: ContextAnalysis, stats: dict, dag: CausalDAGAnalysis
-    ) -> str:
+    def _build_counter_prompt(self, step2: ContextAnalysis, stats: dict, dag: CausalDAGAnalysis) -> str:
         mech = step2.domain_mechanism_prior
         conf = step2.domain_confidence
         reasoning = step2.reasoning
@@ -668,9 +664,7 @@ Return ONLY a valid JSON:
             stats["X0_obs_mean"] = round(float(np.mean(X0_obs)), 4)
             stats["X0_obs_std"] = round(float(np.std(X0_obs)), 4)
             stats["X0_obs_skew"] = round(float(sp_stats.skew(X0_obs)), 4)
-            stats["X0_obs_kurtosis"] = round(
-                float(sp_stats.kurtosis(X0_obs, fisher=True)), 4
-            )
+            stats["X0_obs_kurtosis"] = round(float(sp_stats.kurtosis(X0_obs, fisher=True)), 4)
 
             # Missing rate by quartile of X0 — uses regression imputation.
             # When R² is too low (< 0.1), predictions collapse near the mean,
@@ -699,9 +693,7 @@ Return ONLY a valid JSON:
                 xi = df[col].values
                 if np.std(xi) > 0 and np.std(mask) > 0:
                     corr = np.corrcoef(mask, xi)[0, 1]
-                    stats[f"corr_mask_{col}"] = (
-                        round(float(corr), 4) if not np.isnan(corr) else 0.0
-                    )
+                    stats[f"corr_mask_{col}"] = round(float(corr), 4) if not np.isnan(corr) else 0.0
                 else:
                     stats[f"corr_mask_{col}"] = 0.0
 
@@ -711,9 +703,7 @@ Return ONLY a valid JSON:
             X1_miss = X1[mask == 1]
             X1_obs = X1[mask == 0]
             if len(X1_miss) > 0 and len(X1_obs) > 0:
-                stats["X1_mean_diff"] = round(
-                    float(np.mean(X1_miss) - np.mean(X1_obs)), 4
-                )
+                stats["X1_mean_diff"] = round(float(np.mean(X1_miss) - np.mean(X1_obs)), 4)
             else:
                 stats["X1_mean_diff"] = 0.0
 
@@ -775,10 +765,8 @@ Return ONLY a valid JSON:
         # Extract missing rate
         for p in parts:
             if p.startswith("mr"):
-                try:
+                with contextlib.suppress(ValueError):
                     result["missing_rate"] = int(p[2:])
-                except ValueError:
-                    pass
 
         return result
 
@@ -792,7 +780,7 @@ Return ONLY a valid JSON:
         variant_meta = self._synthetic_metadata.get(variant_key, {})
 
         # Distribution info is generic since we can't determine k from filename
-        dist_cycle = self._synthetic_metadata.get("_distribution_cycle", {})
+        self._synthetic_metadata.get("_distribution_cycle", {})
 
         result = {
             "description": "one of: Uniform[0,1], Normal(0.5,0.15), Exponential(0.3), or Beta(2,5)",
@@ -848,14 +836,10 @@ Return ONLY a valid JSON:
                 causes = raw.get("causes") or raw.get("possible_causes") or []
                 for cause in causes:
                     if isinstance(cause, dict) and "cause_type" in cause:
-                        cause["cause_type"] = self._normalize_cause_type(
-                            cause["cause_type"]
-                        )
+                        cause["cause_type"] = self._normalize_cause_type(cause["cause_type"])
                 raw["causes"] = causes
                 if "most_plausible_cause_type" in raw:
-                    raw["most_plausible_cause_type"] = self._normalize_cause_type(
-                        raw["most_plausible_cause_type"]
-                    )
+                    raw["most_plausible_cause_type"] = self._normalize_cause_type(raw["most_plausible_cause_type"])
 
             parsed = CausalDAGAnalysis.model_validate(raw)
             if parsed.most_plausible_cause_type not in ("A", "B", "C"):
@@ -916,14 +900,10 @@ Return ONLY a valid JSON:
     # FEATURE COMBINATION
     # --------------------------------------------------
 
-    def _combine_features(
-        self, dag: CausalDAGAnalysis, step2: ContextAnalysis, step3: CounterAnalysis
-    ) -> dict:
+    def _combine_features(self, dag: CausalDAGAnalysis, step2: ContextAnalysis, step3: CounterAnalysis) -> dict:
         mech_score = MECHANISM_TO_SCORE.get(step2.domain_mechanism_prior, 0.5)
         confidence_delta = abs(step3.revised_confidence - step2.domain_confidence)
-        cause_type_score = CAUSE_TYPE_TO_SCORE.get(
-            dag.most_plausible_cause_type, 0.5
-        )
+        cause_type_score = CAUSE_TYPE_TO_SCORE.get(dag.most_plausible_cause_type, 0.5)
         n_causes_normalized = min(len(dag.causes) / 5.0, 1.0)
 
         return {
