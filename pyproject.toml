@@ -77,11 +77,18 @@ Repository = "https://github.com/JonathanTsen/missdetect"
 Documentation = "https://github.com/JonathanTsen/missdetect/tree/main/docs"
 Issues = "https://github.com/JonathanTsen/missdetect/issues"
 
-[project.scripts]
-missdetect-extract = "missdetect.extract_features:main"
-missdetect-train = "missdetect.train_model:main"
-missdetect-train-hier = "missdetect.train_hierarchical_v3plus:main"
-missdetect-pipeline = "missdetect.run_all:main"
+# Note: console-script entry points are intentionally not declared yet.
+# The legacy scripts in src/missdetect/ rely on a sys.path hack that
+# only works when invoked as `python -m missdetect.<module>` from the
+# repo root. A follow-up refactor will convert these to absolute imports
+# (`from missdetect.features.X import ...`) at which point the entry
+# points below can be added back:
+#
+# [project.scripts]
+# missdetect-extract     = "missdetect.extract_features:main"
+# missdetect-train       = "missdetect.train_model:main"
+# missdetect-train-hier  = "missdetect.train_hierarchical_v3plus:main"
+# missdetect-pipeline    = "missdetect.run_all:main"
 
 # =============================================================================
 # Build system

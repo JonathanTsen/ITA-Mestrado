@@ -139,20 +139,24 @@ OPENAI_API_KEY=...
 ENV
 ```
 
+Todos os comandos abaixo assumem que você está na raiz do repositório.
+Os scripts usam `python -m missdetect.<modulo>` para que `sys.path` resolva
+o pacote corretamente independentemente do diretório de trabalho.
+
 ### Rodar o experimento principal (baseline estatístico)
 
 ```bash
 # Extrair features de dados sintéticos (sem LLM, ~5 min)
-missdetect-extract --model none --data synthetic
+python -m missdetect.extract_features --model none --data synthetic
 
 # Treinar os sete classificadores com CV ciente de grupos
-missdetect-train --model none --data synthetic
+python -m missdetect.train_model --model none --data synthetic
 ```
 
 ### Replicar o V3+ pico (23 datasets reais, sem LLM)
 
 ```bash
-missdetect-extract --model none --data real --metadata-variant neutral
+python -m missdetect.extract_features --model none --data real --metadata-variant neutral
 python -m missdetect.train_hierarchical_v3plus \
   --model none --data real \
   --experiment step05_pro
@@ -162,13 +166,13 @@ python -m missdetect.train_hierarchical_v3plus \
 
 ```bash
 # Requer GEMINI_API_KEY e ~$30 de orçamento de API
-missdetect-extract \
+python -m missdetect.extract_features \
   --model gemini-3-pro-preview \
   --llm-approach context_aware \
   --metadata-variant neutral \
   --data real
 
-missdetect-train \
+python -m missdetect.train_model \
   --model gemini-3-pro-preview \
   --data real \
   --experiment step1_v2_neutral

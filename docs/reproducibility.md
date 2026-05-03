@@ -18,7 +18,7 @@ root with the package installed (`uv pip install -e ".[boosting,llm]"`).
 python -c "import missdetect; print(missdetect.__version__)"
 # expected: 0.1.0
 
-missdetect-extract --help
+python -m missdetect.extract_features --help
 # expected: argparse usage banner
 ```
 
@@ -27,8 +27,8 @@ missdetect-extract --help
 ### 2.1 Synthetic baseline (≈5 min, no LLM)
 
 ```bash
-missdetect-extract --model none --data synthetic
-missdetect-train  --model none --data synthetic --experiment synthetic_baseline
+python -m missdetect.extract_features --model none --data synthetic
+python -m missdetect.train_model  --model none --data synthetic --experiment synthetic_baseline
 ```
 
 Output goes to `results/synthetic_baseline/`. Expected best CV: ~75% (NB)
@@ -37,7 +37,7 @@ on synthetic, easier than real because synthetic mechanisms are clean.
 ### 2.2 V3+ peak on 23 real datasets (≈15 min, no LLM)
 
 ```bash
-missdetect-extract --model none --data real --metadata-variant neutral
+python -m missdetect.extract_features --model none --data real --metadata-variant neutral
 python -m missdetect.train_hierarchical_v3plus \
   --model none --data real \
   --experiment step05_pro
@@ -60,7 +60,7 @@ This is the most expensive run and the canonical Pro+LLM experiment.
 
 ```bash
 # Half 1 — 15 datasets (~47 min, ~$15)
-missdetect-extract \
+python -m missdetect.extract_features \
   --model gemini-3-pro-preview \
   --llm-approach context_aware \
   --metadata-variant neutral \
@@ -70,7 +70,7 @@ missdetect-extract \
   --output-suffix part1
 
 # Half 2 — 14 datasets (~46 min, ~$15)
-missdetect-extract \
+python -m missdetect.extract_features \
   --model gemini-3-pro-preview \
   --llm-approach context_aware \
   --metadata-variant neutral \
@@ -86,7 +86,7 @@ python -m missdetect.merge_halves \
   --output results/step1_v2_neutral
 
 # Train on the merged feature set
-missdetect-train \
+python -m missdetect.train_model \
   --model gemini-3-pro-preview \
   --data real \
   --experiment step1_v2_neutral
@@ -102,8 +102,8 @@ cache is warm. To force a fresh extraction, delete
 
 | Goal | Command | Wall-clock | Cost |
 |:--|:--|:-:|:-:|
-| Flash (cheap) head-to-head vs Pro | `missdetect-extract --model gemini-3-flash-preview --llm-approach context_aware --metadata-variant neutral --data real` | 30 min | ~$3 |
-| Self-consistency 5-perspective | `missdetect-extract --model gemini-3-pro-preview --llm-approach self_consistency --workers 5` | 4–5 hr | ~$150 |
+| Flash (cheap) head-to-head vs Pro | `python -m missdetect.extract_features --model gemini-3-flash-preview --llm-approach context_aware --metadata-variant neutral --data real` | 30 min | ~$3 |
+| Self-consistency 5-perspective | `python -m missdetect.extract_features --model gemini-3-pro-preview --llm-approach self_consistency --workers 5` | 4–5 hr | ~$150 |
 | SHAP feature importance | `python -m missdetect.analyze_shap --experiment step1_v2_neutral` | 5 min | $0 |
 | Cleanlab label-noise diagnosis | `python -m missdetect.clean_labels --experiment step1_v2_neutral` | 2 min | $0 |
 | Forensic ablation per feature group | `python -m missdetect.forensic_ablation --experiment step1_v2_neutral` | 10 min | $0 |
