@@ -94,7 +94,7 @@ def fig_3a_flowchart():
     # Phase 2
     box(9, 6.8, 2.2, 0.6, "23 Real Datasets\n1,132 bootstraps", "#E8F4FD")
     box(12, 6.8, 2.2, 0.6, "Feature Extraction\n25 features", "#E8F4FD")
-    box(10.5, 5.5, 3.0, 0.6, "Level 1: Binary\nMAR vs non-MAR", "#D5F5E3", "#27AE60")
+    box(10.5, 5.5, 3.0, 0.6, "Level 1: Binary\nMCAR vs non-MCAR", "#D5F5E3", "#27AE60")
     arrow(10.15, 6.5, 10.5, 5.8)
     arrow(12, 6.5, 10.7, 5.8)
 
@@ -103,7 +103,7 @@ def fig_3a_flowchart():
     arrow(10.5, 5.2, 10.5, 4.6)
 
     # L2
-    box(10.5, 3.1, 3.0, 0.6, "Level 2: Binary\nMCAR vs MNAR", "#D5F5E3", "#27AE60")
+    box(10.5, 3.1, 3.0, 0.6, "Level 2: Binary\nMAR vs MNAR", "#D5F5E3", "#27AE60")
     arrow(10.5, 4.0, 10.5, 3.4)
 
     # Cleanlab
