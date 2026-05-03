@@ -1,4 +1,0 @@
-# Feature extraction module
-from features.statistical import extract_statistical_features
-from features.discriminative import extract_discriminative_features
-from features.caafe_mnar import extract_caafe_mnar_features

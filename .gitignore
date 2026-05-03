@@ -1,0 +1,99 @@
+# =============================================================================
+# Local-only references (PDFs under copyright; kept locally, not published)
+# =============================================================================
+_local_references/
+_local_git_backups/
+
+# =============================================================================
+# Secrets / environment
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# =============================================================================
+# Python
+# =============================================================================
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+sdist/
+share/python-wheels/
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+venv_*/
+.python-version.local
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# =============================================================================
+# ML / experiment artifacts (transient)
+# =============================================================================
+catboost_info/
+mlruns/
+wandb/
+.optuna/
+*.log
+*.pkl.tmp
+*.ckpt
+
+# =============================================================================
+# OS / Editors
+# =============================================================================
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# Project-specific large artifacts (regenerable; keep summaries only)
+# =============================================================================
+# Old Output tree (pre-restructure)
+Output/
+# Per-run intermediate outputs we explicitly archive
+results/_archive/
