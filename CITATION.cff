@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+title: "missdetect: Hierarchical Classification of Missing-Data Mechanisms with Statistical and LLM-Augmented Features"
+message: "If you use this software or the accompanying experiments, please cite both the software and the master's thesis."
+type: software
+version: "0.1.0"
+date-released: "2026-05-03"
+license: MIT
+repository-code: "https://github.com/JonathanTsen/missdetect"
+authors:
+  - family-names: Tsen
+    given-names: Jonathan
+    email: jonathan@labrynth.ai
+    affiliation: "Instituto Tecnológico de Aeronáutica (ITA)"
+keywords:
+  - missing-data
+  - MCAR
+  - MAR
+  - MNAR
+  - machine-learning
+  - large-language-models
+  - feature-engineering
+  - hierarchical-classification
+abstract: >-
+  missdetect is a research codebase that classifies the missingness mechanism
+  (MCAR / MAR / MNAR) of a univariate column from a tabular dataset. It
+  combines statistical and discriminative features with LLM-augmented features
+  (judge, context-aware, self-consistency) and uses a two-level hierarchical
+  classifier (Level 1: MCAR vs non-MCAR; Level 2: MAR vs MNAR) with
+  Group-aware cross-validation and Cleanlab-weighted training for robustness
+  to label noise.
+preferred-citation:
+  type: thesis
+  title: "Hierarchical Classification of Missing Data Mechanisms: A Statistical Feature Engineering Approach with LLM Augmentation and Real-World Validation"
+  authors:
+    - family-names: Tsen
+      given-names: Jonathan
+  thesis-type: "Master's thesis"
+  institution:
+    name: "Instituto Tecnológico de Aeronáutica (ITA)"
+    address: "São José dos Campos, Brazil"
+  year: 2026
+  url: "https://github.com/JonathanTsen/missdetect"
