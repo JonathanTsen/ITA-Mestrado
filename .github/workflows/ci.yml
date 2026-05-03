@@ -55,12 +55,10 @@ jobs:
       - name: Sync dependencies (core + dev, no LLM, no boosting)
         env:
           PY_VERSION: ${{ matrix.python-version }}
-        run: |
-          uv venv --python "$PY_VERSION"
-          uv pip install -e ".[dev]"
+        run: uv sync --python "$PY_VERSION" --extra dev
 
       - name: Run pytest
-        run: uv run pytest tests/ -ra --tb=short
+        run: uv run --no-sync pytest tests/ -ra --tb=short
 
   build:
     name: Build sdist + wheel
