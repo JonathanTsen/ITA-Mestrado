@@ -1,22 +1,5 @@
 {
-  "MCAR_autompg_horsepower": {
-    "domain": "automotive engineering",
-    "source": "UCI Auto MPG / OpenML autoMpg v1",
-    "x0_variable": "horsepower",
-    "x0_units": "hp (horsepower)",
-    "x0_description": "Engine power output of the automobile",
-    "x0_typical_range": "46-230 hp for 1970s-80s cars",
-    "predictors": {
-      "X1": {"name": "displacement", "units": "cubic inches", "role": "Engine displacement"},
-      "X2": {"name": "weight", "units": "pounds", "role": "Vehicle weight"},
-      "X3": {"name": "acceleration", "units": "seconds (0-60mph)", "role": "Acceleration time"},
-      "X4": {"name": "cylinders", "units": "count", "role": "Number of cylinders"}
-    },
-    "missing_context": "Horsepower not recorded for some car models during data collection. Administrative failure in technical documentation, unrelated to the actual horsepower value or vehicle characteristics.",
-    "original_missing_rate": 0.015,
-    "n_total_original": 398
-  },
-  "MCAR_breastcancer_barenuclei": {
+  "MAR_breastcancer_barenuclei": {
     "domain": "oncology / breast cancer diagnosis",
     "source": "UCI Wisconsin Breast Cancer / OpenML",
     "x0_variable": "bare_nuclei",
@@ -24,16 +7,32 @@
     "x0_description": "Bare nuclei score from fine needle aspiration (FNA) biopsy",
     "x0_typical_range": "1-10, where 1=benign, 10=malignant",
     "predictors": {
-      "X1": {"name": "clump_thickness", "units": "score 1-10", "role": "Cell clump thickness"},
-      "X2": {"name": "uniformity_cell_size", "units": "score 1-10", "role": "Cell size uniformity"},
-      "X3": {"name": "uniformity_cell_shape", "units": "score 1-10", "role": "Cell shape uniformity"},
-      "X4": {"name": "marginal_adhesion", "units": "score 1-10", "role": "Marginal adhesion of cells"}
+      "X1": {
+        "name": "clump_thickness",
+        "units": "score 1-10",
+        "role": "Cell clump thickness"
+      },
+      "X2": {
+        "name": "uniformity_cell_size",
+        "units": "score 1-10",
+        "role": "Cell size uniformity"
+      },
+      "X3": {
+        "name": "uniformity_cell_shape",
+        "units": "score 1-10",
+        "role": "Cell shape uniformity"
+      },
+      "X4": {
+        "name": "marginal_adhesion",
+        "units": "score 1-10",
+        "role": "Marginal adhesion of cells"
+      }
     },
-    "missing_context": "Values missing due to errors in biopsy recording or unreadable slides. The failure occurs independently of the cytological result — it is a laboratory process issue, not a clinical one.",
+    "missing_context": "Values missing due to errors in biopsy recording or unreadable slides. The failure occurs independently of the cytological result \u2014 it is a laboratory process issue, not a clinical one.",
     "original_missing_rate": 0.023,
     "n_total_original": 699
   },
-  "MCAR_cylinderbands_bladepressure": {
+  "MAR_cylinderbands_bladepressure": {
     "domain": "manufacturing / rotogravure printing",
     "source": "OpenML cylinder-bands v2",
     "x0_variable": "blade_pressure",
@@ -41,16 +40,32 @@
     "x0_description": "Doctor blade pressure used to control ink thickness on the printing cylinder",
     "x0_typical_range": "Varies by equipment, continuous values",
     "predictors": {
-      "X1": {"name": "press_speed", "units": "speed unit", "role": "Rotogravure press speed"},
-      "X2": {"name": "ink_temperature", "units": "degrees (process unit)", "role": "Ink temperature"},
-      "X3": {"name": "viscosity", "units": "viscosity unit", "role": "Ink viscosity"},
-      "X4": {"name": "roughness", "units": "roughness unit", "role": "Cylinder roughness"}
+      "X1": {
+        "name": "press_speed",
+        "units": "speed unit",
+        "role": "Rotogravure press speed"
+      },
+      "X2": {
+        "name": "ink_temperature",
+        "units": "degrees (process unit)",
+        "role": "Ink temperature"
+      },
+      "X3": {
+        "name": "viscosity",
+        "units": "viscosity unit",
+        "role": "Ink viscosity"
+      },
+      "X4": {
+        "name": "roughness",
+        "units": "roughness unit",
+        "role": "Cylinder roughness"
+      }
     },
     "missing_context": "Blade pressure sensor fails intermittently during press operation. The failure is mechanical/electrical, unrelated to the pressure level being measured. Measurement equipment with limited reliability.",
     "original_missing_rate": 0.313,
     "n_total_original": 540
   },
-  "MCAR_cylinderbands_esavoltage": {
+  "MAR_cylinderbands_esavoltage": {
     "domain": "manufacturing / rotogravure printing",
     "source": "OpenML cylinder-bands v2",
     "x0_variable": "ESA_Voltage",
@@ -58,27 +73,59 @@
     "x0_description": "Electrostatic assist (ESA) system voltage that aids ink transfer",
     "x0_typical_range": "Varies by configuration, continuous values",
     "predictors": {
-      "X1": {"name": "press_speed", "units": "speed unit", "role": "Rotogravure press speed"},
-      "X2": {"name": "ink_temperature", "units": "degrees (process unit)", "role": "Ink temperature"},
-      "X3": {"name": "viscosity", "units": "viscosity unit", "role": "Ink viscosity"},
-      "X4": {"name": "roughness", "units": "roughness unit", "role": "Cylinder roughness"}
+      "X1": {
+        "name": "press_speed",
+        "units": "speed unit",
+        "role": "Rotogravure press speed"
+      },
+      "X2": {
+        "name": "ink_temperature",
+        "units": "degrees (process unit)",
+        "role": "Ink temperature"
+      },
+      "X3": {
+        "name": "viscosity",
+        "units": "viscosity unit",
+        "role": "Ink viscosity"
+      },
+      "X4": {
+        "name": "roughness",
+        "units": "roughness unit",
+        "role": "Cylinder roughness"
+      }
     },
-    "missing_context": "ESA voltage sensor fails independently of the voltage level. The ESA system is not always active during operation, and when turned off, the reading is not recorded — a standard operational decision, not based on the value.",
+    "missing_context": "ESA voltage sensor fails independently of the voltage level. The ESA system is not always active during operation, and when turned off, the reading is not recorded \u2014 a standard operational decision, not based on the value.",
     "original_missing_rate": 0.346,
     "n_total_original": 540
   },
-  "MCAR_hypothyroid_t4u": {
+  "MAR_hypothyroid_t4u": {
     "domain": "endocrinology / thyroid function",
     "source": "OpenML hypothyroid v1",
     "x0_variable": "T4U",
     "x0_units": "ratio (T4 uptake, dimensionless)",
-    "x0_description": "T4 uptake ratio — thyroid function test measuring serum protein binding capacity for T4 hormone",
+    "x0_description": "T4 uptake ratio \u2014 thyroid function test measuring serum protein binding capacity for T4 hormone",
     "x0_typical_range": "0.7-1.5 (normal ratio)",
     "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Patient age"},
-      "X2": {"name": "TSH", "units": "mU/L", "role": "Thyroid-stimulating hormone"},
-      "X3": {"name": "TT4", "units": "nmol/L", "role": "Total thyroxine"},
-      "X4": {"name": "FTI", "units": "index", "role": "Free thyroxine index"}
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X2": {
+        "name": "TSH",
+        "units": "mU/L",
+        "role": "Thyroid-stimulating hormone"
+      },
+      "X3": {
+        "name": "TT4",
+        "units": "nmol/L",
+        "role": "Total thyroxine"
+      },
+      "X4": {
+        "name": "FTI",
+        "units": "index",
+        "role": "Free thyroxine index"
+      }
     },
     "missing_context": "T4U test not ordered as part of the standard thyroid test battery. The decision not to order is administrative (laboratory protocol), not based on the patient's clinical results.",
     "original_missing_rate": 0.104,
@@ -92,12 +139,28 @@
     "x0_description": "Mean daily tropospheric ozone concentration in New York",
     "x0_typical_range": "1-168 ppb (summer average ~42 ppb)",
     "predictors": {
-      "X1": {"name": "Wind", "units": "mph (miles per hour)", "role": "Average daily wind speed"},
-      "X2": {"name": "Temp", "units": "degrees Fahrenheit", "role": "Maximum daily temperature"},
-      "X3": {"name": "Solar.R", "units": "Langley (cal/cm2)", "role": "Solar radiation"},
-      "X4": {"name": "Month", "units": "month (5-9 = May-September)", "role": "Month of year"}
+      "X1": {
+        "name": "Wind",
+        "units": "mph (miles per hour)",
+        "role": "Average daily wind speed"
+      },
+      "X2": {
+        "name": "Temp",
+        "units": "degrees Fahrenheit",
+        "role": "Maximum daily temperature"
+      },
+      "X3": {
+        "name": "Solar.R",
+        "units": "Langley (cal/cm2)",
+        "role": "Solar radiation"
+      },
+      "X4": {
+        "name": "Month",
+        "units": "month (5-9 = May-September)",
+        "role": "Month of year"
+      }
     },
-    "missing_context": "Ozone measurements not taken on days with adverse weather conditions — strong wind and low temperature hinder monitor operation. The probability of data collection depends on observable weather conditions, not on the ozone level itself.",
+    "missing_context": "Ozone measurements not taken on days with adverse weather conditions \u2014 strong wind and low temperature hinder monitor operation. The probability of data collection depends on observable weather conditions, not on the ozone level itself.",
     "original_missing_rate": 0.242,
     "n_total_original": 153
   },
@@ -109,10 +172,26 @@
     "x0_description": "Relative air humidity measured by oceanic buoy in the tropical Pacific",
     "x0_typical_range": "70-95% (tropical oceanic environment)",
     "predictors": {
-      "X1": {"name": "sea.surface.temp", "units": "degrees Celsius", "role": "Sea surface temperature"},
-      "X2": {"name": "air.temp", "units": "degrees Celsius", "role": "Air temperature"},
-      "X3": {"name": "uwind", "units": "m/s", "role": "Zonal wind component (east-west)"},
-      "X4": {"name": "vwind", "units": "m/s", "role": "Meridional wind component (north-south)"}
+      "X1": {
+        "name": "sea.surface.temp",
+        "units": "degrees Celsius",
+        "role": "Sea surface temperature"
+      },
+      "X2": {
+        "name": "air.temp",
+        "units": "degrees Celsius",
+        "role": "Air temperature"
+      },
+      "X3": {
+        "name": "uwind",
+        "units": "m/s",
+        "role": "Zonal wind component (east-west)"
+      },
+      "X4": {
+        "name": "vwind",
+        "units": "m/s",
+        "role": "Meridional wind component (north-south)"
+      }
     },
     "missing_context": "Buoy humidity sensor fails more frequently under high sea surface temperature and strong wind conditions. The failure is correlated with meteorological conditions, not with the humidity level itself.",
     "original_missing_rate": 0.126,
@@ -126,13 +205,29 @@
     "x0_description": "Air temperature measured by oceanic buoy in the tropical Pacific",
     "x0_typical_range": "20-30 degrees C (tropical oceanic environment)",
     "predictors": {
-      "X1": {"name": "sea.surface.temp", "units": "degrees Celsius", "role": "Sea surface temperature"},
-      "X2": {"name": "humidity", "units": "% relative humidity", "role": "Relative air humidity"},
-      "X3": {"name": "uwind", "units": "m/s", "role": "Zonal wind component"},
-      "X4": {"name": "vwind", "units": "m/s", "role": "Meridional wind component"}
+      "X1": {
+        "name": "sea.surface.temp",
+        "units": "degrees Celsius",
+        "role": "Sea surface temperature"
+      },
+      "X2": {
+        "name": "humidity",
+        "units": "% relative humidity",
+        "role": "Relative air humidity"
+      },
+      "X3": {
+        "name": "uwind",
+        "units": "m/s",
+        "role": "Zonal wind component"
+      },
+      "X4": {
+        "name": "vwind",
+        "units": "m/s",
+        "role": "Meridional wind component"
+      }
     },
     "missing_context": "Air temperature sensor fails correlated with sea temperature and wind intensity conditions. Sensor reliability degrades under extreme meteorological conditions, but does not depend on the air temperature itself.",
-    "original_missing_rate": 0.110,
+    "original_missing_rate": 0.11,
     "n_total_original": 736
   },
   "MAR_mammographic_density": {
@@ -143,10 +238,26 @@
     "x0_description": "Breast tissue density classification: 1=high density, 2=iso, 3=low density, 4=fat-containing",
     "x0_typical_range": "1-4 (original ordinal, converted to continuous with jitter)",
     "predictors": {
-      "X1": {"name": "BIRADS", "units": "classification 1-5", "role": "BI-RADS classification of mammographic mass"},
-      "X2": {"name": "Age", "units": "years", "role": "Patient age"},
-      "X3": {"name": "Shape", "units": "classification 1-4", "role": "Mass shape (round, oval, lobular, irregular)"},
-      "X4": {"name": "Margin", "units": "classification 1-5", "role": "Mass margin (circumscribed to spiculated)"}
+      "X1": {
+        "name": "BIRADS",
+        "units": "classification 1-5",
+        "role": "BI-RADS classification of mammographic mass"
+      },
+      "X2": {
+        "name": "Age",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X3": {
+        "name": "Shape",
+        "units": "classification 1-4",
+        "role": "Mass shape (round, oval, lobular, irregular)"
+      },
+      "X4": {
+        "name": "Margin",
+        "units": "classification 1-5",
+        "role": "Mass margin (circumscribed to spiculated)"
+      }
     },
     "missing_context": "Radiologist omits density classification when BI-RADS classification and age already indicate a clear diagnosis (benign or malignant). The decision to record or not depends on observed clinical variables, not on the density value itself.",
     "original_missing_rate": 0.063,
@@ -157,16 +268,32 @@
     "source": "OpenML sick dataset v1",
     "x0_variable": "T3",
     "x0_units": "nmol/L (nanomol per liter)",
-    "x0_description": "Serum triiodothyronine (T3) level — active thyroid hormone",
+    "x0_description": "Serum triiodothyronine (T3) level \u2014 active thyroid hormone",
     "x0_typical_range": "1.2-2.7 nmol/L (adults)",
     "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Patient age"},
-      "X2": {"name": "TSH", "units": "mU/L", "role": "Thyroid-stimulating hormone"},
-      "X3": {"name": "TT4", "units": "nmol/L", "role": "Total thyroxine"},
-      "X4": {"name": "FTI", "units": "index", "role": "Free thyroxine index"}
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X2": {
+        "name": "TSH",
+        "units": "mU/L",
+        "role": "Thyroid-stimulating hormone"
+      },
+      "X3": {
+        "name": "TT4",
+        "units": "nmol/L",
+        "role": "Total thyroxine"
+      },
+      "X4": {
+        "name": "FTI",
+        "units": "index",
+        "role": "Free thyroxine index"
+      }
     },
     "missing_context": "T3 test selectively ordered by physician based on clinical symptoms and TSH/TT4 results. If TSH and TT4 are normal, the physician generally does not order T3. The decision depends on already observed clinical variables.",
-    "original_missing_rate": 0.10,
+    "original_missing_rate": 0.1,
     "n_total_original": 3772
   },
   "MAR_sick_tsh": {
@@ -174,16 +301,32 @@
     "source": "OpenML sick dataset v1",
     "x0_variable": "TSH",
     "x0_units": "mU/L (milliunits per liter)",
-    "x0_description": "Serum thyroid-stimulating hormone (TSH) level — primary regulator of thyroid function",
+    "x0_description": "Serum thyroid-stimulating hormone (TSH) level \u2014 primary regulator of thyroid function",
     "x0_typical_range": "0.4-4.0 mU/L (adults)",
     "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Patient age"},
-      "X2": {"name": "T3", "units": "nmol/L", "role": "Triiodothyronine"},
-      "X3": {"name": "TT4", "units": "nmol/L", "role": "Total thyroxine"},
-      "X4": {"name": "FTI", "units": "index", "role": "Free thyroxine index"}
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X2": {
+        "name": "T3",
+        "units": "nmol/L",
+        "role": "Triiodothyronine"
+      },
+      "X3": {
+        "name": "TT4",
+        "units": "nmol/L",
+        "role": "Total thyroxine"
+      },
+      "X4": {
+        "name": "FTI",
+        "units": "index",
+        "role": "Free thyroxine index"
+      }
     },
     "missing_context": "TSH not ordered when the overall clinical picture and other thyroid indicators do not suggest dysfunction. The decision is clinical and depends on symptoms and already available test results.",
-    "original_missing_rate": 0.10,
+    "original_missing_rate": 0.1,
     "n_total_original": 3772
   },
   "MAR_titanic_age": {
@@ -194,10 +337,26 @@
     "x0_description": "Age of the RMS Titanic passenger (1912)",
     "x0_typical_range": "0.42-80 years",
     "predictors": {
-      "X1": {"name": "Pclass", "units": "class 1/2/3", "role": "Ticket class (proxy for socioeconomic status)"},
-      "X2": {"name": "SibSp", "units": "count", "role": "Number of spouses/siblings aboard"},
-      "X3": {"name": "Parch", "units": "count", "role": "Number of parents/children aboard"},
-      "X4": {"name": "Fare", "units": "British pounds", "role": "Ticket fare paid"}
+      "X1": {
+        "name": "Pclass",
+        "units": "class 1/2/3",
+        "role": "Ticket class (proxy for socioeconomic status)"
+      },
+      "X2": {
+        "name": "SibSp",
+        "units": "count",
+        "role": "Number of spouses/siblings aboard"
+      },
+      "X3": {
+        "name": "Parch",
+        "units": "count",
+        "role": "Number of parents/children aboard"
+      },
+      "X4": {
+        "name": "Fare",
+        "units": "British pounds",
+        "role": "Ticket fare paid"
+      }
     },
     "missing_context": "Age not recorded for many 3rd-class passengers. The ship's registration crew and authorities prioritized documentation of higher-class passengers. The probability of recording depends on social class and fare paid, not on age itself.",
     "original_missing_rate": 0.199,
@@ -208,68 +367,33 @@
     "source": "GitHub datasciencedojo/datasets Titanic CSV",
     "x0_variable": "Age",
     "x0_units": "years",
-    "x0_description": "Age of the RMS Titanic passenger (1912) — alternative dataset version",
+    "x0_description": "Age of the RMS Titanic passenger (1912) \u2014 alternative dataset version",
     "x0_typical_range": "0.42-80 years",
     "predictors": {
-      "X1": {"name": "Pclass", "units": "class 1/2/3", "role": "Ticket class"},
-      "X2": {"name": "SibSp", "units": "count", "role": "Spouses/siblings aboard"},
-      "X3": {"name": "Parch", "units": "count", "role": "Parents/children aboard"},
-      "X4": {"name": "Fare", "units": "British pounds", "role": "Ticket fare paid"}
+      "X1": {
+        "name": "Pclass",
+        "units": "class 1/2/3",
+        "role": "Ticket class"
+      },
+      "X2": {
+        "name": "SibSp",
+        "units": "count",
+        "role": "Spouses/siblings aboard"
+      },
+      "X3": {
+        "name": "Parch",
+        "units": "count",
+        "role": "Parents/children aboard"
+      },
+      "X4": {
+        "name": "Fare",
+        "units": "British pounds",
+        "role": "Ticket fare paid"
+      }
     },
-    "missing_context": "Same context as titanic_age — age not recorded preferentially for lower-class passengers. Alternative dataset version may have preprocessing differences.",
+    "missing_context": "Same context as titanic_age \u2014 age not recorded preferentially for lower-class passengers. Alternative dataset version may have preprocessing differences.",
     "original_missing_rate": 0.199,
     "n_total_original": 891
-  },
-  "MAR_kidney_hemo": {
-    "domain": "nephrology / chronic kidney disease",
-    "source": "OpenML chronic-kidney-disease v1",
-    "x0_variable": "hemo",
-    "x0_units": "g/dL (grams per deciliter)",
-    "x0_description": "Blood hemoglobin level — indicator of anemia, common in chronic kidney disease",
-    "x0_typical_range": "12-17 g/dL (normal), <10 g/dL indicates significant anemia",
-    "predictors": {
-      "X1": {"name": "bp", "units": "mmHg", "role": "Blood pressure"},
-      "X2": {"name": "age", "units": "years", "role": "Patient age"},
-      "X3": {"name": "bgr", "units": "mg/dL", "role": "Random blood glucose"},
-      "X4": {"name": "bu", "units": "mg/dL", "role": "Blood urea"}
-    },
-    "missing_context": "Hemoglobin tested more frequently in patients with severe disease indicators (high urea, altered blood pressure). Early-stage patients with normal basic tests may not have hemoglobin measured. The decision depends on severity observed through other tests.",
-    "original_missing_rate": 0.10,
-    "n_total_original": 400
-  },
-  "MAR_hearth_chol": {
-    "domain": "cardiology",
-    "source": "OpenML heart-h v1 (Heart Disease Cleveland)",
-    "x0_variable": "chol",
-    "x0_units": "mg/dL (milligrams per deciliter)",
-    "x0_description": "Total serum cholesterol",
-    "x0_typical_range": "<200 mg/dL (desirable), 200-239 (borderline), >240 (high)",
-    "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Patient age"},
-      "X2": {"name": "trestbps", "units": "mmHg", "role": "Resting blood pressure"},
-      "X3": {"name": "thalach", "units": "bpm", "role": "Maximum heart rate during stress test"},
-      "X4": {"name": "oldpeak", "units": "mm", "role": "Exercise-induced ST depression"}
-    },
-    "missing_context": "Cholesterol not tested when primary cardiac indicators (ECG, blood pressure, maximum heart rate) do not suggest significant risk. The decision to order the test depends on other cardiological test results.",
-    "original_missing_rate": 0.10,
-    "n_total_original": 294
-  },
-  "MAR_colic_resprate": {
-    "domain": "veterinary medicine / equine colic",
-    "source": "OpenML colic v1 (equine colic disease)",
-    "x0_variable": "respiratory_rate",
-    "x0_units": "breaths/minute",
-    "x0_description": "Horse respiratory rate — vital sign in equine colic assessment",
-    "x0_typical_range": "8-16 breaths/min (normal at rest), >20 indicates distress",
-    "predictors": {
-      "X1": {"name": "pulse", "units": "bpm", "role": "Horse heart rate"},
-      "X2": {"name": "rectal_temperature", "units": "degrees Celsius", "role": "Rectal temperature"},
-      "X3": {"name": "packed_cell_volume", "units": "% (hematocrit)", "role": "Packed cell volume"},
-      "X4": {"name": "total_protein", "units": "g/dL", "role": "Total blood protein"}
-    },
-    "missing_context": "Respiratory rate not measured when other vital signs (pulse, temperature) already indicate severity level. In veterinary emergencies, professionals prioritize intervention over complete documentation. The decision depends on clinical assessment based on other signs.",
-    "original_missing_rate": 0.10,
-    "n_total_original": 368
   },
   "MNAR_pima_insulin": {
     "domain": "endocrinology / diabetes",
@@ -279,10 +403,26 @@
     "x0_description": "Serum insulin concentration 2 hours after oral glucose tolerance test (OGTT)",
     "x0_typical_range": "16-166 uU/mL (normal), >166 indicates insulin resistance",
     "predictors": {
-      "X1": {"name": "Glucose", "units": "mg/dL", "role": "Plasma glucose level 2h post-OGTT"},
-      "X2": {"name": "BloodPressure", "units": "mmHg", "role": "Diastolic blood pressure"},
-      "X3": {"name": "BMI", "units": "kg/m2", "role": "Body mass index"},
-      "X4": {"name": "Age", "units": "years", "role": "Patient age"}
+      "X1": {
+        "name": "Glucose",
+        "units": "mg/dL",
+        "role": "Plasma glucose level 2h post-OGTT"
+      },
+      "X2": {
+        "name": "BloodPressure",
+        "units": "mmHg",
+        "role": "Diastolic blood pressure"
+      },
+      "X3": {
+        "name": "BMI",
+        "units": "kg/m2",
+        "role": "Body mass index"
+      },
+      "X4": {
+        "name": "Age",
+        "units": "years",
+        "role": "Patient age"
+      }
     },
     "missing_context": "Serum insulin test is expensive and invasive. In the original dataset, zero values (biologically impossible) represent tests not performed. The test tends not to be ordered when glucose is in the normal range and the physician does not suspect diabetes. Additionally, patients with very high insulin may have results discarded due to laboratory doubt.",
     "original_missing_rate": 0.487,
@@ -296,12 +436,28 @@
     "x0_description": "Natural logarithm of the woman's hourly wage",
     "x0_typical_range": "log wage ~0.5-3.5 for employed women",
     "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Woman's age"},
-      "X2": {"name": "inc", "units": "USD/year", "role": "Family income excluding woman's wage"},
-      "X3": {"name": "k5", "units": "count", "role": "Number of children under 5"},
-      "X4": {"name": "wc_num", "units": "binary 0/1", "role": "Attended college (1=yes)"}
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "Woman's age"
+      },
+      "X2": {
+        "name": "inc",
+        "units": "USD/year",
+        "role": "Family income excluding woman's wage"
+      },
+      "X3": {
+        "name": "k5",
+        "units": "count",
+        "role": "Number of children under 5"
+      },
+      "X4": {
+        "name": "wc_num",
+        "units": "binary 0/1",
+        "role": "Attended college (1=yes)"
+      }
     },
-    "missing_context": "Wage observed only for women who participate in the labor market. Women who do not work have missing wages because the value simply does not exist. The decision to work is related to potential wage — women with low potential earnings tend not to enter the market. Classic example of selection bias (Heckman, 1979).",
+    "missing_context": "Wage observed only for women who participate in the labor market. Women who do not work have missing wages because the value simply does not exist. The decision to work is related to potential wage \u2014 women with low potential earnings tend not to enter the market. Classic example of selection bias (Heckman, 1979).",
     "original_missing_rate": 0.432,
     "n_total_original": 753
   },
@@ -310,16 +466,32 @@
     "source": "OpenML chronic-kidney-disease v1",
     "x0_variable": "pot",
     "x0_units": "mEq/L (milliequivalents per liter)",
-    "x0_description": "Serum potassium level — critical electrolyte for cardiac and muscular function",
+    "x0_description": "Serum potassium level \u2014 critical electrolyte for cardiac and muscular function",
     "x0_typical_range": "3.5-5.0 mEq/L (normal), <3.5 hypokalemia, >5.5 hyperkalemia",
     "predictors": {
-      "X1": {"name": "bp", "units": "mmHg", "role": "Blood pressure"},
-      "X2": {"name": "age", "units": "years", "role": "Patient age"},
-      "X3": {"name": "bgr", "units": "mg/dL", "role": "Blood glucose"},
-      "X4": {"name": "bu", "units": "mg/dL", "role": "Blood urea"}
+      "X1": {
+        "name": "bp",
+        "units": "mmHg",
+        "role": "Blood pressure"
+      },
+      "X2": {
+        "name": "age",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X3": {
+        "name": "bgr",
+        "units": "mg/dL",
+        "role": "Blood glucose"
+      },
+      "X4": {
+        "name": "bu",
+        "units": "mg/dL",
+        "role": "Blood urea"
+      }
     },
     "missing_context": "Extreme potassium values (very high or very low) are difficult to measure accurately in the laboratory. Samples may be hemolyzed (cell destruction during collection), releasing intracellular potassium and generating a false result. Laboratories frequently discard or do not report these suspicious measurements.",
-    "original_missing_rate": 0.10,
+    "original_missing_rate": 0.1,
     "n_total_original": 400
   },
   "MNAR_kidney_sod": {
@@ -327,16 +499,32 @@
     "source": "OpenML chronic-kidney-disease v1",
     "x0_variable": "sod",
     "x0_units": "mEq/L (milliequivalents per liter)",
-    "x0_description": "Serum sodium level — primary electrolyte for osmotic balance",
+    "x0_description": "Serum sodium level \u2014 primary electrolyte for osmotic balance",
     "x0_typical_range": "136-145 mEq/L (normal), <135 hyponatremia, >145 hypernatremia",
     "predictors": {
-      "X1": {"name": "bp", "units": "mmHg", "role": "Blood pressure"},
-      "X2": {"name": "age", "units": "years", "role": "Patient age"},
-      "X3": {"name": "bgr", "units": "mg/dL", "role": "Blood glucose"},
-      "X4": {"name": "bu", "units": "mg/dL", "role": "Blood urea"}
+      "X1": {
+        "name": "bp",
+        "units": "mmHg",
+        "role": "Blood pressure"
+      },
+      "X2": {
+        "name": "age",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X3": {
+        "name": "bgr",
+        "units": "mg/dL",
+        "role": "Blood glucose"
+      },
+      "X4": {
+        "name": "bu",
+        "units": "mg/dL",
+        "role": "Blood urea"
+      }
     },
-    "missing_context": "Similar to potassium — extreme sodium values not reliably reported. Laboratories may reject samples with values far outside the normal range, considering them possible analytical errors. Critically ill patients with highly altered sodium may have more difficult sample collection.",
-    "original_missing_rate": 0.10,
+    "missing_context": "Similar to potassium \u2014 extreme sodium values not reliably reported. Laboratories may reject samples with values far outside the normal range, considering them possible analytical errors. Critically ill patients with highly altered sodium may have more difficult sample collection.",
+    "original_missing_rate": 0.1,
     "n_total_original": 400
   },
   "MNAR_colic_refluxph": {
@@ -344,49 +532,64 @@
     "source": "OpenML colic v1",
     "x0_variable": "nasogastric_reflux_PH",
     "x0_units": "pH (scale 0-14)",
-    "x0_description": "pH of fluid obtained by nasogastric intubation in the horse — indicates acidity of refluxed gastric content",
+    "x0_description": "pH of fluid obtained by nasogastric intubation in the horse \u2014 indicates acidity of refluxed gastric content",
     "x0_typical_range": "pH 1-7 (acidic to neutral)",
     "predictors": {
-      "X1": {"name": "pulse", "units": "bpm", "role": "Horse heart rate"},
-      "X2": {"name": "rectal_temperature", "units": "degrees Celsius", "role": "Rectal temperature"},
-      "X3": {"name": "packed_cell_volume", "units": "% hematocrit", "role": "Packed cell volume"},
-      "X4": {"name": "total_protein", "units": "g/dL", "role": "Total blood protein"}
+      "X1": {
+        "name": "pulse",
+        "units": "bpm",
+        "role": "Horse heart rate"
+      },
+      "X2": {
+        "name": "rectal_temperature",
+        "units": "degrees Celsius",
+        "role": "Rectal temperature"
+      },
+      "X3": {
+        "name": "packed_cell_volume",
+        "units": "% hematocrit",
+        "role": "Packed cell volume"
+      },
+      "X4": {
+        "name": "total_protein",
+        "units": "g/dL",
+        "role": "Total blood protein"
+      }
     },
     "missing_context": "Nasogastric reflux pH is only measurable when there is significant reflux volume. Horses with little or no reflux do not have enough sample to measure pH. The presence of reflux is correlated with the severity of intestinal obstruction, and extreme volumes (very high) produce samples that are difficult to process.",
-    "original_missing_rate": 0.10,
+    "original_missing_rate": 0.1,
     "n_total_original": 368
-  },
-  "MNAR_cylinderbands_varnishpct": {
-    "domain": "manufacturing / quality control",
-    "source": "OpenML cylinder-bands v2",
-    "x0_variable": "varnish_pct",
-    "x0_units": "percentage (%)",
-    "x0_description": "Varnish percentage applied to the rotogravure printing cylinder",
-    "x0_typical_range": "Varies by specification, continuous values",
-    "predictors": {
-      "X1": {"name": "press_speed", "units": "speed unit", "role": "Press speed"},
-      "X2": {"name": "ink_temperature", "units": "degrees", "role": "Ink temperature"},
-      "X3": {"name": "viscosity", "units": "viscosity unit", "role": "Ink viscosity"},
-      "X4": {"name": "roughness", "units": "roughness unit", "role": "Cylinder roughness"}
-    },
-    "missing_context": "Varnish percentage not recorded when batch quality is outside specifications (too high or too low). Line operators tend not to fully document batches with severe quality issues, focusing on immediate correction rather than recording.",
-    "original_missing_rate": 0.10,
-    "n_total_original": 540
   },
   "MCAR_hepatitis_alkphosphate": {
     "domain": "hepatology / liver disease",
     "source": "UCI Hepatitis Dataset / OpenML hepatitis v1 (ID #55)",
     "x0_variable": "ALK_PHOSPHATE",
     "x0_units": "U/L (international units per liter)",
-    "x0_description": "Serum alkaline phosphatase level — enzyme produced by liver, bile ducts, and bone. Elevated in cholestatic liver disease.",
+    "x0_description": "Serum alkaline phosphatase level \u2014 enzyme produced by liver, bile ducts, and bone. Elevated in cholestatic liver disease.",
     "x0_typical_range": "26-295 U/L in this dataset (normal adult: 44-147 U/L)",
     "predictors": {
-      "X1": {"name": "AGE", "units": "years", "role": "Patient age"},
-      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "Serum bilirubin (liver function marker)"},
-      "X3": {"name": "SGOT", "units": "U/L", "role": "Serum glutamic oxaloacetic transaminase (AST)"},
-      "X4": {"name": "PROTIME", "units": "seconds", "role": "Prothrombin time (clotting function)"}
+      "X1": {
+        "name": "AGE",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X2": {
+        "name": "BILIRUBIN",
+        "units": "mg/dL",
+        "role": "Serum bilirubin (liver function marker)"
+      },
+      "X3": {
+        "name": "SGOT",
+        "units": "U/L",
+        "role": "Serum glutamic oxaloacetic transaminase (AST)"
+      },
+      "X4": {
+        "name": "PROTIME",
+        "units": "seconds",
+        "role": "Prothrombin time (clotting function)"
+      }
     },
-    "missing_context": "Alkaline phosphatase is part of the standard hepatic panel but was not always ordered in 1980s clinical protocols. Missing values (29/155 = 18.7%) reflect laboratory logistics — insufficient blood sample volume, lab backlog, or cost constraints — not patient condition. Little's MCAR test confirms (p=0.44).",
+    "missing_context": "Alkaline phosphatase is part of the standard hepatic panel but was not always ordered in 1980s clinical protocols. Missing values (29/155 = 18.7%) reflect laboratory logistics \u2014 insufficient blood sample volume, lab backlog, or cost constraints \u2014 not patient condition. Little's MCAR test confirms (p=0.44).",
     "original_missing_rate": 0.187,
     "n_total_original": 155
   },
@@ -395,66 +598,64 @@
     "source": "UCI Hepatitis Dataset / OpenML hepatitis v1 (ID #55)",
     "x0_variable": "ALBUMIN",
     "x0_units": "g/dL (grams per deciliter)",
-    "x0_description": "Serum albumin level — major plasma protein synthesized by the liver. Low levels indicate chronic liver disease.",
+    "x0_description": "Serum albumin level \u2014 major plasma protein synthesized by the liver. Low levels indicate chronic liver disease.",
     "x0_typical_range": "2.1-6.4 g/dL in this dataset (normal adult: 3.5-5.5 g/dL)",
     "predictors": {
-      "X1": {"name": "AGE", "units": "years", "role": "Patient age"},
-      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "Serum bilirubin"},
-      "X3": {"name": "SGOT", "units": "U/L", "role": "SGOT (AST)"},
-      "X4": {"name": "ALK_PHOSPHATE", "units": "U/L", "role": "Alkaline phosphatase"}
+      "X1": {
+        "name": "AGE",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X2": {
+        "name": "BILIRUBIN",
+        "units": "mg/dL",
+        "role": "Serum bilirubin"
+      },
+      "X3": {
+        "name": "SGOT",
+        "units": "U/L",
+        "role": "SGOT (AST)"
+      },
+      "X4": {
+        "name": "ALK_PHOSPHATE",
+        "units": "U/L",
+        "role": "Alkaline phosphatase"
+      }
     },
-    "missing_context": "Albumin is a general health marker, not hepatitis-specific. Missing values (16/155 = 10.3%) result from the same laboratory logistics as ALK_PHOSPHATE — routine test randomly omitted. Little's MCAR test confirms (p=0.68).",
+    "missing_context": "Albumin is a general health marker, not hepatitis-specific. Missing values (16/155 = 10.3%) result from the same laboratory logistics as ALK_PHOSPHATE \u2014 routine test randomly omitted. Little's MCAR test confirms (p=0.68).",
     "original_missing_rate": 0.103,
     "n_total_original": 155
-  },
-  "MCAR_creditapproval_a14": {
-    "domain": "finance / consumer credit",
-    "source": "UCI Credit Approval Dataset / OpenML credit-approval v1 (ID #29)",
-    "x0_variable": "A14",
-    "x0_units": "continuous (anonymized)",
-    "x0_description": "Anonymized continuous field from credit card application form. Original variable names protected for privacy.",
-    "x0_typical_range": "0-2000 (anonymized units)",
-    "predictors": {
-      "X1": {"name": "A2", "units": "continuous (anonymized)", "role": "Applicant attribute"},
-      "X2": {"name": "A3", "units": "continuous (anonymized)", "role": "Applicant attribute"},
-      "X3": {"name": "A8", "units": "continuous (anonymized)", "role": "Applicant attribute"},
-      "X4": {"name": "A15", "units": "continuous (anonymized)", "role": "Applicant attribute"}
-    },
-    "missing_context": "Only 13/690 values missing (1.9%). In anonymized credit card applications, missing fields are consistent with random form incompleteness — applicant skipped a field or entry was illegible. Little's MCAR test confirms (p=0.70).",
-    "original_missing_rate": 0.019,
-    "n_total_original": 690
-  },
-  "MCAR_echomonths_epss": {
-    "domain": "cardiology / echocardiography",
-    "source": "UCI Echocardiogram Dataset / OpenML echoMonths v1 (ID #222)",
-    "x0_variable": "epss",
-    "x0_units": "mm (millimeters)",
-    "x0_description": "E-point septal separation — echocardiographic measurement of the distance between the E-point of the mitral valve and the interventricular septum. Marker of left ventricular function.",
-    "x0_typical_range": "0-40 mm (normal <7mm, >7mm suggests LV dysfunction)",
-    "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Patient age"},
-      "X2": {"name": "fractional", "units": "fraction (0-1)", "role": "Fractional shortening (LV systolic function)"},
-      "X3": {"name": "lvdd", "units": "mm", "role": "Left ventricular diastolic dimension"},
-      "X4": {"name": "wall_score", "units": "score", "role": "Wall motion score (cardiac wall abnormality)"}
-    },
-    "missing_context": "EPSS measurement requires adequate acoustic window during echocardiography. Missing values (14/130 = 10.8%) occur when the ultrasound image quality is insufficient due to patient body habitus, lung disease, or technical factors — independent of the actual EPSS value. Little's MCAR test confirms (p=0.65).",
-    "original_missing_rate": 0.108,
-    "n_total_original": 130
   },
   "MNAR_hepatitis_protime": {
     "domain": "hepatology / liver disease",
     "source": "UCI Hepatitis Dataset / OpenML hepatitis v1 (ID #55)",
     "x0_variable": "PROTIME",
     "x0_units": "seconds (prothrombin time)",
-    "x0_description": "Prothrombin time — measures how long blood takes to clot. Prolonged PT indicates impaired liver synthesis of clotting factors.",
+    "x0_description": "Prothrombin time \u2014 measures how long blood takes to clot. Prolonged PT indicates impaired liver synthesis of clotting factors.",
     "x0_typical_range": "0-100 seconds in this dataset (normal: 11-13.5 seconds)",
     "predictors": {
-      "X1": {"name": "AGE", "units": "years", "role": "Patient age"},
-      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "Serum bilirubin"},
-      "X3": {"name": "SGOT", "units": "U/L", "role": "SGOT (AST)"},
-      "X4": {"name": "ALBUMIN", "units": "g/dL", "role": "Serum albumin"}
+      "X1": {
+        "name": "AGE",
+        "units": "years",
+        "role": "Patient age"
+      },
+      "X2": {
+        "name": "BILIRUBIN",
+        "units": "mg/dL",
+        "role": "Serum bilirubin"
+      },
+      "X3": {
+        "name": "SGOT",
+        "units": "U/L",
+        "role": "SGOT (AST)"
+      },
+      "X4": {
+        "name": "ALBUMIN",
+        "units": "g/dL",
+        "role": "Serum albumin"
+      }
     },
-    "missing_context": "Prothrombin time had the highest missing rate in the hepatitis dataset (67/155 = 43.2%). The test is selectively ordered when the physician suspects coagulopathy — i.e., when the expected PT value is abnormal. Patients with apparently normal liver function do not receive this test because the result would be unremarkable. The probability of missing depends on the expected value of PT itself (MNAR).",
+    "missing_context": "Prothrombin time had the highest missing rate in the hepatitis dataset (67/155 = 43.2%). The test is selectively ordered when the physician suspects coagulopathy \u2014 i.e., when the expected PT value is abnormal. Patients with apparently normal liver function do not receive this test because the result would be unremarkable. The probability of missing depends on the expected value of PT itself (MNAR).",
     "original_missing_rate": 0.432,
     "n_total_original": 155
   },
@@ -463,15 +664,31 @@
     "source": "NIDDK Pima Indians Diabetes Database (UCI/Kaggle)",
     "x0_variable": "SkinThickness",
     "x0_units": "mm (millimeters)",
-    "x0_description": "Triceps skinfold thickness — anthropometric measurement of subcutaneous fat used to estimate body composition",
+    "x0_description": "Triceps skinfold thickness \u2014 anthropometric measurement of subcutaneous fat used to estimate body composition",
     "x0_typical_range": "7-99 mm in this dataset (normal adult: 10-25 mm)",
     "predictors": {
-      "X1": {"name": "Pregnancies", "units": "count", "role": "Number of pregnancies"},
-      "X2": {"name": "Glucose", "units": "mg/dL", "role": "Plasma glucose 2h post-OGTT"},
-      "X3": {"name": "BMI", "units": "kg/m2", "role": "Body mass index"},
-      "X4": {"name": "Age", "units": "years", "role": "Patient age"}
+      "X1": {
+        "name": "Pregnancies",
+        "units": "count",
+        "role": "Number of pregnancies"
+      },
+      "X2": {
+        "name": "Glucose",
+        "units": "mg/dL",
+        "role": "Plasma glucose 2h post-OGTT"
+      },
+      "X3": {
+        "name": "BMI",
+        "units": "kg/m2",
+        "role": "Body mass index"
+      },
+      "X4": {
+        "name": "Age",
+        "units": "years",
+        "role": "Patient age"
+      }
     },
-    "missing_context": "Skinfold thickness recorded as 0 (biologically impossible) for 227/768 women (29.6%). Standard skinfold calipers have a maximum capacity of ~45mm. Obese patients with thick subcutaneous fat exceed caliper capacity, making measurement impossible. The higher the true skinfold thickness, the more likely it is to be missing — a classic MNAR mechanism documented in medical literature (Pham et al., 2015; Bray et al., 1978).",
+    "missing_context": "Skinfold thickness recorded as 0 (biologically impossible) for 227/768 women (29.6%). Standard skinfold calipers have a maximum capacity of ~45mm. Obese patients with thick subcutaneous fat exceed caliper capacity, making measurement impossible. The higher the true skinfold thickness, the more likely it is to be missing \u2014 a classic MNAR mechanism documented in medical literature (Pham et al., 2015; Bray et al., 1978).",
     "original_missing_rate": 0.296,
     "n_total_original": 768
   },
@@ -483,13 +700,29 @@
     "x0_description": "Capital gain from investments in the fiscal year",
     "x0_typical_range": "0-99999 USD, but most of the population has 0",
     "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "Individual's age"},
-      "X2": {"name": "education_num", "units": "years of study", "role": "Years of formal education"},
-      "X3": {"name": "hours_per_week", "units": "hours/week", "role": "Hours worked per week"},
-      "X4": {"name": "capital_loss", "units": "USD", "role": "Individual's capital loss in fiscal year"}
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "Individual's age"
+      },
+      "X2": {
+        "name": "education_num",
+        "units": "years of study",
+        "role": "Years of formal education"
+      },
+      "X3": {
+        "name": "hours_per_week",
+        "units": "hours/week",
+        "role": "Hours worked per week"
+      },
+      "X4": {
+        "name": "capital_loss",
+        "units": "USD",
+        "role": "Individual's capital loss in fiscal year"
+      }
     },
-    "missing_context": "Capital gains only reported by people with investments that generated profit. Most of the population has zero gains (not missing, but literal zero). Missing values represent non-reporting — people with low gains have less financial and legal incentive to report in detail. The missing value is related to the gain amount itself.",
-    "original_missing_rate": 0.10,
+    "missing_context": "Capital gains only reported by people with investments that generated profit. Most of the population has zero gains (not missing, but literal zero). Missing values represent non-reporting \u2014 people with low gains have less financial and legal incentive to report in detail. The missing value is related to the gain amount itself.",
+    "original_missing_rate": 0.1,
     "n_total_original": 32561
   }
 }

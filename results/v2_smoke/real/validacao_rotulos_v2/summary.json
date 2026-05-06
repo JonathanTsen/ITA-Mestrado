@@ -1,0 +1,21 @@
+{
+  "mode": "Bayesiano",
+  "n_total": 29,
+  "n_consistent": 12,
+  "accuracy_vs_literature": 0.41379310344827586,
+  "n_permutations": 20,
+  "per_class": {
+    "MCAR": {
+      "n": 9,
+      "consistent": 2
+    },
+    "MAR": {
+      "n": 11,
+      "consistent": 5
+    },
+    "MNAR": {
+      "n": 9,
+      "consistent": 5
+    }
+  }
+}

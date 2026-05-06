@@ -1,17 +1,11 @@
 # Metade 1 (15 parent-datasets, ~735 bootstraps) — rodar HOJE
 # 5 MCAR + 5 MAR + 5 MNAR
-MCAR_autompg_horsepower
-MCAR_breastcancer_barenuclei
-MCAR_creditapproval_a14
-MCAR_cylinderbands_bladepressure
-MCAR_cylinderbands_esavoltage
+MAR_breastcancer_barenuclei
+MAR_cylinderbands_bladepressure
+MAR_cylinderbands_esavoltage
 MAR_airquality_ozone
-MAR_colic_resprate
-MAR_hearth_chol
-MAR_kidney_hemo
 MAR_mammographic_density
 MNAR_adult_capitalgain
 MNAR_colic_refluxph
-MNAR_cylinderbands_varnishpct
 MNAR_hepatitis_protime
 MNAR_kidney_pot

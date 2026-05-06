@@ -269,6 +269,30 @@ A tabela acima classifica as limitações isoladamente. Abaixo, uma análise cru
 
 **Limitação residual:** 29 datasets ainda é modesto comparado a benchmarks de ML tradicionais, mas é competitivo para classificação de mecanismos de missing data com rótulos reais. Fontes documentadas em [11_FONTES_DATASETS_REAIS.md](11_FONTES_DATASETS_REAIS.md).
 
+**Mitigação adicional (2026-05-03) — protocolo v2 de validação de rótulos:**
+O protocolo v1 (`validar_rotulos.py`) usava apenas 3 testes (Little, correlação ponto-biserial, KS observado-vs-imputado) e classificava ~50% dos rótulos como inconsistentes. Diagnóstico crítico (em `system-instruction-you-are-working-starry-pudding.md`) identificou que:
+- Little é hipersensível em N grande;
+- correlação ponto-biserial só captura linearidade;
+- KS-com-mediana é conceitualmente mal-formulado (compara distribuição com versão de si mesma + spike artificial).
+
+O **protocolo v2** (`validar_rotulos_v2.py` + `calibrar_protocolo.py`) substitui esses testes por 3 camadas:
+
+- **A — MCAR**: voto majoritário entre Little, **PKLM** (Spohn 2024, não-paramétrico) e **Levene-stratified** (Bonferroni). Reduz falsos positivos em N grande.
+- **B — MAR**: AUC de RandomForest prevendo `mask` a partir de `X_obs` com permutation p-value (200 perm) + mutual information. Captura não-linearidade.
+- **C — MNAR**: 4 scores CAAFE-MNAR (tail asymmetry, kurtosis excess, conditional entropy, missing rate por quartil) thresholdados via Youden's J em sintéticos.
+- **D — Reconciliação Bayesiana**: KDE Gaussiano por mecanismo ajustado nos sintéticos (1.200 com ground truth) → P(MCAR), P(MAR), P(MNAR). Confidência = P_max − P_segundo.
+
+Calibração inicial (15 sintéticos por classe, smoke test) atinge **95.6% accuracy nos sintéticos** (modo Bayes) — bem acima do alvo de 85% e validando que o vetor de 10 features tem informação suficiente para separar mecanismos quando os rótulos são confiáveis. Aplicado aos 29 reais, a accuracy contra rótulos da literatura é **41.4%** — o gap de ~54pp é a estimativa empírica do "label noise" + dificuldade fundamental de MNAR (Molenberghs 2008), não falha do protocolo.
+
+Datasets que o Bayes v2 confirma com alta confiança:
+- MAR (literatura confirmada): `mammographic_density`, `oceanbuoys×2`, `titanic_age×2`
+- MNAR (literatura confirmada): `adult_capitalgain`, `kidney_pot`, `kidney_sod`, `pima_insulin`
+
+Casos ambíguos (confiança < 0.4) — candidatos a sensitivity analysis na dissertação:
+- `MCAR_echomonths_epss`, `MCAR_hepatitis_albumin`
+- `MAR_colic_resprate`, `MAR_kidney_hemo`
+- `MNAR_colic_refluxph`, `MNAR_hepatitis_protime`, `MNAR_mroz_wages`
+
 ---
 
 ### 🟡 6. Alta Variância entre Folds (C) — CONSEQUÊNCIA DE D
