@@ -124,16 +124,46 @@ extensions. 12 mechanism variants × 100 datasets each, balanced across
 MCAR / MAR / MNAR. See `src/missdetect/metadata/synthetic_variants_metadata.json`
 for the per-variant configuration (seed, missingness rate, parameter ranges).
 
-### 5.2 Real (29 columns from 18 source datasets)
+### 5.2 Real (32 columns from 21 source datasets)
 
-Curated from UCI MLR (14), OpenML (12), Kaggle (2) and R packages (3).
+Curated from UCI MLR, OpenML, Kaggle, R packages (`mice`, `naniar`,
+`Ecdat`, `datasets`), NHANES CDC, and SUPPORT2 UCI.
+Audited 2026-05-06: 7 datasets with doubtful classification removed;
+6 reclassified from MCAR to MAR after v2b protocol verification and
+domain review. Total: 6 MCAR, 13 MAR, 13 MNAR.
 Per-column provenance, licence and mechanism-labelling justification is in
 [`../data/real/sources.md`](../data/real/sources.md). Each column was
 bootstrapped to ~50 series of length 500, totalling 1,421 bootstrap
 samples. Mechanism labels are domain-expert assignments cross-checked with
-Little's MCAR test, statistical correlation, and Kolmogorov–Smirnov tests
-(57% of expert labels disagree with at least one statistical test — see
-limitations).
+two validation protocols:
+
+- **v1** — three independent tests: Little's MCAR (`src/missdetect/validar_rotulos.py`),
+  point-biserial correlation `mask × X_i`, and KS observed-vs-imputed.
+  57% of expert labels disagree with at least one of the three (see
+  limitations).
+
+- **v2** — layered protocol introduced in
+  `src/missdetect/validar_rotulos_v2.py`. Aggregates evidence in three
+  layers (Camadas A/B/C) plus a Bayesian reconciliation calibrated on the
+  1,200 synthetic datasets:
+
+  - **Camada A — MCAR**: majority vote across Little (paramétrico),
+    PKLM (Spohn 2024, non-parametric, in `baselines/pklm.py`) and
+    a Bonferroni-corrected Levene-stratified test.
+  - **Camada B — MAR**: AUC of a Random Forest predicting `mask` from
+    `X_obs` with a 200-permutation p-value, plus mutual information.
+    Captures non-linear dependencies the point-biserial test misses.
+  - **Camada C — MNAR**: four CAAFE-MNAR scores (tail asymmetry,
+    kurtosis excess, conditional entropy, missing rate by quartile)
+    thresholded at the Youden-optimal cut calibrated against synthetic
+    ground truth.
+  - **Camada D — Reconciliation**: Bayesian aggregation via
+    Gaussian-kernel KDEs fitted per mechanism on the synthetic scores
+    (artefacts: `data/calibration.json`, `data/calibration_scores.npz`).
+
+  Calibration is performed by `src/missdetect/calibrar_protocolo.py` and
+  reports the protocol's accuracy on synthetic ground truth as a sanity
+  check before applying it to real data.
 
 ## 6. Reproducibility caveats
 

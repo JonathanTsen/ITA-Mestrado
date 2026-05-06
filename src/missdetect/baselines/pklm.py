@@ -31,6 +31,7 @@ import pandas as pd
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from sklearn.model_selection import StratifiedKFold
@@ -45,7 +46,26 @@ warnings.filterwarnings("ignore")
 # ==============================================================================
 # PKLM TEST
 # ==============================================================================
-def pklm_test(df, missing_col="X0", n_permutations=100, n_estimators=100, random_state=42):
+def _single_perm_kl(seed, X, mask_template, n_estimators):
+    """Computa KL divergence para uma permutação. Usa `seed` para shuffle e RF.
+
+    Função top-level (não closure) para ser serializável pelo joblib em
+    backends que requerem serialização cross-process.
+    """
+    rng_local = np.random.RandomState(seed)
+    m = mask_template.copy()
+    rng_local.shuffle(m)
+    return _compute_kl_divergence(X, m, n_estimators, rng=rng_local)
+
+
+def pklm_test(
+    df,
+    missing_col="X0",
+    n_permutations=100,
+    n_estimators=100,
+    random_state=42,
+    n_workers=1,
+):
     """
     Teste PKLM (Spohn et al., 2024).
 
@@ -55,6 +75,9 @@ def pklm_test(df, missing_col="X0", n_permutations=100, n_estimators=100, random
         - pklm_pvalue: p-valor via permutação
         - rejects_mcar: bool (p < 0.05)
         - pklm_log_statistic: log(1 + statistic) para uso como feature
+
+    Args:
+        n_workers: paralelismo do loop de permutações (default 1 = sequencial).
     """
     rng = np.random.RandomState(random_state)
 
@@ -84,14 +107,17 @@ def pklm_test(df, missing_col="X0", n_permutations=100, n_estimators=100, random
             col_vals[nan_mask] = median_val
 
     # KL divergence observada
-    kl_observed = _compute_kl_divergence(X, mask, n_estimators, rng)
+    kl_observed = _compute_kl_divergence(X, mask, n_estimators, rng=rng)
 
-    # Permutation test
-    kl_permuted = np.zeros(n_permutations)
-    for i in range(n_permutations):
-        mask_shuffled = mask.copy()
-        rng.shuffle(mask_shuffled)
-        kl_permuted[i] = _compute_kl_divergence(X, mask_shuffled, n_estimators, rng)
+    # Pré-gerar seeds (reprodutibilidade independente da ordem de execução)
+    perm_seeds = rng.randint(0, 2**31, size=n_permutations)
+
+    # Permutation test (paralelizável via joblib; n_workers=1 → execução síncrona)
+    kl_permuted = np.array(
+        Parallel(n_jobs=n_workers, prefer="threads")(
+            delayed(_single_perm_kl)(int(seed), X, mask, n_estimators) for seed in perm_seeds
+        )
+    )
 
     # p-valor: proporção de KL_permuted >= KL_observed
     p_value = float(np.mean(kl_permuted >= kl_observed))
@@ -104,11 +130,20 @@ def pklm_test(df, missing_col="X0", n_permutations=100, n_estimators=100, random
     }
 
 
-def _compute_kl_divergence(X, y, n_estimators, rng):
+def _compute_kl_divergence(X, y, n_estimators, rng=None, seed=None):
     """
     Treina RF para prever y a partir de X, depois calcula KL divergence
     entre distribuições de probabilidade preditas para cada classe.
+
+    Aceita `seed` (int) para reprodutibilidade em contextos paralelos.
+    Se `seed` for fornecido, um RandomState local é criado e tem precedência
+    sobre `rng` (compatibilidade com chamadas legadas).
     """
+    if seed is not None:
+        rng = np.random.RandomState(seed)
+    elif rng is None:
+        rng = np.random.RandomState()
+
     min_class = min(np.sum(y == 0), np.sum(y == 1))
 
     if min_class < 2:
@@ -121,7 +156,7 @@ def _compute_kl_divergence(X, y, n_estimators, rng):
         min_samples_leaf=10,
         oob_score=True,
         random_state=rng.randint(0, 2**31),
-        n_jobs=-1,
+        n_jobs=1,
     )
     clf.fit(X, y)
 
@@ -130,7 +165,7 @@ def _compute_kl_divergence(X, y, n_estimators, rng):
         proba = clf.oob_decision_function_
     else:
         # Fallback: CV predictions
-        proba = _cv_predict_proba(X, y, n_estimators, rng)
+        proba = _cv_predict_proba(X, y, n_estimators, rng=rng)
 
     if proba is None or proba.shape[1] < 2:
         return 0.0
@@ -148,8 +183,17 @@ def _compute_kl_divergence(X, y, n_estimators, rng):
     return kl
 
 
-def _cv_predict_proba(X, y, n_estimators, rng):
-    """Fallback: predições via 3-fold CV."""
+def _cv_predict_proba(X, y, n_estimators, rng=None, seed=None):
+    """Fallback: predições via 3-fold CV.
+
+    Aceita `seed` para reprodutibilidade em contextos paralelos; tem
+    precedência sobre `rng` quando fornecido.
+    """
+    if seed is not None:
+        rng = np.random.RandomState(seed)
+    elif rng is None:
+        rng = np.random.RandomState()
+
     min_class = min(np.sum(y == 0), np.sum(y == 1))
     n_folds = min(3, max(2, min_class))
 
@@ -166,7 +210,7 @@ def _cv_predict_proba(X, y, n_estimators, rng):
             max_depth=5,
             min_samples_leaf=10,
             random_state=rng.randint(0, 2**31),
-            n_jobs=-1,
+            n_jobs=1,
         )
         clf.fit(X[train_idx], y[train_idx])
         pred = clf.predict_proba(X[test_idx])
@@ -330,9 +374,9 @@ if __name__ == "__main__":
     )
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"📊 RESULTADOS PKLM BASELINE — {DATA_TYPE.upper()}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"   Accuracy: {acc:.4f}")
     print(f"   F1 Macro: {f1_macro:.4f}")
     print("\n   Per class:")
@@ -348,9 +392,9 @@ if __name__ == "__main__":
     # ==============================================================================
     # TESTE MCAR BINÁRIO (poder e tipo I)
     # ==============================================================================
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("📊 PKLM COMO TESTE BINÁRIO (MCAR vs não-MCAR)")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     df_results["is_mcar_true"] = df_results["true_label"] == "MCAR"
     df_results["is_mcar_pred"] = ~df_results["rejects_mcar"]
@@ -497,4 +541,4 @@ if __name__ == "__main__":
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
     print(f"\n💾 Salvos em: {OUT_DIR}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")

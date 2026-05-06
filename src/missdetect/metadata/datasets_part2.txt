@@ -1,9 +1,8 @@
 # Metade 2 (14 parent-datasets, ~686 bootstraps) — rodar AMANHÃ
 # 4 MCAR + 6 MAR + 4 MNAR
-MCAR_echomonths_epss
 MCAR_hepatitis_albumin
 MCAR_hepatitis_alkphosphate
-MCAR_hypothyroid_t4u
+MAR_hypothyroid_t4u
 MAR_oceanbuoys_airtemp
 MAR_oceanbuoys_humidity
 MAR_sick_t3

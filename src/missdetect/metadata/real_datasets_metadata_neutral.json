@@ -1,39 +1,5 @@
 {
-  "MCAR_autompg_horsepower": {
-    "domain": "automotive engineering",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "horsepower",
-    "x0_units": "hp (horsepower)",
-    "x0_description": "Engine power output of the automobile",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {
-        "name": "displacement",
-        "units": "cubic inches",
-        "role": "numeric predictor"
-      },
-      "X2": {
-        "name": "weight",
-        "units": "pounds",
-        "role": "numeric predictor"
-      },
-      "X3": {
-        "name": "acceleration",
-        "units": "seconds (0-60mph)",
-        "role": "numeric predictor"
-      },
-      "X4": {
-        "name": "cylinders",
-        "units": "count",
-        "role": "numeric predictor"
-      }
-    },
-    "missing_context": "Some entries of horsepower are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of horsepower itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.015,
-    "n_total_original": 398,
-    "_metadata_variant": "neutral"
-  },
-  "MCAR_breastcancer_barenuclei": {
+  "MAR_breastcancer_barenuclei": {
     "domain": "oncology / breast cancer diagnosis",
     "source": "Tabular dataset (public repository)",
     "x0_variable": "bare_nuclei",
@@ -67,7 +33,7 @@
     "n_total_original": 699,
     "_metadata_variant": "neutral"
   },
-  "MCAR_cylinderbands_bladepressure": {
+  "MAR_cylinderbands_bladepressure": {
     "domain": "manufacturing / rotogravure printing",
     "source": "Tabular dataset (public repository)",
     "x0_variable": "blade_pressure",
@@ -101,7 +67,7 @@
     "n_total_original": 540,
     "_metadata_variant": "neutral"
   },
-  "MCAR_cylinderbands_esavoltage": {
+  "MAR_cylinderbands_esavoltage": {
     "domain": "manufacturing / rotogravure printing",
     "source": "Tabular dataset (public repository)",
     "x0_variable": "ESA_Voltage",
@@ -135,7 +101,7 @@
     "n_total_original": 540,
     "_metadata_variant": "neutral"
   },
-  "MCAR_hypothyroid_t4u": {
+  "MAR_hypothyroid_t4u": {
     "domain": "endocrinology / thyroid function",
     "source": "Tabular dataset (public repository)",
     "x0_variable": "T4U",
@@ -441,108 +407,6 @@
     "n_total_original": 891,
     "_metadata_variant": "neutral"
   },
-  "MAR_kidney_hemo": {
-    "domain": "nephrology / clinical biochemistry",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "hemo",
-    "x0_units": "g/dL (grams per deciliter)",
-    "x0_description": "Blood hemoglobin level",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {
-        "name": "bp",
-        "units": "mmHg",
-        "role": "numeric predictor"
-      },
-      "X2": {
-        "name": "age",
-        "units": "years",
-        "role": "numeric predictor"
-      },
-      "X3": {
-        "name": "bgr",
-        "units": "mg/dL",
-        "role": "numeric predictor"
-      },
-      "X4": {
-        "name": "bu",
-        "units": "mg/dL",
-        "role": "numeric predictor"
-      }
-    },
-    "missing_context": "Some entries of hemo are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of hemo itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.1,
-    "n_total_original": 400,
-    "_metadata_variant": "neutral"
-  },
-  "MAR_hearth_chol": {
-    "domain": "cardiology",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "chol",
-    "x0_units": "mg/dL (milligrams per deciliter)",
-    "x0_description": "Total serum cholesterol",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {
-        "name": "age",
-        "units": "years",
-        "role": "numeric predictor"
-      },
-      "X2": {
-        "name": "trestbps",
-        "units": "mmHg",
-        "role": "numeric predictor"
-      },
-      "X3": {
-        "name": "thalach",
-        "units": "bpm",
-        "role": "numeric predictor"
-      },
-      "X4": {
-        "name": "oldpeak",
-        "units": "mm",
-        "role": "numeric predictor"
-      }
-    },
-    "missing_context": "Some entries of chol are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of chol itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.1,
-    "n_total_original": 294,
-    "_metadata_variant": "neutral"
-  },
-  "MAR_colic_resprate": {
-    "domain": "veterinary medicine / equine colic",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "respiratory_rate",
-    "x0_units": "breaths/minute",
-    "x0_description": "Animal respiratory rate",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {
-        "name": "pulse",
-        "units": "bpm",
-        "role": "numeric predictor"
-      },
-      "X2": {
-        "name": "rectal_temperature",
-        "units": "degrees Celsius",
-        "role": "numeric predictor"
-      },
-      "X3": {
-        "name": "packed_cell_volume",
-        "units": "% (hematocrit)",
-        "role": "numeric predictor"
-      },
-      "X4": {
-        "name": "total_protein",
-        "units": "g/dL",
-        "role": "numeric predictor"
-      }
-    },
-    "missing_context": "Some entries of respiratory_rate are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of respiratory_rate itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.1,
-    "n_total_original": 368,
-    "_metadata_variant": "neutral"
-  },
   "MNAR_pima_insulin": {
     "domain": "endocrinology / diabetes",
     "source": "Tabular dataset (public repository)",
@@ -713,52 +577,34 @@
     "n_total_original": 368,
     "_metadata_variant": "neutral"
   },
-  "MNAR_cylinderbands_varnishpct": {
-    "domain": "manufacturing / quality control",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "varnish_pct",
-    "x0_units": "percentage (%)",
-    "x0_description": "Varnish percentage applied to the printing cylinder",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {
-        "name": "press_speed",
-        "units": "speed unit",
-        "role": "numeric predictor"
-      },
-      "X2": {
-        "name": "ink_temperature",
-        "units": "degrees",
-        "role": "numeric predictor"
-      },
-      "X3": {
-        "name": "viscosity",
-        "units": "viscosity unit",
-        "role": "numeric predictor"
-      },
-      "X4": {
-        "name": "roughness",
-        "units": "roughness unit",
-        "role": "numeric predictor"
-      }
-    },
-    "missing_context": "Some entries of varnish_pct are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of varnish_pct itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.1,
-    "n_total_original": 540,
-    "_metadata_variant": "neutral"
-  },
   "MCAR_hepatitis_alkphosphate": {
     "domain": "hepatology / liver disease",
     "source": "Tabular dataset (public repository)",
     "x0_variable": "ALK_PHOSPHATE",
     "x0_units": "U/L (international units per liter)",
-    "x0_description": "Serum alkaline phosphatase level — liver enzyme marker",
+    "x0_description": "Serum alkaline phosphatase level \u2014 liver enzyme marker",
     "x0_typical_range": "continuous numeric variable",
     "predictors": {
-      "X1": {"name": "AGE", "units": "years", "role": "numeric predictor"},
-      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "numeric predictor"},
-      "X3": {"name": "SGOT", "units": "U/L", "role": "numeric predictor"},
-      "X4": {"name": "PROTIME", "units": "seconds", "role": "numeric predictor"}
+      "X1": {
+        "name": "AGE",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "BILIRUBIN",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "SGOT",
+        "units": "U/L",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "PROTIME",
+        "units": "seconds",
+        "role": "numeric predictor"
+      }
     },
     "missing_context": "Some entries of ALK_PHOSPHATE are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of ALK_PHOSPHATE itself, on the other observed predictors, or is unrelated to any measured variable.",
     "original_missing_rate": 0.187,
@@ -770,53 +616,33 @@
     "source": "Tabular dataset (public repository)",
     "x0_variable": "ALBUMIN",
     "x0_units": "g/dL (grams per deciliter)",
-    "x0_description": "Serum albumin level — plasma protein marker",
+    "x0_description": "Serum albumin level \u2014 plasma protein marker",
     "x0_typical_range": "continuous numeric variable",
     "predictors": {
-      "X1": {"name": "AGE", "units": "years", "role": "numeric predictor"},
-      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "numeric predictor"},
-      "X3": {"name": "SGOT", "units": "U/L", "role": "numeric predictor"},
-      "X4": {"name": "ALK_PHOSPHATE", "units": "U/L", "role": "numeric predictor"}
+      "X1": {
+        "name": "AGE",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "BILIRUBIN",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "SGOT",
+        "units": "U/L",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "ALK_PHOSPHATE",
+        "units": "U/L",
+        "role": "numeric predictor"
+      }
     },
     "missing_context": "Some entries of ALBUMIN are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of ALBUMIN itself, on the other observed predictors, or is unrelated to any measured variable.",
     "original_missing_rate": 0.103,
     "n_total_original": 155,
-    "_metadata_variant": "neutral"
-  },
-  "MCAR_creditapproval_a14": {
-    "domain": "finance / consumer credit",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "A14",
-    "x0_units": "continuous (anonymized)",
-    "x0_description": "Anonymized continuous field from application form",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {"name": "A2", "units": "continuous (anonymized)", "role": "numeric predictor"},
-      "X2": {"name": "A3", "units": "continuous (anonymized)", "role": "numeric predictor"},
-      "X3": {"name": "A8", "units": "continuous (anonymized)", "role": "numeric predictor"},
-      "X4": {"name": "A15", "units": "continuous (anonymized)", "role": "numeric predictor"}
-    },
-    "missing_context": "Some entries of A14 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of A14 itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.019,
-    "n_total_original": 690,
-    "_metadata_variant": "neutral"
-  },
-  "MCAR_echomonths_epss": {
-    "domain": "cardiology / echocardiography",
-    "source": "Tabular dataset (public repository)",
-    "x0_variable": "epss",
-    "x0_units": "mm (millimeters)",
-    "x0_description": "E-point septal separation — echocardiographic measurement",
-    "x0_typical_range": "continuous numeric variable",
-    "predictors": {
-      "X1": {"name": "age", "units": "years", "role": "numeric predictor"},
-      "X2": {"name": "fractional", "units": "fraction", "role": "numeric predictor"},
-      "X3": {"name": "lvdd", "units": "mm", "role": "numeric predictor"},
-      "X4": {"name": "wall_score", "units": "score", "role": "numeric predictor"}
-    },
-    "missing_context": "Some entries of epss are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of epss itself, on the other observed predictors, or is unrelated to any measured variable.",
-    "original_missing_rate": 0.108,
-    "n_total_original": 130,
     "_metadata_variant": "neutral"
   },
   "MNAR_hepatitis_protime": {
@@ -824,13 +650,29 @@
     "source": "Tabular dataset (public repository)",
     "x0_variable": "PROTIME",
     "x0_units": "seconds (prothrombin time)",
-    "x0_description": "Prothrombin time — blood clotting measurement",
+    "x0_description": "Prothrombin time \u2014 blood clotting measurement",
     "x0_typical_range": "continuous numeric variable",
     "predictors": {
-      "X1": {"name": "AGE", "units": "years", "role": "numeric predictor"},
-      "X2": {"name": "BILIRUBIN", "units": "mg/dL", "role": "numeric predictor"},
-      "X3": {"name": "SGOT", "units": "U/L", "role": "numeric predictor"},
-      "X4": {"name": "ALBUMIN", "units": "g/dL", "role": "numeric predictor"}
+      "X1": {
+        "name": "AGE",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "BILIRUBIN",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "SGOT",
+        "units": "U/L",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "ALBUMIN",
+        "units": "g/dL",
+        "role": "numeric predictor"
+      }
     },
     "missing_context": "Some entries of PROTIME are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of PROTIME itself, on the other observed predictors, or is unrelated to any measured variable.",
     "original_missing_rate": 0.432,
@@ -845,10 +687,26 @@
     "x0_description": "Triceps skinfold thickness measurement",
     "x0_typical_range": "continuous numeric variable",
     "predictors": {
-      "X1": {"name": "Pregnancies", "units": "count", "role": "numeric predictor"},
-      "X2": {"name": "Glucose", "units": "mg/dL", "role": "numeric predictor"},
-      "X3": {"name": "BMI", "units": "kg/m2", "role": "numeric predictor"},
-      "X4": {"name": "Age", "units": "years", "role": "numeric predictor"}
+      "X1": {
+        "name": "Pregnancies",
+        "units": "count",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "Glucose",
+        "units": "mg/dL",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "BMI",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "Age",
+        "units": "years",
+        "role": "numeric predictor"
+      }
     },
     "missing_context": "Some entries of SkinThickness are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of SkinThickness itself, on the other observed predictors, or is unrelated to any measured variable.",
     "original_missing_rate": 0.296,

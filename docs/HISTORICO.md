@@ -1,9 +1,9 @@
 # HISTORICO do Projeto — Classificacao de Mecanismos de Missing Data (ITA-Mestrado)
 
-**Linha do tempo completa:** 2026-04-05 a 2026-04-25 (21 dias, 7 fases)
+**Linha do tempo completa:** 2026-04-05 a 2026-05-06 (32 dias, 12 fases)
 **Pergunta de pesquisa:** Como classificar automaticamente MCAR/MAR/MNAR em datasets reais?
 **Resultado pico (23 datasets):** **55.97% LOGO CV** (V3+ hierarquico + CAAFE + Cleanlab, fase 4)
-**Resultado atual (29 datasets):** **49.3% Group 5-Fold CV** (Step 1 V2 Neutral, fase 6)
+**Resultado atual (32 datasets):** **49.3% Group 5-Fold CV** (Step 1 V2 Neutral, fase 6; benchmark auditado para 32 na fase 11)
 **Limite teorico estimado:** 60-65% (Rubin 1976 + 59.4% labels ruidosos)
 
 Este documento e o **indice mestre narrativo** do projeto. Ele costura em ordem cronologica
@@ -28,7 +28,12 @@ flowchart LR
   F4["Fase 4<br/>18-19/04<br/>Plano 3: Otimizacao V3"]
   F5["Fase 5<br/>19/04<br/>Reescrita Tese"]
   F6["Fase 6<br/>20-25/04<br/>Step 1 V2 Neutral"]
-  F0 --> F1 --> F2 --> F3 --> F4 --> F5 --> F6
+  F7["Fase 7<br/>03/05<br/>Protocolo V2"]
+  F8["Fase 8<br/>05/05<br/>V2b Completo"]
+  F9["Fase 9<br/>05/05<br/>Expansão MCAR"]
+  F10["Fase 10<br/>05/05<br/>Expansão MNAR"]
+  F11["Fase 11<br/>06/05<br/>Auditoria"]
+  F0 --> F1 --> F2 --> F3 --> F4 --> F5 --> F6 --> F7 --> F8 --> F9 --> F10 --> F11
 ```
 
 ### Tabela-resumo
@@ -42,6 +47,11 @@ flowchart LR
 | 4 | Plano 3: Otimizacao V3 | 18-19/04 | [docs/04_plano3_otimizacao_v3/](docs/04_plano3_otimizacao_v3/) | Elevar V3 para teto teorico | V3+ (Cleanlab pesos + soft3zone) = **55.97% LOGO**; NB > XGBoost+Optuna |
 | 5 | Reescrita Tese | 19/04 | [docs/05_reescrita_tese/](docs/05_reescrita_tese/) | Integrar tudo na tese final | 83 paginas, 0 erros, auditoria de coerencia concluida |
 | 6 | Step 1 V2 Neutral | 20-25/04 | [docs/08_step1_v2_neutral_results/](docs/08_step1_v2_neutral_results/) + [docs/09_resultados_ml_flash_pro/](docs/09_resultados_ml_flash_pro/) | Re-rodar Step 1 (Pro+neutral) sobre benchmark expandido (29 datasets); comparação head-to-head ML × Flash × Pro | CV 49.3% (NB); abaixo do target de 60%+ por MAR-bias residual em 6 datasets clinicos; Pro +1.9pp vs Flash; Flash Pareto-dominado por ML-only |
+| 7 | Protocolo V2 de Validação | 03-04/05 | [docs/10_protocolo_validacao_v2/](docs/archive/10_protocolo_validacao_v2/) | Diagnosticar fragilidades do protocolo v1; substituir por validação em camadas (Little+PKLM+Levene / AUC RF+MI / CAAFE-MNAR / Bayes KDE) com calibração contra 1.200 sintéticos | **Smoke (03/05):** Bayes 95,6% em sintéticos, 41,4% em reais (vs ~30% do v1); 7 datasets ambíguos; `auc_obs` melhor discriminador (ROC AUC=0.92). **Calibração robusta (04/05):** concluída — Bayes 78,3% em sintéticos (abaixo do critério 85%, achado negativo honesto), 41,4% em reais; 5 causas-raiz identificadas (MCAR↔MNAR indistinguíveis, CAAFE dims mortas, shift sintético→real); plano de 7 passos (paralelismo 9h→10min + CV + novos scores + prior + bandwidth) |
+| 8 | Protocolo V2b Completo | 05/05 | [docs/10_protocolo_validacao_v2/](docs/archive/10_protocolo_validacao_v2/) | Executar plano de 7 passos: P0 (bug paralelismo) + P5 (scores CAAFE) + P6 (prior) + P7 (bandwidth) + P3 (re-calibração) + P4 (sources.md) | **P0:** bug `if n_workers > 1 else 1` corrigido (9h→45 min). **P5:** `caafe_auc_self_delta` + `caafe_kl_density` substituem features mortas (AUC=0.5). **P6:** prior informativo `--prior-mnar` implementado. **P7:** bandwidth ótimo via GridSearchCV. **P3:** calibração v2b (300×100 perms, 4 workers) concluída. **Acurácia v2b em reais: 31 % (9/29)** com prior-mnar=0.35 — queda de 41,4% → 31 % pode refletir prior MNAR mais alto pressionando em direção a MNAR datasets genuinamente ambíguos. **P4:** tabelas diagnóstico v2b adicionadas em `data/real/sources.md` para cada seção MCAR/MAR/MNAR. |
+| 9 | Expansão Benchmark MCAR | 05/05 | `data/real/sources.md`, `data/real/processed/MCAR/` | Pesquisa exaustiva na literatura por datasets reais com evidência publicada de MCAR. Conclusão: MCAR confirmado em dados observacionais é extremamente raro — planned missingness designs (Graham 2006) são o único MCAR garantido. | **4 novos datasets MCAR** de 2 fontes com citação publicada: `boys_hc` e `boys_hgt` (mice::boys, Van Buuren 2018 FIMD Ch. 9 — scheduling gaps em visitas clínicas), `brandsma_lpr` e `brandsma_apr` (mice::brandsma — alunos ausentes no dia do teste; evidência quantitativa: corr mask~ses p=0.72/0.75, mask~iqv p=0.15). **Benchmark: 29 → 33 datasets (13 MCAR, 11 MAR, 9 MNAR).** Achado metodológico: a escassez de MCAR confirmados na literatura reforça que mecanismos puros são abstrações teóricas. |
+| 10 | Expansão Benchmark MNAR + Verificação | 05/05 | `data/real/sources.md`, `data/real/processed/` | Pesquisa exaustiva por datasets MNAR com evidência publicada. Verificação rigorosa de cada mecanismo (correlação mask~covariáveis). | **6 datasets processados, 5 confirmados MNAR, 1 reclassificado MAR.** (a) **NHANES 2017-18**: `nhanes_cadmium` (18.6% LOD), `nhanes_mercury` (26.4% LOD), `nhanes_cotinine` (34.2% LOD) — **MNAR puro** por left-censoring físico. (b) **SUPPORT2**: `support2_albumin` (37%), `support2_bilirubin` (28.6%) — **MNAR misto** (test-ordering + componente MAR fraca, r<0.08). `support2_pafi` **reclassificado como MAR** após verificação: corr(mask, hrt)=−0.19, corr(mask, temp)=−0.18, indicando que ABG é predominantemente ordenado por sinais observáveis. **Benchmark: 39 datasets (13 MCAR, 12 MAR, 14 MNAR).** |
+| 11 | Auditoria e Limpeza do Benchmark | 06/05 | `data/real/sources.md`, `data/real/processed/`, metadados | Auditoria exaustiva de todos os 39 datasets cruzando justificativa de domínio com resultados v2b. Critério: remover se classificação genuinamente duvidosa (rationale vago + v2b discorda); reclassificar se evidência clara de erro. | **7 removidos** (classificação duvidosa): `creditapproval_a14` (MCAR, campo anônimo), `echomonths_epss` (MCAR, n=130, mecanismo ambíguo), `autompg_horsepower` (MCAR, apenas 6 missing), `hearth_chol` (MAR, v2b diz MNAR), `kidney_hemo` (MAR, v2b diz MNAR AMBÍGUO), `colic_resprate` (MAR, v2b diz MNAR), `cylinderbands_varnishpct` (MNAR, v2b diz MAR 99%). **6 reclassificados** MCAR→MAR: `oceanbuoys×2` (já eram MAR nos arquivos), `hypothyroid_t4u` (test-ordering=MAR), `breastcancer_barenuclei` (v2b MAR 100%), `cylinderbands_bladepressure/esavoltage` (v2b MAR). **Benchmark final: 32 datasets (6 MCAR, 13 MAR, 13 MNAR).** |
 
 ### Evolucao de accuracy em dados reais
 

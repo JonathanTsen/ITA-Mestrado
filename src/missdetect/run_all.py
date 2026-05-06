@@ -183,7 +183,7 @@ for data_type in DATA_TYPES:
     # 5. Validação de rótulos (apenas dados reais)
     if data_type == "real":
         print(f"\n{'=' * 60}")
-        print(f"🔬 VALIDAÇÃO DE RÓTULOS ({data_type.upper()})")
+        print(f"🔬 VALIDAÇÃO DE RÓTULOS — v1 (3 testes legados) ({data_type.upper()})")
         print(f"{'=' * 60}")
 
         cmd = [
@@ -195,6 +195,46 @@ for data_type in DATA_TYPES:
             EXPERIMENT,
         ]
         subprocess.run(cmd, cwd=SCRIPT_DIR)
+
+        # 5b. Protocolo V2: calibrar (se necessário) + validar com Camadas A-D
+        repo_root = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+        calib_json = os.path.join(repo_root, "data", "calibration.json")
+        calib_npz = os.path.join(repo_root, "data", "calibration_scores.npz")
+
+        if not (os.path.exists(calib_json) and os.path.exists(calib_npz)):
+            print(f"\n{'=' * 60}")
+            print("📐 CALIBRANDO PROTOCOLO V2 (sintéticos com ground truth)")
+            print(f"{'=' * 60}")
+            cmd = [
+                sys.executable,
+                "-m",
+                "missdetect.calibrar_protocolo",
+                "--output-dir",
+                os.path.join(repo_root, "data"),
+                "--n-per-class",
+                "60",
+                "--n-permutations",
+                "30",
+            ]
+            subprocess.run(cmd, cwd=repo_root)
+
+        print(f"\n{'=' * 60}")
+        print(f"🔬 VALIDAÇÃO DE RÓTULOS — v2 (Camadas A-D) ({data_type.upper()})")
+        print(f"{'=' * 60}")
+        cmd = [
+            sys.executable,
+            "-m",
+            "missdetect.validar_rotulos_v2",
+            "--data",
+            data_type,
+            "--experiment",
+            EXPERIMENT,
+        ]
+        if os.path.exists(calib_json):
+            cmd.extend(["--calibration", calib_json])
+        if os.path.exists(calib_npz):
+            cmd.extend(["--bayes-scores", calib_npz])
+        subprocess.run(cmd, cwd=repo_root)
 
     # 6. Classificação MNAR Focused vs Diffuse
     print(f"\n{'=' * 60}")

@@ -1,0 +1,220 @@
+{
+  "n_per_class": 5,
+  "n_permutations": 10,
+  "bandwidth": 0.8858667904100825,
+  "raw_calibration": {
+    "little_p": {
+      "threshold": 0.16252135357660746,
+      "youden_j": 0.7,
+      "auc": 0.88
+    },
+    "pklm_p": {
+      "threshold": 0.0,
+      "youden_j": 0.5,
+      "auc": 0.72
+    },
+    "levene_p": {
+      "threshold": 0.46776454223841174,
+      "youden_j": 0.5,
+      "auc": 0.78
+    },
+    "auc_obs": {
+      "threshold": 0.6178512015606988,
+      "youden_j": 0.6,
+      "auc": 0.86
+    },
+    "mi_max": {
+      "threshold": 0.027172965714278075,
+      "youden_j": 0.6,
+      "auc": 0.68
+    },
+    "caafe_auc_self_delta": {
+      "threshold": 0.5530555555555554,
+      "youden_j": 0.6,
+      "auc": 0.74
+    },
+    "caafe_kl_density": {
+      "threshold": 22.051833005765978,
+      "youden_j": 0.7000000000000001,
+      "auc": 0.8799999999999999
+    },
+    "caafe_kurt_excess_abs": {
+      "threshold": 0.5479346562960687,
+      "youden_j": 0.6000000000000001,
+      "auc": 0.72
+    },
+    "caafe_cond_entropy": {
+      "threshold": 0.2874367990742884,
+      "youden_j": 0.8,
+      "auc": 0.8800000000000001
+    }
+  },
+  "thresholds": {
+    "auc_mar": 0.6178512015606988,
+    "auc_p": 0.05,
+    "mi_max_mar": 0.027172965714278075,
+    "auc_self_delta": 0.5530555555555554,
+    "kl_density": 22.051833005765978,
+    "kurt_abs": 0.5479346562960687,
+    "cond_entropy": 0.2874367990742884
+  },
+  "validation_metrics": {
+    "default": {
+      "accuracy": 0.4666666666666667,
+      "confusion_matrix": [
+        [
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          2,
+          2
+        ],
+        [
+          5,
+          0,
+          0
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 5,
+          "recall": 1.0,
+          "predictions": 11
+        },
+        "MAR": {
+          "n": 5,
+          "recall": 0.4,
+          "predictions": 2
+        },
+        "MNAR": {
+          "n": 5,
+          "recall": 0.0,
+          "predictions": 2
+        }
+      }
+    },
+    "calibrated": {
+      "accuracy": 0.5333333333333333,
+      "confusion_matrix": [
+        [
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          3,
+          1
+        ],
+        [
+          5,
+          0,
+          0
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 5,
+          "recall": 1.0,
+          "predictions": 11
+        },
+        "MAR": {
+          "n": 5,
+          "recall": 0.6,
+          "predictions": 3
+        },
+        "MNAR": {
+          "n": 5,
+          "recall": 0.0,
+          "predictions": 1
+        }
+      }
+    },
+    "bayes": {
+      "accuracy": 0.9333333333333333,
+      "confusion_matrix": [
+        [
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          5
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 5,
+          "recall": 1.0,
+          "predictions": 6
+        },
+        "MAR": {
+          "n": 5,
+          "recall": 0.8,
+          "predictions": 4
+        },
+        "MNAR": {
+          "n": 5,
+          "recall": 1.0,
+          "predictions": 5
+        }
+      }
+    },
+    "bayes_cv": {
+      "accuracy": 0.6,
+      "confusion_matrix": [
+        [
+          4,
+          1,
+          0
+        ],
+        [
+          1,
+          3,
+          1
+        ],
+        [
+          1,
+          2,
+          2
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 5,
+          "recall": 0.8,
+          "predictions": 6
+        },
+        "MAR": {
+          "n": 5,
+          "recall": 0.6,
+          "predictions": 6
+        },
+        "MNAR": {
+          "n": 5,
+          "recall": 0.4,
+          "predictions": 3
+        }
+      },
+      "accuracy_std": 0.3265986323710904,
+      "fold_accuracies": [
+        0.6666666666666666,
+        0.6666666666666666,
+        0.0,
+        1.0,
+        0.6666666666666666
+      ],
+      "n_splits": 5
+    }
+  }
+}
