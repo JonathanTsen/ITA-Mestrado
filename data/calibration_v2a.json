@@ -1,0 +1,220 @@
+{
+  "n_per_class": 100,
+  "n_permutations": 200,
+  "bandwidth": 0.5,
+  "raw_calibration": {
+    "little_p": {
+      "threshold": 0.1688046929398967,
+      "youden_j": 0.41500000000000004,
+      "auc": 0.74525
+    },
+    "pklm_p": {
+      "threshold": 0.08,
+      "youden_j": 0.285,
+      "auc": 0.659
+    },
+    "levene_p": {
+      "threshold": 0.252072319831813,
+      "youden_j": 0.325,
+      "auc": 0.6907999999999999
+    },
+    "auc_obs": {
+      "threshold": 0.5544999592437923,
+      "youden_j": 0.695,
+      "auc": 0.89535
+    },
+    "mi_max": {
+      "threshold": 0.0162326933971848,
+      "youden_j": 0.5249999999999999,
+      "auc": 0.8036
+    },
+    "caafe_quantile_ratio": {
+      "threshold": Infinity,
+      "youden_j": 0.0,
+      "auc": 0.5
+    },
+    "caafe_tail_asym": {
+      "threshold": Infinity,
+      "youden_j": 0.0,
+      "auc": 0.5
+    },
+    "caafe_kurt_excess_abs": {
+      "threshold": 0.4010139718884753,
+      "youden_j": 0.31,
+      "auc": 0.6288000000000001
+    },
+    "caafe_cond_entropy": {
+      "threshold": 0.280841405032924,
+      "youden_j": 0.18999999999999995,
+      "auc": 0.577125
+    }
+  },
+  "thresholds": {
+    "auc_mar": 0.5544999592437923,
+    "auc_p": 0.05,
+    "mi_max_mar": 0.0162326933971848,
+    "quantile_ratio": Infinity,
+    "tail_asym": Infinity,
+    "kurt_abs": 0.4010139718884753,
+    "cond_entropy": 0.280841405032924
+  },
+  "validation_metrics": {
+    "default": {
+      "accuracy": 0.5,
+      "confusion_matrix": [
+        [
+          100,
+          0,
+          0
+        ],
+        [
+          39,
+          50,
+          11
+        ],
+        [
+          100,
+          0,
+          0
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 100,
+          "recall": 1.0,
+          "predictions": 239
+        },
+        "MAR": {
+          "n": 100,
+          "recall": 0.5,
+          "predictions": 50
+        },
+        "MNAR": {
+          "n": 100,
+          "recall": 0.0,
+          "predictions": 11
+        }
+      }
+    },
+    "calibrated": {
+      "accuracy": 0.5333333333333333,
+      "confusion_matrix": [
+        [
+          100,
+          0,
+          0
+        ],
+        [
+          39,
+          60,
+          1
+        ],
+        [
+          100,
+          0,
+          0
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 100,
+          "recall": 1.0,
+          "predictions": 239
+        },
+        "MAR": {
+          "n": 100,
+          "recall": 0.6,
+          "predictions": 60
+        },
+        "MNAR": {
+          "n": 100,
+          "recall": 0.0,
+          "predictions": 1
+        }
+      }
+    },
+    "bayes": {
+      "accuracy": 0.7833333333333333,
+      "confusion_matrix": [
+        [
+          76,
+          2,
+          22
+        ],
+        [
+          9,
+          87,
+          4
+        ],
+        [
+          27,
+          1,
+          72
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 100,
+          "recall": 0.76,
+          "predictions": 112
+        },
+        "MAR": {
+          "n": 100,
+          "recall": 0.87,
+          "predictions": 90
+        },
+        "MNAR": {
+          "n": 100,
+          "recall": 0.72,
+          "predictions": 98
+        }
+      }
+    },
+    "bayes_cv": {
+      "accuracy": 0.59,
+      "confusion_matrix": [
+        [
+          50,
+          4,
+          46
+        ],
+        [
+          11,
+          80,
+          9
+        ],
+        [
+          49,
+          4,
+          47
+        ]
+      ],
+      "per_class": {
+        "MCAR": {
+          "n": 100,
+          "recall": 0.5,
+          "predictions": 110
+        },
+        "MAR": {
+          "n": 100,
+          "recall": 0.8,
+          "predictions": 88
+        },
+        "MNAR": {
+          "n": 100,
+          "recall": 0.47,
+          "predictions": 102
+        }
+      },
+      "accuracy_std": 0.06018490028422595,
+      "fold_accuracies": [
+        0.55,
+        0.6333333333333333,
+        0.6833333333333333,
+        0.5166666666666667,
+        0.5666666666666667
+      ],
+      "n_splits": 5
+    }
+  }
+}

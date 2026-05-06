@@ -350,10 +350,7 @@ def _eval_bayes_cv(
     fold_accuracies: list[float] = []
 
     for train_idx, test_idx in skf.split(X_vecs, y_true):
-        arrays_fold = {
-            cls: X_vecs[train_idx][y_true[train_idx] == cls]
-            for cls in ("MCAR", "MAR", "MNAR")
-        }
+        arrays_fold = {cls: X_vecs[train_idx][y_true[train_idx] == cls] for cls in ("MCAR", "MAR", "MNAR")}
         kde_fold = fit_kde_from_scores(arrays_fold, bandwidth=bandwidth)
 
         fold_preds = []

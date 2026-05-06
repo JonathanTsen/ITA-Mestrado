@@ -23,10 +23,10 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 
-
 # =========================================
 # Helpers internos (evitar import circular com validar_rotulos_v2)
 # =========================================
+
 
 def _cv_auc_simple(X: np.ndarray, y: np.ndarray, seed: int, n_splits: int = 5) -> float:
     """AUC via StratifiedKFold sem permutações — rápido, para uso interno."""
@@ -34,9 +34,7 @@ def _cv_auc_simple(X: np.ndarray, y: np.ndarray, seed: int, n_splits: int = 5) -
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     aucs = []
     for train_idx, test_idx in skf.split(X, y):
-        clf = RandomForestClassifier(
-            n_estimators=50, max_depth=4, min_samples_leaf=10, random_state=seed, n_jobs=1
-        )
+        clf = RandomForestClassifier(n_estimators=50, max_depth=4, min_samples_leaf=10, random_state=seed, n_jobs=1)
         clf.fit(X[train_idx], y[train_idx])
         proba = clf.predict_proba(X[test_idx])[:, 1]
         if len(np.unique(y[test_idx])) < 2:
@@ -92,6 +90,7 @@ def _kl_density_score(df: pd.DataFrame, missing_col: str = "X0") -> float:
 # =========================================
 # Função pública principal
 # =========================================
+
 
 def extract_caafe_mnar_features(df: pd.DataFrame) -> dict:
     """Extrai 4 features focadas em separar MCAR de MNAR.
