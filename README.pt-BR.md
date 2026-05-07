@@ -46,8 +46,9 @@ NaiveBayes consistentemente supera RandomForest, GradientBoosting, MLP e SVM
 por +6 a +13pp em validação cruzada — calibração de incerteza importa mais
 do que capacidade do modelo neste regime de rótulos ruidosos.
 
-Veja [`docs/HISTORICO.md`](docs/HISTORICO.md) para o registro experimental
-completo das 7 fases do projeto.
+Comece por [`docs/README.md`](docs/README.md), que organiza a documentacao
+atual. Veja [`docs/HISTORICO.md`](docs/HISTORICO.md) para o registro
+experimental completo das fases do projeto.
 
 ---
 
@@ -97,8 +98,10 @@ esse teto, não contra o acaso.
 │   └── _archive/           # Experimentos históricos (gitignored — zip sob demanda)
 │
 ├── docs/                   # Documentação
+│   ├── README.md           # Comece aqui: mapa dos docs e notas de terminologia
 │   ├── HISTORICO.md        # Narrativa mestra das 7 fases (PT-BR)
 │   ├── methodology.md      # Síntese metodológica (EN)
+│   ├── caafe_mnar.md       # Terminologia correta: CAAFE original vs CAAFE-MNAR
 │   ├── reproducibility.md  # Replay passo-a-passo dos experimentos principais
 │   ├── bibliography.md     # Bibliografia anotada por tópico
 │   ├── code/               # Documentação interna do código

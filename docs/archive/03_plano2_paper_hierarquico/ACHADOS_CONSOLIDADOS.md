@@ -4,6 +4,13 @@
 
 Este documento consolida todos os achados das 3 tarefas realizadas, conectando-os à narrativa do paper.
 
+> **Nota de atualização terminológica:** neste documento, "CAAFE" refere-se
+> às features CAAFE-inspired determinísticas implementadas em Python para
+> detecção de MNAR, não ao CAAFE original de Hollmann et al. que usa LLM para
+> gerar código. Alguns nomes de features são históricos; a versão v2b atual usa
+> `caafe_auc_self_delta`, `caafe_kl_density`, `caafe_kurtosis_excess` e
+> `caafe_cond_entropy_X0_mask`.
+
 ---
 
 ## 1. Investigação: Por que V4 tem MNAR Recall de 6%

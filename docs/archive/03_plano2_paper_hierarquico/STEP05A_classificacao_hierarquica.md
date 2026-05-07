@@ -64,6 +64,11 @@ Isso explica o paradoxo dos resultados anteriores:
 **Features LLM adicionadas APENAS no Nível 2:**
 
 Opção A — CAAFE (4 features, sem API):
+- **Nota 2026-05-06:** esta lista registra a versão histórica usada na fase.
+  A implementação v2b atual substitui as duas primeiras por
+  `caafe_auc_self_delta` e `caafe_kl_density`. Em todos os casos, são
+  features CAAFE-inspired determinísticas, não uma reimplementação do CAAFE
+  original com LLM gerando código.
 - `caafe_missing_rate_by_quantile` — taxa de missing por faixa de X0
 - `caafe_tail_asymmetry` — assimetria de caudas de X0
 - `caafe_kurtosis_excess` — excesso de curtose de X0
@@ -211,7 +216,7 @@ SHAP do Nível 2 mostra features LLM entre top 5 de importância. SHAP do Nível
 ### Features por Grupo
 
 - **Stat (21):** X0_missing_rate, X0_obs_vs_full_ratio, X0_iqr_ratio, X0_obs_skew_diff, auc_mask_from_Xobs, coef_X1_abs, log_pval_X1_mask, X1_mean_diff, X1_mannwhitney_pval, little_proxy_score, X0_ks_obs_vs_imputed, X0_tail_missing_ratio, mask_entropy, X0_censoring_score, X0_mean_shift_X1_to_X4, mechdetect_auc_complete, mechdetect_auc_shuffled, mechdetect_auc_excluded, mechdetect_delta_complete_shuffled, mechdetect_delta_complete_excluded, mechdetect_mwu_pvalue
-- **CAAFE (4):** caafe_missing_rate_by_quantile, caafe_tail_asymmetry, caafe_kurtosis_excess, caafe_cond_entropy_X0_mask
+- **CAAFE historico (4):** caafe_missing_rate_by_quantile, caafe_tail_asymmetry, caafe_kurtosis_excess, caafe_cond_entropy_X0_mask. Na versão v2b atual: `caafe_auc_self_delta`, `caafe_kl_density`, `caafe_kurtosis_excess`, `caafe_cond_entropy_X0_mask`.
 - **LLM v2 (8):** llm_evidence_consistency, llm_anomaly, llm_dist_shift, llm_mcar_conf, llm_mar_conf, llm_mnar_conf, llm_mcar_vs_mnar, llm_pattern_clarity
 
 ### Protocolo

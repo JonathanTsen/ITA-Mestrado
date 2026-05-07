@@ -85,6 +85,12 @@ Separa claramente duas fontes de informação e seus tetos, guiando pesquisa fut
 
 ## E) CAAFE Features como Contribuição Técnica
 
+> **Nota de atualização:** nesta fase, "CAAFE" significa features
+> CAAFE-inspired determinísticas para MNAR, não a reimplementação do CAAFE
+> original com LLM gerando código. A lista abaixo é histórica. A versão v2b
+> atual usa `caafe_auc_self_delta`, `caafe_kl_density`,
+> `caafe_kurtosis_excess` e `caafe_cond_entropy_X0_mask`.
+
 ### As 4 features
 1. `caafe_tail_asymmetry` — assimetria de cauda (MNAR afeta caudas)
 2. `caafe_kurtosis_excess` — excesso de curtose (MNAR distorce distribuição)

@@ -1,0 +1,175 @@
+RELATÓRIO DE TREINAMENTO v2 - none
+============================================================
+
+==================================================
+=== RandomForest ===
+==================================================
+Acurácia: 0.4725
+              precision    recall  f1-score   support
+
+           0       0.58      0.36      0.44       100
+           1       0.34      0.40      0.37       100
+           2       0.51      0.56      0.54       200
+
+    accuracy                           0.47       400
+   macro avg       0.48      0.44      0.45       400
+weighted avg       0.49      0.47      0.47       400
+
+Matriz de confusão:
+[[ 36  15  49]
+ [  0  40  60]
+ [ 26  61 113]]
+
+==================================================
+=== GradientBoosting ===
+==================================================
+Acurácia: 0.5125
+              precision    recall  f1-score   support
+
+           0       0.62      0.41      0.49       100
+           1       0.39      0.46      0.42       100
+           2       0.54      0.59      0.57       200
+
+    accuracy                           0.51       400
+   macro avg       0.52      0.49      0.49       400
+weighted avg       0.53      0.51      0.51       400
+
+Matriz de confusão:
+[[ 41  14  45]
+ [  0  46  54]
+ [ 25  57 118]]
+
+==================================================
+=== LogisticRegression ===
+==================================================
+Acurácia: 0.3675
+              precision    recall  f1-score   support
+
+           0       0.43      0.54      0.48       100
+           1       0.13      0.15      0.14       100
+           2       0.48      0.39      0.43       200
+
+    accuracy                           0.37       400
+   macro avg       0.35      0.36      0.35       400
+weighted avg       0.38      0.37      0.37       400
+
+Matriz de confusão:
+[[54 40  6]
+ [ 6 15 79]
+ [65 57 78]]
+
+==================================================
+=== SVM_RBF ===
+==================================================
+Acurácia: 0.4100
+              precision    recall  f1-score   support
+
+           0       0.51      0.59      0.55       100
+           1       0.30      0.36      0.33       100
+           2       0.42      0.34      0.38       200
+
+    accuracy                           0.41       400
+   macro avg       0.41      0.43      0.42       400
+weighted avg       0.41      0.41      0.41       400
+
+Matriz de confusão:
+[[59  9 32]
+ [ 2 36 62]
+ [55 76 69]]
+
+==================================================
+=== KNN ===
+==================================================
+Acurácia: 0.3850
+              precision    recall  f1-score   support
+
+           0       0.39      0.63      0.48       100
+           1       0.30      0.23      0.26       100
+           2       0.42      0.34      0.37       200
+
+    accuracy                           0.39       400
+   macro avg       0.37      0.40      0.37       400
+weighted avg       0.38      0.39      0.37       400
+
+Matriz de confusão:
+[[63  7 30]
+ [12 23 65]
+ [85 47 68]]
+
+==================================================
+=== MLP ===
+==================================================
+Acurácia: 0.4225
+              precision    recall  f1-score   support
+
+           0       0.50      0.44      0.47       100
+           1       0.29      0.32      0.31       100
+           2       0.46      0.47      0.46       200
+
+    accuracy                           0.42       400
+   macro avg       0.42      0.41      0.41       400
+weighted avg       0.43      0.42      0.42       400
+
+Matriz de confusão:
+[[44 12 44]
+ [ 2 32 66]
+ [42 65 93]]
+
+==================================================
+=== NaiveBayes ===
+==================================================
+Acurácia: 0.3350
+              precision    recall  f1-score   support
+
+           0       0.37      0.75      0.49       100
+           1       0.03      0.01      0.01       100
+           2       0.36      0.29      0.32       200
+
+    accuracy                           0.34       400
+   macro avg       0.25      0.35      0.28       400
+weighted avg       0.28      0.34      0.29       400
+
+Matriz de confusão:
+[[ 75   2  23]
+ [ 19   1  80]
+ [110  32  58]]
+
+==================================================
+=== FEATURE IMPORTANCE (RandomForest) ===
+==================================================
+                           feature  importance
+             caafe_kurtosis_excess    0.129059
+                  X0_obs_skew_diff    0.113871
+        caafe_cond_entropy_X0_mask    0.103288
+              X0_obs_vs_full_ratio    0.094256
+                X0_censoring_score    0.056580
+                  caafe_kl_density    0.053721
+                      X1_mean_diff    0.043612
+            X0_mean_shift_X1_to_X4    0.037941
+                little_proxy_score    0.036498
+              caafe_auc_self_delta    0.034574
+              X0_ks_obs_vs_imputed    0.032428
+                   X0_missing_rate    0.031064
+                      mask_entropy    0.029761
+                  log_pval_X1_mask    0.027129
+mechdetect_delta_complete_excluded    0.025191
+               X1_mannwhitney_pval    0.024612
+           mechdetect_auc_excluded    0.022135
+                      X0_iqr_ratio    0.020166
+           mechdetect_auc_complete    0.018050
+                auc_mask_from_Xobs    0.017095
+
+Importância total LLM: 0.0000
+Importância total Estatísticas: 1.0000
+Razão LLM/Total: 0.0000
+
+==================================================
+=== CROSS-VALIDATION (Group 5-Fold (por dataset de origem)) ===
+==================================================
+RandomForest: 0.5161 (+/- 0.1522)
+GradientBoosting: 0.5254 (+/- 0.2150)
+LogisticRegression: 0.3643 (+/- 0.1860)
+SVM_RBF: 0.4257 (+/- 0.2289)
+KNN: 0.4435 (+/- 0.1532)
+MLP: 0.4460 (+/- 0.2939)
+NaiveBayes: 0.4259 (+/- 0.3416)

@@ -3,6 +3,14 @@
 **Fase 4D — Fazer o LLM contribuir de verdade**
 **Status: IMPLEMENTADO (2026-04-12) — 3 abordagens implementadas, CAAFE melhor resultado**
 
+> **Nota de atualização:** este documento registra a fase experimental original.
+> O termo "CAAFE" ficou ambíguo ao longo do projeto. O CAAFE original
+> (Hollmann et al., NeurIPS 2023) usa LLM para gerar código de features. A
+> implementação atual do `missdetect` usa features CAAFE-inspired
+> determinísticas para MNAR, sem chamada LLM em runtime. A versão v2b atual
+> emite `caafe_auc_self_delta`, `caafe_kl_density`,
+> `caafe_kurtosis_excess` e `caafe_cond_entropy_X0_mask`.
+
 ---
 
 ## Problema
@@ -212,6 +220,8 @@ No experimento E4, features LLM devem ter importancia total > 10% no RF. Se < 5%
    - `caafe_tail_asymmetry`: assimetria de caudas de X0 observado
    - `caafe_kurtosis_excess`: excesso de curtose de X0 observado
    - `caafe_cond_entropy_X0_mask`: informacao mutua normalizada mask-X0
+   - **Atual v2b:** `caafe_auc_self_delta` e `caafe_kl_density` substituem
+     `caafe_missing_rate_by_quantile` e `caafe_tail_asymmetry`.
 
 2. **llm/judge_mnar.py** — LLM Judge binario MCAR vs MNAR (Frente 2)
    - 4 features: mnar_probability, censoring_evidence, distribution_anomaly, pattern_structured

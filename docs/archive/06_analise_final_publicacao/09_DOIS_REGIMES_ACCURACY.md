@@ -48,6 +48,11 @@ Após 30 features estatísticas (21 baseline + 4 CAAFE + 5 LLM data-driven), a a
 
 ### Contribuição principal neste regime: CAAFE (+7.1pp)
 As 4 features CAAFE capturam propriedades de X0 **apesar** de estar faltante:
+- **Nota de atualização:** "CAAFE" aqui significa features CAAFE-inspired
+  determinísticas, não o método CAAFE original com LLM gerando código. A lista
+  abaixo é histórica; a versão v2b atual usa `caafe_auc_self_delta`,
+  `caafe_kl_density`, `caafe_kurtosis_excess` e
+  `caafe_cond_entropy_X0_mask`.
 - `tail_asymmetry`: MNAR afeta caudas assimetricamente
 - `kurtosis_excess`: MNAR distorce a curtose
 - `cond_entropy_X0_mask`: entropia da mask dado X0 revela dependência

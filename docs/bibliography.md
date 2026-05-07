@@ -83,7 +83,8 @@ that paper.
 - **Hollmann, N., Müller, S., & Hutter, F. (2023).** *Large Language
   Models for Automated Data Science: Introducing CAAFE for Context-Aware
   Automated Feature Engineering*. **NeurIPS**. — Inspiration for our
-  CAAFE-MNAR features (`tail_asymmetry`, etc.).
+  deterministic CAAFE-MNAR features. We do not reimplement the original
+  CAAFE LLM code-generation loop; see [`caafe_mnar.md`](caafe_mnar.md).
 - **Wei, J., et al. (2022).** *Chain-of-Thought Prompting Elicits Reasoning
   in Large Language Models*. **NeurIPS**.
 - **Wang, X., et al. (2022).** *Self-Consistency Improves Chain of Thought

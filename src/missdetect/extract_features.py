@@ -63,8 +63,8 @@ if "--metadata-variant" in sys.argv:
     idx = sys.argv.index("--metadata-variant")
     if idx + 1 < len(sys.argv):
         METADATA_VARIANT = sys.argv[idx + 1]
-    if METADATA_VARIANT not in ("default", "neutral"):
-        print(f"❌ --metadata-variant deve ser 'default' ou 'neutral', recebido: '{METADATA_VARIANT}'")
+    if METADATA_VARIANT not in ("default", "neutral", "anonymous"):
+        print(f"❌ --metadata-variant deve ser 'default', 'neutral' ou 'anonymous', recebido: '{METADATA_VARIANT}'")
         sys.exit(1)
 
 # --datasets-include: filtra por parent-dataset (1 prefixo por linha; '#' = comentário)

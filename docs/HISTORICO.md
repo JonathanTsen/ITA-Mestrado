@@ -33,7 +33,8 @@ flowchart LR
   F9["Fase 9<br/>05/05<br/>Expansão MCAR"]
   F10["Fase 10<br/>05/05<br/>Expansão MNAR"]
   F11["Fase 11<br/>06/05<br/>Auditoria"]
-  F0 --> F1 --> F2 --> F3 --> F4 --> F5 --> F6 --> F7 --> F8 --> F9 --> F10 --> F11
+  F12["Fase 12<br/>06/05<br/>Re-execução v2b (32)"]
+  F0 --> F1 --> F2 --> F3 --> F4 --> F5 --> F6 --> F7 --> F8 --> F9 --> F10 --> F11 --> F12
 ```
 
 ### Tabela-resumo
@@ -52,6 +53,7 @@ flowchart LR
 | 9 | Expansão Benchmark MCAR | 05/05 | `data/real/sources.md`, `data/real/processed/MCAR/` | Pesquisa exaustiva na literatura por datasets reais com evidência publicada de MCAR. Conclusão: MCAR confirmado em dados observacionais é extremamente raro — planned missingness designs (Graham 2006) são o único MCAR garantido. | **4 novos datasets MCAR** de 2 fontes com citação publicada: `boys_hc` e `boys_hgt` (mice::boys, Van Buuren 2018 FIMD Ch. 9 — scheduling gaps em visitas clínicas), `brandsma_lpr` e `brandsma_apr` (mice::brandsma — alunos ausentes no dia do teste; evidência quantitativa: corr mask~ses p=0.72/0.75, mask~iqv p=0.15). **Benchmark: 29 → 33 datasets (13 MCAR, 11 MAR, 9 MNAR).** Achado metodológico: a escassez de MCAR confirmados na literatura reforça que mecanismos puros são abstrações teóricas. |
 | 10 | Expansão Benchmark MNAR + Verificação | 05/05 | `data/real/sources.md`, `data/real/processed/` | Pesquisa exaustiva por datasets MNAR com evidência publicada. Verificação rigorosa de cada mecanismo (correlação mask~covariáveis). | **6 datasets processados, 5 confirmados MNAR, 1 reclassificado MAR.** (a) **NHANES 2017-18**: `nhanes_cadmium` (18.6% LOD), `nhanes_mercury` (26.4% LOD), `nhanes_cotinine` (34.2% LOD) — **MNAR puro** por left-censoring físico. (b) **SUPPORT2**: `support2_albumin` (37%), `support2_bilirubin` (28.6%) — **MNAR misto** (test-ordering + componente MAR fraca, r<0.08). `support2_pafi` **reclassificado como MAR** após verificação: corr(mask, hrt)=−0.19, corr(mask, temp)=−0.18, indicando que ABG é predominantemente ordenado por sinais observáveis. **Benchmark: 39 datasets (13 MCAR, 12 MAR, 14 MNAR).** |
 | 11 | Auditoria e Limpeza do Benchmark | 06/05 | `data/real/sources.md`, `data/real/processed/`, metadados | Auditoria exaustiva de todos os 39 datasets cruzando justificativa de domínio com resultados v2b. Critério: remover se classificação genuinamente duvidosa (rationale vago + v2b discorda); reclassificar se evidência clara de erro. | **7 removidos** (classificação duvidosa): `creditapproval_a14` (MCAR, campo anônimo), `echomonths_epss` (MCAR, n=130, mecanismo ambíguo), `autompg_horsepower` (MCAR, apenas 6 missing), `hearth_chol` (MAR, v2b diz MNAR), `kidney_hemo` (MAR, v2b diz MNAR AMBÍGUO), `colic_resprate` (MAR, v2b diz MNAR), `cylinderbands_varnishpct` (MNAR, v2b diz MAR 99%). **6 reclassificados** MCAR→MAR: `oceanbuoys×2` (já eram MAR nos arquivos), `hypothyroid_t4u` (test-ordering=MAR), `breastcancer_barenuclei` (v2b MAR 100%), `cylinderbands_bladepressure/esavoltage` (v2b MAR). **Benchmark final: 32 datasets (6 MCAR, 13 MAR, 13 MNAR).** |
+| 12 | ML-only + Flash sobre v2b (32 datasets) | 06/05 | [docs/archive/12_flash_v2b_32datasets/](docs/archive/12_flash_v2b_32datasets/) | Re-rodar ML-only e Flash sobre o benchmark curado v2b (32 datasets); comparar vs Fase 6 (29 datasets). | **ML-only:** GBT 52.54% CV / 51.25% holdout (best). NB caiu de líder (47.47%) a penúltimo (42.59%) — ranking inverteu, favorece hipótese "NB era sintoma de ruído de label". **Flash:** RF 51.93% CV / GBT 50.25% holdout. Flash **não Pareto-domina ML-only** (−0.61pp CV, < limiar 5pp) — mesmo padrão da Fase 6. LLM contribui 12.94% importância mas não converte em accuracy. Flash melhora MCAR +9pp (planned-missingness), piora MNAR −6pp. MAR irresolvida (45%). CAAFE-MNAR features dominam (3 das top 6, 26% total). Variância CV ±21pp; comparações <5pp não confiáveis. Infraestrutura: corrigidos resíduos do refactor (paths.py, bootstraps, 10 metadata neutral). |
 
 ### Evolucao de accuracy em dados reais
 
@@ -200,7 +202,7 @@ Desenvolvimento do pipeline hierarquico e comparacao com baselines. 7 STEPs:
 
 1. **Hierarquica > direta:** +9.1pp accuracy em real (41.4% ? 50.5%)
 2. **LLM features = ruido no L2:** Cohen's d < 0.4, medianas identicas (mediana = 0.40 para todas as classes), multicolinearidade
-3. **CAAFE captura o que testes binarios nao podem:** tail_asymmetry tem Cohen's d = -0.84 (forte) e aparece no top SHAP em real mas rank 16-21 em sintetico � **em dados limpos features simples bastam; em dados ruidosos CAAFE e essencial**
+3. **CAAFE-MNAR captura o que testes binarios nao podem:** as features CAAFE-inspired deterministicas (`caafe_*`, Python puro; ver [`docs/caafe_mnar.md`](caafe_mnar.md)) aparecem no topo de importancia em real mas ficam muito menos relevantes em sintetico — **em dados limpos features simples bastam; em dados ruidosos CAAFE-MNAR e essencial**
 4. **Baselines externos falham:** PKLM (ja cobrindo MNAR invisivel) e MechDetect (vies MNAR) nao competem com V3
 5. **Cada metodo tem um vies sistematico para uma classe** � V3 e o unico com recall equilibrado
 
@@ -430,7 +432,7 @@ Complemento tecnico atemporal:
 | Bootstraps reais | **1,132** | ~50 por dataset original |
 | Rotulos validados por testes | **10/23** | Restantes inconsistentes (Little/correlacao/KS) |
 | Labels problematicos (Cleanlab) | **59.4%** | 672/1132 |
-| Features finais | **25** | 4 stat + 11 discrim + 6 mechdetect + 4 CAAFE |
+| Features finais | **25** | 4 stat + 11 discrim + 6 mechdetect + 4 CAAFE-MNAR deterministicas |
 | Features LLM (experimento) | 8 | Resultado negativo em real (Cohen's d < 0.4) |
 | Classificadores testados | 9 | 7 classicos + XGBoost + CatBoost |
 | Best accuracy sintetico (33f) | 79.33% (RF) | LLM ajuda em sintetico |

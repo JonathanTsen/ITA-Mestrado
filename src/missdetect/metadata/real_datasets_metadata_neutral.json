@@ -746,5 +746,345 @@
     "original_missing_rate": 0.1,
     "n_total_original": 32561,
     "_metadata_variant": "neutral"
+  },
+  "MCAR_boys_hc": {
+    "domain": "pediatrics / growth measurement cohort",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "hc",
+    "x0_units": "cm (centimeters)",
+    "x0_description": "Head circumference measurement of a boy at a clinic visit",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "hgt",
+        "units": "cm",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "wgt",
+        "units": "kg",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "bmi",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of hc are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of hc itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.061,
+    "n_total_original": 748,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_boys_hgt": {
+    "domain": "pediatrics / growth measurement cohort",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "hgt",
+    "x0_units": "cm (centimeters)",
+    "x0_description": "Standing height measurement of a boy at a clinic visit",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "wgt",
+        "units": "kg",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "bmi",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "hc",
+        "units": "cm",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of hgt are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of hgt itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.027,
+    "n_total_original": 748,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_brandsma_apr": {
+    "domain": "education / primary school cohort",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "apr",
+    "x0_units": "score (standardized)",
+    "x0_description": "Arithmetic post-test score of a primary school pupil",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "sex",
+        "units": "binary indicator",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "ses",
+        "units": "socio-economic status score",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "iqv",
+        "units": "verbal IQ score",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "lpr",
+        "units": "score (standardized)",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of apr are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of apr itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.075,
+    "n_total_original": 4106,
+    "_metadata_variant": "neutral"
+  },
+  "MCAR_brandsma_lpr": {
+    "domain": "education / primary school cohort",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "lpr",
+    "x0_units": "score (standardized)",
+    "x0_description": "Language pre-test score of a primary school pupil",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "sex",
+        "units": "binary indicator",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "ses",
+        "units": "socio-economic status score",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "iqv",
+        "units": "verbal IQ score",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "iqp",
+        "units": "performance IQ score",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of lpr are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of lpr itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.078,
+    "n_total_original": 4106,
+    "_metadata_variant": "neutral"
+  },
+  "MAR_support2_pafi": {
+    "domain": "intensive-care medicine / critically ill adults",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "pafi",
+    "x0_units": "ratio (dimensionless)",
+    "x0_description": "PaO2/FiO2 ratio derived from arterial blood gas analysis",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "hrt",
+        "units": "beats per minute",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "temp",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "resp",
+        "units": "breaths per minute",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of pafi are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of pafi itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.413,
+    "n_total_original": 9105,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_nhanes_cadmium": {
+    "domain": "environmental health / population biomonitoring",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "blood_cadmium",
+    "x0_units": "ug/L (micrograms per liter)",
+    "x0_description": "Blood cadmium concentration measured in a population survey",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "gender",
+        "units": "binary indicator",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "bmi",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "smoke_indicator",
+        "units": "binary indicator",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of blood_cadmium are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of blood_cadmium itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.186,
+    "n_total_original": 7513,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_nhanes_cotinine": {
+    "domain": "environmental health / population biomonitoring",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "serum_cotinine",
+    "x0_units": "ng/mL (nanograms per milliliter)",
+    "x0_description": "Serum cotinine concentration measured in a population survey",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "gender",
+        "units": "binary indicator",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "race_indicator",
+        "units": "categorical (encoded)",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "bmi",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of serum_cotinine are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of serum_cotinine itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.342,
+    "n_total_original": 7101,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_nhanes_mercury": {
+    "domain": "environmental health / population biomonitoring",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "blood_mercury",
+    "x0_units": "ug/L (micrograms per liter)",
+    "x0_description": "Blood total mercury concentration measured in a population survey",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "gender",
+        "units": "binary indicator",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "bmi",
+        "units": "kg/m2",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "fish_intake_indicator",
+        "units": "ordinal indicator",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of blood_mercury are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of blood_mercury itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.264,
+    "n_total_original": 7513,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_support2_albumin": {
+    "domain": "intensive-care medicine / critically ill adults",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "albumin",
+    "x0_units": "g/dL (grams per deciliter)",
+    "x0_description": "Serum albumin concentration measured during the ICU stay",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "hrt",
+        "units": "beats per minute",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "temp",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "sod",
+        "units": "mmol/L (sodium)",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of albumin are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of albumin itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.370,
+    "n_total_original": 9105,
+    "_metadata_variant": "neutral"
+  },
+  "MNAR_support2_bilirubin": {
+    "domain": "intensive-care medicine / critically ill adults",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "bili",
+    "x0_units": "mg/dL (milligrams per deciliter)",
+    "x0_description": "Total serum bilirubin concentration measured during the ICU stay",
+    "x0_typical_range": "continuous numeric variable",
+    "predictors": {
+      "X1": {
+        "name": "age",
+        "units": "years",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "hrt",
+        "units": "beats per minute",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "temp",
+        "units": "degrees Celsius",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "alp",
+        "units": "U/L (alkaline phosphatase)",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of bili are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of bili itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.286,
+    "n_total_original": 9105,
+    "_metadata_variant": "neutral"
   }
 }

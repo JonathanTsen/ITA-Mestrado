@@ -22,8 +22,10 @@ N_BOOTSTRAP = 50  # amostras por arquivo original
 MIN_MISSING_RATE = 0.01  # descarta amostras com <1% missing
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-PROCESSADO = os.path.join(BASE, "..", "Dataset", "real_data", "processado")
-OUTPUT = os.path.join(BASE, "..", "Dataset", "real_data", "processado_chunks")
+# Repo root = src/missdetect/data_generation/ -> ../../../
+REPO_ROOT = os.path.normpath(os.path.join(BASE, "..", "..", ".."))
+PROCESSADO = os.path.join(REPO_ROOT, "data", "real", "processed")
+OUTPUT = os.path.join(REPO_ROOT, "data", "real", "processed_chunks")
 MECANISMOS = ["MCAR", "MAR", "MNAR"]
 
 
