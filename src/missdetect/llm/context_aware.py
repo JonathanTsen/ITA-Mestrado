@@ -161,7 +161,9 @@ class LLMContextAwareExtractor:
             "anonymous": "real_datasets_metadata_anonymous.json",
         }.get(metadata_variant)
         if real_metadata_file is None:
-            raise ValueError(f"metadata_variant desconhecido: {metadata_variant!r}. " f"Use 'default', 'neutral' ou 'anonymous'.")
+            raise ValueError(
+                f"metadata_variant desconhecido: {metadata_variant!r}. " f"Use 'default', 'neutral' ou 'anonymous'."
+            )
         self._real_metadata = self._load_json(os.path.join(data_dir, real_metadata_file))
         self._synthetic_metadata = self._load_json(os.path.join(data_dir, "synthetic_variants_metadata.json"))
         print(f"  📖 Metadata variant: {metadata_variant} ({real_metadata_file})")
