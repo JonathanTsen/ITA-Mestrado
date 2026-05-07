@@ -4,27 +4,27 @@ Centraliza paths do projeto para todos os scripts do pipeline v2.
 
 import os
 
-# utils/ está em Scripts/v2_improved/utils/
-# _THIS_DIR = .../Scripts/v2_improved/utils/
-# BASE_DIR = IC - ITA 2/ (3 níveis acima de _THIS_DIR)
-# SCRIPT_DIR = Scripts/ (2 níveis acima de _THIS_DIR)
+# Após o refactor para package layout (Fase 11):
+# _THIS_DIR  = <repo>/src/missdetect/utils/
+# V2_DIR     = <repo>/src/missdetect/  (mantém nome legado por compatibilidade)
+# BASE_DIR   = <repo>/  (raiz do repositório)
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-V2_DIR = os.path.dirname(_THIS_DIR)  # Scripts/v2_improved/
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_THIS_DIR)))  # IC - ITA 2/
-SCRIPT_DIR = os.path.dirname(os.path.dirname(_THIS_DIR))  # Scripts/
+V2_DIR = os.path.dirname(_THIS_DIR)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_THIS_DIR)))
+SCRIPT_DIR = os.path.dirname(os.path.dirname(_THIS_DIR))
 
-OUTPUT_BASE = os.path.join(BASE_DIR, "Output", "v2_improved")
+OUTPUT_BASE = os.path.join(BASE_DIR, "results")
 
 DATASET_PATHS = {
     "sintetico": {
-        "MCAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MCAR"),
-        "MAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MAR"),
-        "MNAR": os.path.join(BASE_DIR, "Dataset", "synthetic_data", "MNAR"),
+        "MCAR": os.path.join(BASE_DIR, "data", "synthetic", "MCAR"),
+        "MAR": os.path.join(BASE_DIR, "data", "synthetic", "MAR"),
+        "MNAR": os.path.join(BASE_DIR, "data", "synthetic", "MNAR"),
     },
     "real": {
-        "MCAR": os.path.join(BASE_DIR, "Dataset", "real_data", "processado_chunks", "MCAR"),
-        "MAR": os.path.join(BASE_DIR, "Dataset", "real_data", "processado_chunks", "MAR"),
-        "MNAR": os.path.join(BASE_DIR, "Dataset", "real_data", "processado_chunks", "MNAR"),
+        "MCAR": os.path.join(BASE_DIR, "data", "real", "processed_chunks", "MCAR"),
+        "MAR": os.path.join(BASE_DIR, "data", "real", "processed_chunks", "MAR"),
+        "MNAR": os.path.join(BASE_DIR, "data", "real", "processed_chunks", "MNAR"),
     },
 }
 

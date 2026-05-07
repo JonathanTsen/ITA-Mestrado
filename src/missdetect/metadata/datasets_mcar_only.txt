@@ -1,0 +1,7 @@
+# 6 datasets MCAR do benchmark v2b (para teste de memorização)
+MCAR_boys_hc
+MCAR_boys_hgt
+MCAR_brandsma_apr
+MCAR_brandsma_lpr
+MCAR_hepatitis_albumin
+MCAR_hepatitis_alkphosphate

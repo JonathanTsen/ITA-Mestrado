@@ -1,0 +1,1090 @@
+{
+  "MAR_breastcancer_barenuclei": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.023,
+    "n_total_original": 699,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_cylinderbands_bladepressure": {
+    "domain": "industrial process study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.313,
+    "n_total_original": 540,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_cylinderbands_esavoltage": {
+    "domain": "industrial process study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.346,
+    "n_total_original": 540,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_hypothyroid_t4u": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.104,
+    "n_total_original": 3772,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_airquality_ozone": {
+    "domain": "environmental measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.242,
+    "n_total_original": 153,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_oceanbuoys_humidity": {
+    "domain": "environmental measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.126,
+    "n_total_original": 736,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_oceanbuoys_airtemp": {
+    "domain": "environmental measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.11,
+    "n_total_original": 736,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_mammographic_density": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.063,
+    "n_total_original": 886,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_sick_t3": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 3772,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_sick_tsh": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 3772,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_titanic_age": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.199,
+    "n_total_original": 891,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_titanic_age_v2": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.199,
+    "n_total_original": 891,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_pima_insulin": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.487,
+    "n_total_original": 768,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_mroz_wages": {
+    "domain": "economic survey study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.432,
+    "n_total_original": 753,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_kidney_pot": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 400,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_kidney_sod": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 400,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_colic_refluxph": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 368,
+    "_metadata_variant": "anonymous"
+  },
+  "MCAR_hepatitis_alkphosphate": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.187,
+    "n_total_original": 155,
+    "_metadata_variant": "anonymous"
+  },
+  "MCAR_hepatitis_albumin": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.103,
+    "n_total_original": 155,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_hepatitis_protime": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.432,
+    "n_total_original": 155,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_pima_skinthickness": {
+    "domain": "observational study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.296,
+    "n_total_original": 768,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_adult_capitalgain": {
+    "domain": "economic survey study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.1,
+    "n_total_original": 32561,
+    "_metadata_variant": "anonymous"
+  },
+  "MCAR_boys_hc": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.061,
+    "n_total_original": 748,
+    "_metadata_variant": "anonymous"
+  },
+  "MCAR_boys_hgt": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.027,
+    "n_total_original": 748,
+    "_metadata_variant": "anonymous"
+  },
+  "MCAR_brandsma_apr": {
+    "domain": "educational assessment study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.075,
+    "n_total_original": 4106,
+    "_metadata_variant": "anonymous"
+  },
+  "MCAR_brandsma_lpr": {
+    "domain": "educational assessment study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.078,
+    "n_total_original": 4106,
+    "_metadata_variant": "anonymous"
+  },
+  "MAR_support2_pafi": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.413,
+    "n_total_original": 9105,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_nhanes_cadmium": {
+    "domain": "environmental measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.186,
+    "n_total_original": 7513,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_nhanes_cotinine": {
+    "domain": "environmental measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.342,
+    "n_total_original": 7101,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_nhanes_mercury": {
+    "domain": "environmental measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.264,
+    "n_total_original": 7513,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_support2_albumin": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.37,
+    "n_total_original": 9105,
+    "_metadata_variant": "anonymous"
+  },
+  "MNAR_support2_bilirubin": {
+    "domain": "health measurement study",
+    "source": "Tabular dataset (public repository)",
+    "x0_variable": "X0",
+    "x0_units": "continuous numeric variable",
+    "x0_description": "A continuous numeric measurement with missing values",
+    "x0_typical_range": "continuous numeric",
+    "predictors": {
+      "X1": {
+        "name": "X1",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X2": {
+        "name": "X2",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X3": {
+        "name": "X3",
+        "units": "numeric",
+        "role": "numeric predictor"
+      },
+      "X4": {
+        "name": "X4",
+        "units": "numeric",
+        "role": "numeric predictor"
+      }
+    },
+    "missing_context": "Some entries of X0 are missing in this dataset. The specific cause of the missingness was not documented by the data authors and is unknown to the analyst. No assumption should be made about whether the missingness depends on the value of X0 itself, on the other observed predictors, or is unrelated to any measured variable.",
+    "original_missing_rate": 0.286,
+    "n_total_original": 9105,
+    "_metadata_variant": "anonymous"
+  }
+}

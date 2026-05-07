@@ -1,0 +1,40 @@
+# Benchmark v2b — 32 datasets reais (auditoria 2026-05-06)
+# Composição: 6 MCAR + 13 MAR + 13 MNAR
+
+# 6 MCAR
+MCAR_boys_hc
+MCAR_boys_hgt
+MCAR_brandsma_apr
+MCAR_brandsma_lpr
+MCAR_hepatitis_albumin
+MCAR_hepatitis_alkphosphate
+
+# 13 MAR
+MAR_airquality_ozone
+MAR_breastcancer_barenuclei
+MAR_cylinderbands_bladepressure
+MAR_cylinderbands_esavoltage
+MAR_hypothyroid_t4u
+MAR_mammographic_density
+MAR_oceanbuoys_airtemp
+MAR_oceanbuoys_humidity
+MAR_sick_t3
+MAR_sick_tsh
+MAR_support2_pafi
+MAR_titanic_age
+MAR_titanic_age_v2
+
+# 13 MNAR
+MNAR_adult_capitalgain
+MNAR_colic_refluxph
+MNAR_hepatitis_protime
+MNAR_kidney_pot
+MNAR_kidney_sod
+MNAR_mroz_wages
+MNAR_nhanes_cadmium
+MNAR_nhanes_cotinine
+MNAR_nhanes_mercury
+MNAR_pima_insulin
+MNAR_pima_skinthickness
+MNAR_support2_albumin
+MNAR_support2_bilirubin
