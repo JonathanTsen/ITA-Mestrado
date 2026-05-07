@@ -1,0 +1,17 @@
+# v2b Part 2 — 16 datasets (3 MCAR + 6 MAR + 7 MNAR) — rodar AMANHA
+MCAR_brandsma_lpr
+MCAR_hepatitis_albumin
+MCAR_hepatitis_alkphosphate
+MAR_oceanbuoys_humidity
+MAR_sick_t3
+MAR_sick_tsh
+MAR_support2_pafi
+MAR_titanic_age
+MAR_titanic_age_v2
+MNAR_nhanes_cadmium
+MNAR_nhanes_cotinine
+MNAR_nhanes_mercury
+MNAR_pima_insulin
+MNAR_pima_skinthickness
+MNAR_support2_albumin
+MNAR_support2_bilirubin

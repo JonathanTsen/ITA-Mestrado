@@ -14,12 +14,12 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_BASE = os.path.normpath(os.path.join(BASE, "..", "..", "Output", "v2_improved"))
+RESULTS_BASE = os.path.normpath(os.path.join(BASE, "..", "..", "results"))
 MODEL_DIR = "real/ml_com_llm/gemini-3-pro-preview"
 
-P1 = os.path.join(OUTPUT_BASE, "step1_v2_neutral_part1", MODEL_DIR)
-P2 = os.path.join(OUTPUT_BASE, "step1_v2_neutral_part2", MODEL_DIR)
-OUT = os.path.join(OUTPUT_BASE, "step1_v2_neutral", MODEL_DIR)
+P1 = os.path.join(RESULTS_BASE, "step12_pro_v2b_part1", MODEL_DIR)
+P2 = os.path.join(RESULTS_BASE, "step12_pro_v2b_part2", MODEL_DIR)
+OUT = os.path.join(RESULTS_BASE, "step12_pro_v2b_32datasets", MODEL_DIR)
 
 
 def main() -> None:
