@@ -45,8 +45,9 @@ NaiveBayes consistently beats RandomForest, GradientBoosting, MLP and SVM by
 +6 to +13pp under cross-validation — calibration of uncertainty matters more
 than model capacity in this label-noisy regime.
 
-See [`docs/HISTORICO.md`](docs/HISTORICO.md) for the full experimental log
-across the 7 phases of the project.
+Start with [`docs/README.md`](docs/README.md) for the documentation map. See
+[`docs/HISTORICO.md`](docs/HISTORICO.md) for the full experimental log across
+the project phases.
 
 ---
 
@@ -96,8 +97,10 @@ chance.
 │   └── _archive/           # Historical experiments (gitignored — zip on request)
 │
 ├── docs/                   # Documentation
+│   ├── README.md           # Start here: current docs map and terminology notes
 │   ├── HISTORICO.md        # Master narrative across 7 phases (PT-BR)
 │   ├── methodology.md      # Methodology summary (EN)
+│   ├── caafe_mnar.md       # Correct CAAFE vs CAAFE-MNAR terminology
 │   ├── reproducibility.md  # Step-by-step replay of the headline experiments
 │   ├── bibliography.md     # Annotated bibliography organised by topic
 │   ├── code/               # Internal code-level documentation

@@ -107,7 +107,11 @@ As 12 variantes (gerador_v2.py): 3 MCAR + 5 MAR + 4 MNAR, cada uma com 4 distrib
 | **Hier. + LLM N2 (V4)** | **?** | **?** | **?** | **?** | **?** | **?** | **21+8** | **Sim** | **?** |
 | Hier. + LLM ambos (V6) | ? | ? | ? | ? | ? | ? | 29 | Sim | ? |
 
-*CAAFE features foram geradas por LLM mas executam como Python puro (sem API em runtime)
+*Atualização terminológica:* as features CAAFE usadas no código atual são
+CAAFE-inspired e determinísticas (Python puro, sem API em runtime). Elas não
+são geradas por LLM; o CAAFE original de Hollmann et al. usa LLM para gerar
+código de features, mas este projeto implementa uma adaptação manual focada em
+MNAR. Ver `docs/caafe_mnar.md`.
 
 ---
 

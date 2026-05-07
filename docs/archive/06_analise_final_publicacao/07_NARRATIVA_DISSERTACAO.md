@@ -67,7 +67,7 @@ A dissertação deve ser contada como uma **jornada de descoberta científica**,
 - Cross-validation com grupos (GroupKFold)
 
 **2.4. LLMs para Dados Tabulares**
-- CAAFE (Hollmann et al., NeurIPS 2023): LLM gera features em código
+- CAAFE (Hollmann et al., NeurIPS 2023): o método original usa LLM para gerar código de features; neste trabalho usamos features CAAFE-inspired determinísticas para MNAR, não a reimplementação completa do loop CAAFE.
 - Embeddings para dados tabulares
 - LLMs como "domain experts" — estado da arte
 
@@ -207,7 +207,7 @@ A dissertação deve ser contada como uma **jornada de descoberta científica**,
 
 1. **Framework de classificação 3-way** para mecanismos de missing data usando ML, superando abordagens binárias (Little's, PKLM) e baseadas em thresholds (MechDetect)
 
-2. **Quatro features CAAFE** para detecção de MNAR (tail_asymmetry, kurtosis_excess, cond_entropy_X0_mask, missing_rate_by_quantile), contribuindo +7.1pp de accuracy — a maior contribuição individual do regime estatístico
+2. **Quatro features CAAFE-inspired** para detecção de MNAR. Na versão histórica desta fase: tail_asymmetry, kurtosis_excess, cond_entropy_X0_mask, missing_rate_by_quantile; na versão v2b atual: `caafe_auc_self_delta`, `caafe_kl_density`, `caafe_kurtosis_excess`, `caafe_cond_entropy_X0_mask`. Elas são Python puro, sem LLM em runtime.
 
 3. **Evidência empírica de LLM domain reasoning** genuíno para classificação de mecanismos: +22.6pp sobre baseline usando apenas domínio e nome da variável, validado com metadata neutralizada e LODO
 

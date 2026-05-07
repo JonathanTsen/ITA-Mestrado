@@ -25,14 +25,21 @@ encoded as features.
 
 ## 2. Feature engineering
 
-We extract three groups of features per dataset / column:
+We extract four groups of features per dataset / column. The current
+statistical-only configuration has 25 deterministic features: 4 basic
+statistical, 11 discriminative, 6 MechDetect-style and 4 CAAFE-MNAR features.
+LLM features are optional and are stored in separate `llm_*` / `llm_ctx_*`
+columns.
 
-### 2.1 Statistical features (4 per column, 25 total after expansion)
+### 2.1 Basic statistical features (4)
 
-Capture distribution and temporal-pattern signatures of the masked column:
-`missing_rate`, `X0_mean`, `X0_std`, `X0_skew`, `X0_kurt`,
-`mask_autocorr_{1,2,3}`, `runs_z_score`, `avg_burst_size`, `max_burst_size`,
-`corr_mask_{X1..X4}`.
+Capture simple distributional changes in the masked column `X0`:
+`X0_missing_rate`, `X0_obs_vs_full_ratio`, `X0_iqr_ratio`,
+`X0_obs_skew_diff`.
+
+These features ask whether the observed part of `X0` still looks like a
+neutral sample of the full column, or whether missingness has distorted the
+mean, spread or skewness.
 
 ### 2.2 Discriminative features (11)
 
@@ -41,13 +48,59 @@ Designed to separate mechanisms statistically:
 - `auc_mask_from_Xobs` — AUC of predicting the missingness indicator from
   the observed covariates. Elevated values suggest **MAR**.
 - `little_proxy_score` — proxy for Little's MCAR test (1988).
-- `missing_rate_extremes` — proportion of missing among the 10% extreme
-  observed values. Elevated values suggest **MNAR**.
-- `tail_asymmetry` — CAAFE-MNAR feature; very strong on real data
-  (Cohen's d = -0.84).
-- `corr_X1_mask`, `X1_mean_diff`, etc.
+- `X0_tail_missing_ratio` — missingness in the upper tail versus the centre
+  of the imputed `X0` distribution. Elevated values suggest **MNAR**.
+- `X0_censoring_score` — absolute rank correlation between imputed `X0` and
+  the missingness mask; a proxy for self-censoring / self-masking.
+- `log_pval_X1_mask`, `X1_mean_diff`, `X1_mannwhitney_pval` — whether `X1`
+  differs between observed and missing rows, suggesting **MAR**.
 
-### 2.3 LLM features (8–9, optional)
+### 2.3 MechDetect-style features (6)
+
+These features compare how well the missingness mask can be predicted in
+three tasks:
+
+- `mechdetect_auc_complete` — uses imputed `X0` plus `X1..X4`.
+- `mechdetect_auc_excluded` — uses only observed covariates `X1..X4`.
+- `mechdetect_auc_shuffled` — negative control with the mask shuffled.
+- `mechdetect_delta_complete_shuffled` and
+  `mechdetect_delta_complete_excluded` — performance gaps between those
+  tasks.
+- `mechdetect_mwu_pvalue` — statistical comparison of complete versus
+  shuffled AUCs.
+
+If `X1..X4` predict the mask well, this supports **MAR**. If adding imputed
+`X0` materially changes the prediction, this is indirect evidence for
+**MNAR**.
+
+### 2.4 CAAFE-MNAR features (4 deterministic, CAAFE-inspired)
+
+The original CAAFE method of Hollmann, Müller & Hutter (NeurIPS 2023) is an
+LLM-based automated feature-engineering loop: an LLM proposes Python code for
+new features, the code is executed, and downstream validation decides whether
+to keep it.
+
+This repository does **not** reimplement the original CAAFE loop. Our
+`caafe_*` columns are deterministic Python features inspired by CAAFE's
+context-aware feature-engineering idea, specialised for the MAR-vs-MNAR
+problem and computed without LLM calls at runtime. See
+[`caafe_mnar.md`](caafe_mnar.md) for the canonical distinction.
+
+Current CAAFE-MNAR features:
+
+- `caafe_auc_self_delta` — improvement in mask-prediction AUC when imputed
+  `X0` is added to `X1..X4`. If `X0` helps predict its own absence, this
+  suggests **MNAR**.
+- `caafe_kl_density` — divergence between the imputed-`X0` distribution in
+  missing versus observed rows. Large divergence suggests selective
+  missingness.
+- `caafe_kurtosis_excess` — tail / truncation signal in the observed `X0`
+  distribution.
+- `caafe_cond_entropy_X0_mask` — normalised reduction in mask uncertainty
+  after binning imputed `X0`; high values suggest the missingness mask varies
+  with `X0`.
+
+### 2.5 LLM features (8–9, optional)
 
 Five extraction strategies are implemented in [`src/missdetect/llm/`](../src/missdetect/llm/):
 
