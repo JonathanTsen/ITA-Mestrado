@@ -1,0 +1,73 @@
+==============================================================================
+COMPARAÇÃO PAREADA: Gemini Pro vs Baseline (v2b 32 datasets)
+Gerado em: 2026-05-10T20:03:38+00:00
+==============================================================================
+
+Baseline (apenas ML): results/step12_ml_only_v2b_32datasets/real/apenas_ml/baseline
+ML + LLM:             results/step12_pro_v2b_32datasets/real/ml_com_llm/gemini-3-pro-preview
+
+Nível de significância: alpha = 0.05
+
+------------------------------------------------------------------------------
+1. POR MODELO — Wilcoxon e t-test pareados nos fold scores
+------------------------------------------------------------------------------
+Modelo                      baseline           llm        Δ   Wilcoxon p       t p     d_z  sig
+GradientBoosting      0.525±0.120  0.467±0.140  -0.058       0.6250    0.4358   -0.39      
+KNN                   0.443±0.086  0.379±0.112  -0.065       0.4375    0.3468   -0.48      
+LogisticRegression    0.364±0.104  0.304±0.097  -0.060       0.8125    0.5202   -0.31      
+MLP                   0.446±0.164  0.396±0.114  -0.050       0.8125    0.6100   -0.25      
+NaiveBayes            0.426±0.191  0.430±0.130  +0.004       0.8125    0.9754   +0.01      
+RandomForest          0.516±0.085  0.468±0.199  -0.048       1.0000    0.6485   -0.22      
+SVM_RBF               0.426±0.128  0.376±0.127  -0.050       0.8750    0.6107   -0.25      
+
+------------------------------------------------------------------------------
+2. POR MECANISMO E MODELO — McNemar pareado em predições
+------------------------------------------------------------------------------
+Cobertura do pareamento (inner join por sample_idx + modelo + group):
+  MCAR   baseline=  700 llm=  700 pareadas=  350 ( 50.0%)
+  MAR    baseline=  700 llm=  693 pareadas=    0 (  0.0%)  ⚠ overlap baixo
+  MNAR   baseline= 1400 llm= 1400 pareadas=  987 ( 70.5%)
+
+Nota: sample_idx pode ser regenerado entre runs. Mecanismos com
+overlap baixo aparecem com poucas (ou nenhuma) linha abaixo — isso
+não significa que o LLM falhou, apenas que o McNemar amostra-a-amostra
+não pode ser computado nesses casos. O Wilcoxon nos fold scores
+(seção 1) é o teste principal e não sofre dessa limitação.
+
+
+  [MCAR]  n=50 amostras
+    Modelo                  acc base   acc llm       Δ    b    c      χ²         p  sig
+    GradientBoosting          0.380     0.420  +0.040    0    2    0.50    0.4795     
+    KNN                       0.740     0.720  -0.020    6    5    0.00    1.0000     
+    LogisticRegression        0.640     0.720  +0.080    1    5    1.50    0.2207     
+    MLP                       0.580     0.520  -0.060    9    6    0.27    0.6056     
+    NaiveBayes                0.900     0.900  +0.000    0    0    0.00    1.0000     
+    RandomForest              0.440     0.500  +0.060    0    3    1.33    0.2482     
+    SVM_RBF                   0.700     0.760  +0.060    4    7    0.36    0.5465     
+
+  [MNAR]  n=141 amostras
+    Modelo                  acc base   acc llm       Δ    b    c      χ²         p  sig
+    GradientBoosting          0.631     0.617  -0.014   21   19    0.03    0.8744     
+    KNN                       0.369     0.397  +0.028   30   34    0.14    0.7077     
+    LogisticRegression        0.355     0.426  +0.071   24   34    1.40    0.2373     
+    MLP                       0.532     0.504  -0.028   34   30    0.14    0.7077     
+    NaiveBayes                0.284     0.454  +0.170   23   47    7.56    0.0060   **
+    RandomForest              0.574     0.560  -0.014   26   24    0.02    0.8875     
+    SVM_RBF                   0.355     0.411  +0.057   27   35    0.79    0.3740     
+
+------------------------------------------------------------------------------
+3. GLOBAL — Wilcoxon pareado em todos os fold scores agregados
+------------------------------------------------------------------------------
+  n_pares                  : 35
+  baseline (média ± dp)    : 0.4495 ± 0.1297
+  ml + llm (média ± dp)    : 0.4027 ± 0.1338
+  Δ médio (llm - baseline) : -0.0468
+  Wilcoxon W               : 242.50
+  Wilcoxon p               : 0.238256
+  t pareado                : -1.543
+  p (t pareado)            : 0.132028
+  Cohen's d_z              : -0.261
+  Cliff's delta            : -0.114
+  Significativo (α=0.05)?  : não
+
+Marcadores: * p<0.05  ** p<0.01  *** p<0.001

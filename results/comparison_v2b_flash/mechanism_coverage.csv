@@ -1,0 +1,4 @@
+mecanismo,n_baseline,n_llm,n_paired,coverage
+MCAR,700,700,700,1.0
+MAR,700,700,700,1.0
+MNAR,1400,1400,1400,1.0
