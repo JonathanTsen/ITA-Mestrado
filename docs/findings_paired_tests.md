@@ -240,7 +240,109 @@ o Flash erroneamente — na verdade quem é Pareto-dominado é o **Pro**.
 
 ---
 
-## 6. Limitações dos testes
+## 6. Quando a LLM ajuda outros modelos além do Naive Bayes?
+
+Pergunta levantada em 2026-05-10. Resposta curta: **quase só o NB**. Fora dele, há
+um achado pontual em dados reais e um em sintéticos, ambos com ressalvas.
+
+### 6.1 — Todos os casos com p<0.05 (positivos e negativos)
+
+**Em dados reais (32 datasets v2b) — AJUDA:**
+
+| Modelo + LLM | Mecanismo | Δ | p | Marcador |
+|---|---|---|---|---|
+| NaiveBayes + Flash | MNAR | +15.5 pp | <0.0001 | \*\*\* |
+| NaiveBayes + Pro | MNAR | +17.0 pp | 0.006 | \*\* |
+| GradientBoosting + Flash | MCAR | +9.0 pp | 0.039 | \* |
+
+**Em dados reais — PREJUDICA:**
+
+| Modelo + LLM | Mecanismo | Δ | p | Marcador |
+|---|---|---|---|---|
+| GradientBoosting + Flash | MNAR | −6.0 pp | 0.031 | \* |
+
+**Em dados sintéticos (step05_pro) — AJUDA:**
+
+| Modelo + LLM | Mecanismo | Δ | p | Marcador |
+|---|---|---|---|---|
+| LogisticRegression + Pro | MCAR | +12.7 pp | 0.016 | \* |
+
+**Em dados sintéticos — PREJUDICA:**
+
+| Modelo + LLM | Mecanismo | Δ | p | Marcador |
+|---|---|---|---|---|
+| MLP + Pro | MNAR | −12.1 pp | 0.045 | \* |
+| NaiveBayes + Pro | MNAR | −8.1 pp | 0.027 | \* |
+| SVM_RBF + Pro | MNAR | −9.1 pp | 0.039 | \* |
+
+### 6.2 — Por que só o NB sobrevive como achado robusto
+
+Três critérios para considerar um achado "robusto":
+1. **Replica em dois LLMs diferentes** (Flash e Pro convergem).
+2. **Direção consistente** entre cenários relacionados.
+3. **Não é parte de um trade-off** (modelo melhora num mecanismo e piora em outro).
+
+| Achado candidato | Replica nos 2 LLMs? | Direção consistente? | Sem trade-off? | Robusto? |
+|---|---|---|---|---|
+| NB + LLM em MNAR (real) | **Sim** (Flash \*\*\*, Pro \*\*) | Sim em real | Sim (NB melhora em MNAR sem piorar em outros) | **✅** |
+| GradientBoosting + Flash em MCAR | Não (só Flash) | Sim | **Não** — mesmo combo piora em MNAR (−6 pp \*) | ❌ |
+| LR + Pro em MCAR (sintético) | Não (só Pro) | Não — em MCAR real o mesmo combo dá +8 pp **sem** significância | Sim | ❌ |
+
+### 6.3 — A inversão no NB sintético reforça a interpretação
+
+O achado mais delicado: **NB+Pro em MNAR sintético PIORA −8.1 pp (p=0.027)**, exatamente o oposto do que ocorre em dados reais (+17 pp \*\*).
+
+Esse contraste **não enfraquece** o achado em dados reais — pelo contrário, **explica
+o mecanismo causal**:
+
+- Em sintéticos, os labels são **certos** e o sinal estatístico é **forte**. NB já
+  tem o que precisa; LLM só adiciona ruído.
+- Em reais, Cleanlab indica **59.4% de labels potencialmente incorretas**. NB
+  sozinho fica perto do acaso (29% em MNAR, vs 33% chute) porque o sinal é fraco
+  e ruidoso. As features semânticas da LLM dão a "âncora externa" que ele
+  precisa.
+
+**Conclusão metodológica**: a LLM aqui funciona como **regularização semântica
+sob ruído de label**, não como feature genérica que melhoraria qualquer modelo
+em qualquer cenário. É um achado mais nuanced — e mais defensável — do que "LLM
+melhora detecção de MNAR".
+
+### 6.4 — Tendência sem força estatística (vale mencionar como tal)
+
+Em **MCAR com Flash**, *todos os 7 modelos* mostram melhora de **+4 a +9 pp** —
+direção consistente em 7/7 casos. Mas com 5 folds e n=100 amostras, só
+GradientBoosting cruza p<0.05.
+
+| Modelo + Flash em MCAR | Δ | p |
+|---|---|---|
+| GradientBoosting | +9.0 pp | 0.039 \* |
+| RandomForest | +8.0 pp | 0.080 (marginal) |
+| KNN | +7.0 pp | 0.265 |
+| LogisticRegression | +7.0 pp | 0.211 |
+| MLP | +7.0 pp | 0.190 |
+| SVM_RBF | +5.0 pp | 0.486 |
+| NaiveBayes | +4.0 pp | 0.423 |
+
+→ **Comportamento como tendência, não como achado confirmado**: em MCAR,
+features de LLM tendem a deslocar todos os modelos para cima em ~5–9 pp,
+provavelmente porque o LLM identifica "MCAR" pela própria ausência de padrão
+estrutural no faltante (caso onde a heurística "se nada explica, é aleatório"
+funciona). Com mais datasets, vários desses casos provavelmente cruzariam
+p<0.05.
+
+### 6.5 — Resumo
+
+> **Para a tese, o único achado que vale ser declarado como "achado" é
+> Naive Bayes + LLM em MNAR (dados reais).** GradientBoosting + Flash em MCAR
+> tem força estatística mas vem com trade-off no próprio MNAR — não dá pra
+> sustentar como ganho do modelo. Os achados em sintéticos são todos contextuais
+> e não replicam em dados reais. A tendência positiva em MCAR com Flash vale
+> mencionar como tendência, com a ressalva explícita de que precisa de mais
+> dados para confirmar.
+
+---
+
+## 7. Limitações dos testes
 
 1. **`sample_idx` instável entre runs** reduz a cobertura do McNemar para o Pro real
    (MAR=0%). Solução: o Wilcoxon nos fold scores (seção 1) é o teste principal
