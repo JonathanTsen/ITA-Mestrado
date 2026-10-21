@@ -1,0 +1,39 @@
+# Candidato à config `inject-v1` (passo 37). NÃO congelado: depende da D4 (gerador principal, grade, N de famílias).
+# Mudança proposta pelo piloto: grade de β {1, 2, 4, 8, ∞} no lugar de {0,5; 1; 2; 4; ∞}.
+#   - β = 0,5 e β = 1 ficaram ambos no acaso, até para o MechDetect oráculo (macro-recall 0,33 e 0,39): redundantes;
+#   - entre β = 4 e β = ∞ havia um salto (oráculo 0,76 → 0,95; nosso direto-logreg 0,71 → 0,77): β = 8 preenche.
+# O restante repete o piloto. Se adotado, o corpus sintético é regenerado como synth-v2 com a mesma grade.
+name: inject-v1
+root_seed: 20261101
+output_root: results_rb
+plan_repo: ~/conductor/workspaces/modeloteseppgpo-v1/baghdad-v1
+sources:
+  table: data_rb/sources_local.csv
+  csv_dir: /tmp/rb_mechdetect_run/mech-detect-datasets
+  roles: [confirm]
+inject:
+  n_grid: [500, 1000, 2000]
+  k_grid: [2, 4, 8]
+  rate_grid: [0.1, 0.2, 0.3, 0.4, 0.5]
+  beta_grid: [1, 2, 4, 8, .inf]
+  directions: [lower, upper, both]
+  driver_rules: [maxcorr, random]
+  max_base_attempts: 20
+  secondary:
+    - {generator: mdatagen, n: 1000}
+    - {generator: tab_err, n: 1000}
+features:
+  n_jobs: 8
+evaluate:
+  learner: hgb
+  descriptive_learners: [logreg, rf, svm, knn, mlp, nb]
+  routings: [hard, threshold, soft, fullprob]
+  n_splits: 5
+  n_repeats: 3
+baselines:
+  alpha: 0.05
+  mechdetect_cv_folds: 10
+  pklm_num_proj: 100
+  pklm_nrep: 200
+  pklm_max_instances: 1200
+  n_jobs: 8

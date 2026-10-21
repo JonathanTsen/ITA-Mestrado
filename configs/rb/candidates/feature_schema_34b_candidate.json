@@ -1,0 +1,153 @@
+{
+  "version": "34b-candidate",
+  "base": "34a-2",
+  "status": "proposta do piloto (passo 37); congela como 34b na tag freeze-v1, depois da D4",
+  "removed": [
+    "g2_mann_whitney_dev_max",
+    "g2_mann_whitney_dev_mean",
+    "g2_mann_whitney_dev_second"
+  ],
+  "removed_reason": "idênticos a g2_univariate_auc_dev_* (|U/(n1 n0) - 0,5| = |AUC - 0,5|; diferença máxima 2e-16 nas 1.755 instâncias do piloto)",
+  "features": [
+    {
+      "name": "g0_missing_rate",
+      "group": "G0",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g1_skewness",
+      "group": "G1",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g1_excess_kurtosis",
+      "group": "G1",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g1_iqr_over_sd",
+      "group": "G1",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g1_repeated_fraction",
+      "group": "G1",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g1_median_position",
+      "group": "G1",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g1_bimodality",
+      "group": "G1",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_cv_auc_logistic",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_cv_auc_boosting",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_univariate_auc_dev_max",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_univariate_auc_dev_mean",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_univariate_auc_dev_second",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_ks_max",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_ks_mean",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_ks_second",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_mutual_information_max",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_mutual_information_mean",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g2_mutual_information_second",
+      "group": "G2",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_r2_observed",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_auc_mask_from_yhat_dev",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_auc_yhat_minus_z",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_yhat_std_mean_diff",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_yhat_ks",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_residual_skewness",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_residual_excess_kurtosis",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g3_residual_heteroscedasticity",
+      "group": "G3",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g4_auc_true_minus_permuted",
+      "group": "G4",
+      "version": "34b-candidate"
+    },
+    {
+      "name": "g4_mann_whitney_p",
+      "group": "G4",
+      "version": "34b-candidate"
+    }
+  ]
+}
