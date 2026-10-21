@@ -26,7 +26,7 @@ from sklearn.preprocessing import StandardScaler
 
 from missdetect.rb.inject import ObservedInstance
 
-FEATURE_SCHEMA_VERSION = "34a-1"
+FEATURE_SCHEMA_VERSION = "34a-2"
 N_FOLDS = 5
 N_FOLDS_G4 = 10
 SEED = 0
@@ -73,21 +73,27 @@ def _cv_auc(x: np.ndarray, m: np.ndarray, model: str, n_folds: int = N_FOLDS, se
     return np.asarray(scores)
 
 
-def _crossfit_prediction(z_obs: np.ndarray, y_obs: np.ndarray, z_all: np.ndarray, obs_idx: np.ndarray):
-    """Ŷ(Z) ajustado nas linhas observadas: fora-da-dobra nas observadas e média das dobras nas ausentes."""
-    pred_all = np.zeros(len(z_all))
-    counts = np.zeros(len(z_all))
+def crossfit_prediction(z_obs: np.ndarray, y_obs: np.ndarray, z_all: np.ndarray, obs_idx: np.ndarray):
+    """Ŷ(Z) ajustado nas linhas observadas, com o mesmo procedimento para todas as linhas.
+
+    Cada linha recebe a predição de um único modelo de dobra que não a viu: as observadas, o modelo da sua dobra
+    (fora-da-dobra); as ausentes, o modelo de uma dobra atribuída de forma determinística (posição na ordem recebida,
+    em rodízio). Assim, sob MCAR, Ŷ tem a mesma distribuição nas linhas com M = 1 e M = 0. A versão 34a-1 usava a
+    média das dobras nas ausentes, o que reduz a variância só nessas linhas e revela a máscara (achado do piloto).
+    """
+    pred_all = np.full(len(z_all), np.nan)
     pred_obs = np.full(len(y_obs), np.nan)
     missing_idx = np.setdiff1d(np.arange(len(z_all)), obs_idx)
-    for train, test in KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(z_obs):
+    missing_fold = np.arange(len(missing_idx)) % N_FOLDS
+    folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(z_obs)
+    for fold, (train, test) in enumerate(folds):
         reg = HistGradientBoostingRegressor(max_iter=100, early_stopping=False, random_state=SEED)
         reg.fit(z_obs[train], y_obs[train])
         pred_obs[test] = reg.predict(z_obs[test])
-        if len(missing_idx):
-            pred_all[missing_idx] += reg.predict(z_all[missing_idx])
-            counts[missing_idx] += 1
+        assigned = missing_idx[missing_fold == fold]
+        if len(assigned):
+            pred_all[assigned] = reg.predict(z_all[assigned])
     pred_all[obs_idx] = pred_obs
-    pred_all[missing_idx] /= np.maximum(counts[missing_idx], 1)
     return pred_all, pred_obs
 
 
@@ -145,7 +151,7 @@ def compute(instance: ObservedInstance) -> dict:
 
     # G3: Y dado Z (mediação), só com as linhas observadas para ajustar
     if len(y_obs) >= 2 * N_FOLDS and m.any():
-        y_hat, y_hat_obs = _crossfit_prediction(z[obs_idx], y_obs, z, obs_idx)
+        y_hat, y_hat_obs = crossfit_prediction(z[obs_idx], y_obs, z, obs_idx)
         resid = y_obs - y_hat_obs
         ss_tot = np.sum((y_obs - y_obs.mean()) ** 2)
         out["g3_r2_observed"] = float(1 - np.sum(resid**2) / ss_tot) if ss_tot > 0 else np.nan

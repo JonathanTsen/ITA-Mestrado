@@ -5,8 +5,10 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.model_selection import cross_val_score
 
-from missdetect.rb.features import compute, schema
+from missdetect.rb.features import compute, crossfit_prediction, schema
 from missdetect.rb.inject import ObservedInstance, build_instance, context_rows, make_context, sample_base
 
 ROOT = 7
@@ -97,3 +99,23 @@ def test_schema_and_cost():
     start = time.perf_counter()
     compute(built["MNAR"][0])
     assert time.perf_counter() - start < 20  # meta do plano: < 2 s; medido e registrado em execucao/34-features.md
+
+
+def test_crossfit_prediction_does_not_reveal_mask_under_mcar():
+    """Regressão do achado do piloto: sob MCAR, (Z, Ŷ) não pode prever M.
+
+    Com auxiliares discretas (valores repetidos, comuns nas tabelas reais), a versão 34a-1, que usava a média das
+    dobras nas linhas ausentes, dava AUC(M | Z, Ŷ) ≈ 0,77: linhas com o mesmo Z recebiam valores de Ŷ diferentes
+    conforme M."""
+    aucs = []
+    for seed in range(3):
+        rng = np.random.default_rng(seed)
+        z = rng.integers(0, 6, size=(1000, 3)).astype(float)
+        y = 0.7 * z[:, 0] + rng.normal(size=1000)
+        mask = rng.random(1000) < 0.3
+        obs_idx = np.flatnonzero(~mask)
+        y_hat, _ = crossfit_prediction(z[obs_idx], y[obs_idx], z, obs_idx)
+        X = np.column_stack([z, y_hat])
+        clf = HistGradientBoostingClassifier(random_state=0)
+        aucs.append(cross_val_score(clf, X, mask, cv=5, scoring="roc_auc").mean())
+    assert np.mean(aucs) < 0.58
