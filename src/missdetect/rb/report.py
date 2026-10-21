@@ -1,8 +1,11 @@
 """Relatório do piloto (passo 37): tempos, inelegíveis, checagens dos descritores, detectabilidade, auditoria de
 atalhos, testes de L1, sd das diferenças pareadas por família e MDE.
 
-MDE (aproximação para o Wilcoxon pareado, Holm com m hipóteses, poder 0,8):
+MDE (aproximação normal para o Wilcoxon pareado, Holm com m = 4 hipóteses confirmatórias H1–H4, poder 0,8):
     MDE ≈ (z_{1−α/(2m)} + z_{0,8}) · sd_Δ / √N.
+É uma aproximação: ignora a eficiência relativa do Wilcoxon (≈ 0,955, MDE ≈ 2% maior) e os quantis t. O valor para o N
+do próprio piloto (8 famílias) é só ilustrativo: com N = 8, o menor p bilateral exato do Wilcoxon é 0,0078, pouco
+abaixo de α/m = 0,0125 (só rejeita se as 8 diferenças tiverem o mesmo sinal), e a aproximação normal não vale.
 """
 
 import json
@@ -133,38 +136,45 @@ def per_class_by_factor(pred: pd.DataFrame, frame: pd.DataFrame, method: str, fa
 
 
 def l1_tests(frame: pd.DataFrame, run_dir: Path, alpha: float) -> pd.DataFrame:
-    """Sensibilidade, especificidade e acurácia balanceada (por família, depois média ± dp) dos testes de L1."""
+    """Sensibilidade, especificidade e acurácia balanceada (por família, depois média ± dp) dos testes de L1.
+
+    Uma instância em que o teste falhou (p-valor ausente) conta como erro nas duas métricas: não detecta o não-MCAR e
+    não confirma o MCAR. Little e PKLM usam o nível alpha; o teste 1 do MechDetect-O usa alpha/2, como no artigo.
+    """
     data = frame[["sample_id", "family_id", "mechanism"]].copy()
     data["non_mcar"] = data.mechanism != "MCAR"
-    decisions = {}
+    sets = {}
     if "little_p" in frame:
-        decisions["little"] = frame.little_p < alpha
+        sets["little"] = data.assign(p=frame.little_p.to_numpy(), level=alpha)
     if "mdo_p_shuffled" in frame:
-        decisions["mechdetect_obs_test1"] = frame.mdo_p_shuffled < alpha / 2
+        sets["mechdetect_obs_test1"] = data.assign(p=frame.mdo_p_shuffled.to_numpy(), level=alpha / 2)
     pklm_path = run_dir / "pklm.parquet"
-    rows = []
-    sets = {
-        name: data.assign(reject=dec.fillna(False).to_numpy(), failed=dec.isna().to_numpy())
-        for name, dec in decisions.items()
-    }
     if pklm_path.exists():
         pklm = pd.read_parquet(pklm_path)
-        sub = data.merge(pklm[["sample_id", "pklm_p"]], on="sample_id")
-        sets["pklm"] = sub.assign(reject=(sub.pklm_p < alpha).to_numpy(), failed=sub.pklm_p.isna().to_numpy())
+        sets["pklm"] = data.merge(pklm[["sample_id", "pklm_p"]], on="sample_id").rename(columns={"pklm_p": "p"})
+        sets["pklm"]["level"] = alpha
+        # Little no mesmo subconjunto do PKLM, para a comparação pareada
+        if "little" in sets:
+            sub = sets["little"][sets["little"].sample_id.isin(set(pklm.sample_id))]
+            sets["little_on_pklm_subset"] = sub
+    rows = []
     for name, d in sets.items():
+        failed = d.p.isna().to_numpy()
+        reject = (d.p < d.level).to_numpy() & ~failed
+        d = d.assign(hit=np.where(d.non_mcar, reject, ~reject & ~failed))
         per_family = []
         for family, g in d.groupby("family_id"):
-            sens = g.loc[g.non_mcar, "reject"].mean()
-            spec = 1 - g.loc[~g.non_mcar, "reject"].mean()
-            per_family.append(
-                {"family_id": family, "sensitivity": sens, "specificity": spec, "balanced_accuracy": (sens + spec) / 2}
-            )
+            sens = g.loc[g.non_mcar, "hit"].mean()
+            spec = g.loc[~g.non_mcar, "hit"].mean()
+            per_family.append({"family_id": family, "sensitivity": sens, "specificity": spec,
+                               "balanced_accuracy": (sens + spec) / 2})  # fmt: skip
         pf = pd.DataFrame(per_family)
         rows.append(
             {
                 "test": name,
+                "level": float(d.level.iloc[0]),
                 "n_instances": len(d),
-                "n_failed": int(d.failed.sum()),
+                "n_failed": int(failed.sum()),
                 **{f"{m}_mean": pf[m].mean() for m in ("sensitivity", "specificity", "balanced_accuracy")},
                 **{f"{m}_sd": pf[m].std(ddof=1) for m in ("sensitivity", "specificity", "balanced_accuracy")},
             }
@@ -190,7 +200,7 @@ def paired_deltas(per_family: pd.DataFrame, contrasts: list[tuple[str, str, str]
     return pd.DataFrame(rows)
 
 
-def run_report(run_dir: Path, config: RunConfig, generators: tuple[str, ...] = ()) -> Path:
+def run_report(run_dir: Path, config: RunConfig) -> Path:
     out_dir = run_dir / "report"
     if out_dir.exists():
         raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
@@ -244,7 +254,10 @@ def run_report(run_dir: Path, config: RunConfig, generators: tuple[str, ...] = (
     l1.to_csv(out_dir / "l1_tests.csv", index=False)
     cols = ["method", "macro_recall_mean", "macro_recall_sd", "accuracy_mean", "log_loss_mean", "ece_classwise_mean"]
     cols += [f"recall_{c}_mean" for c in CLASSES]
-    summary[cols].to_csv(out_dir / "summary_primary.csv", index=False)
+    # Painel oráculo (vê o Y completo) em arquivo à parte: nunca é ranqueado com os métodos observed-only.
+    oracle_rows = summary.method.eq("mechdetect_oracle")
+    summary.loc[~oracle_rows, cols].to_csv(out_dir / "summary_primary.csv", index=False)
+    summary.loc[oracle_rows, cols].to_csv(out_dir / "summary_oracle_panel.csv", index=False)
 
     beta_table = detectability(pred, frame, [f"direct_{learner}", "mechdetect_obs"], "beta")
     fig = Figure(figsize=(6, 4))

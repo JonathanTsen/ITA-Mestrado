@@ -25,7 +25,8 @@ from missdetect.rb.inject import (
     MECHANISMS,
     Base,
     Context,
-    build_instance,
+    UnequalMissingCount,
+    build_triple,
     context_rows,
     make_context,
     record,
@@ -154,8 +155,12 @@ def generate_family(run_dir: Path, csv_dir: Path, source: pd.Series, cfg: Inject
         order = np.random.default_rng(context.shuffle_seed).permutation(context.n)
         write_complete(run_dir, context.context_id, sub[context.target].to_numpy(float)[order])
         for generator, variants in _generators_for(context, base, cfg):
-            for mechanism in MECHANISMS:
-                observed, oracle, _ = build_instance(sub, context, generator, mechanism, variants[mechanism])
+            try:
+                triple = build_triple(sub, context, generator, variants)
+            except UnequalMissingCount as exc:
+                out.skipped.append({"family_id": family_id, "base_id": base.base_id, "reason": str(exc)})
+                continue
+            for observed, oracle, _ in triple:
                 rel = write_observed(run_dir, observed)
                 out.instances.append(instance_row(observed, oracle, rel))
                 out.oracle.append(oracle_row(oracle))

@@ -24,9 +24,9 @@ from missdetect.rb.bench import MDATAGEN_BY_DIRECTION
 from missdetect.rb.config import SynthConfig
 from missdetect.rb.ids import child_rng, child_seed, stable_id
 from missdetect.rb.inject import (
-    MECHANISMS,
     Base,
-    build_instance,
+    UnequalMissingCount,
+    build_triple,
     column_is_eligible,
     make_context,
     pair_eligibility,
@@ -157,14 +157,18 @@ def generate_base(run_dir: Path, item: SynthDesign, cfg: SynthConfig, root_seed:
             rows_seed=int(child_seed(root_seed, "synth", "rows", item.base_idx)), n_max=item.n,
             r2_cv=flags["r2_cv"], max_abs_spearman=flags["max_abs_spearman"],
         )  # fmt: skip
-        out.bases.append({**row, "accepted": True, **record(base), "generator": item.generator})
         context = make_context(base, item.n, item.k, item.rate, item.beta, item.direction, root_seed)
+        variants = MDATAGEN_BY_DIRECTION[item.direction] if item.generator == "mdatagen" else {}
+        try:
+            triple = build_triple(table, context, item.generator, variants)
+        except UnequalMissingCount:
+            out.bases.append({**row, "accepted": False, "unequal_count": True})
+            continue
+        out.bases.append({**row, "accepted": True, **record(base), "generator": item.generator})
         out.contexts.append(record(context))
         order = np.random.default_rng(context.shuffle_seed).permutation(context.n)
         write_complete(run_dir, context.context_id, table[TARGET].to_numpy(float)[order])
-        variants = MDATAGEN_BY_DIRECTION[item.direction] if item.generator == "mdatagen" else {}
-        for mechanism in MECHANISMS:
-            observed, oracle, _ = build_instance(table, context, item.generator, mechanism, variants.get(mechanism, ""))
+        for observed, oracle, _ in triple:
             rel = write_observed(run_dir, observed)
             out.instances.append(instance_row(observed, oracle, rel))
             out.oracle.append(oracle_row(oracle))

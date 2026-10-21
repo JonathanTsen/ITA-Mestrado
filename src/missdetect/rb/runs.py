@@ -10,6 +10,11 @@ Layout de um run (`results_rb/<data>-<hash da config>/`, nunca sobrescrito):
     oracle_complete/<context_id>.parquet   Y completo do contexto (só o painel oráculo e os testes leem)
 
 As funções de descritores e de baselines observed-only recebem apenas `ObservedInstance`, lida de `observed/`.
+
+Modelo de ameaça dos identificadores: `sample_id` e `context_id` são SHA-256 de especificações conhecidas (inclusive o
+mecanismo), então quem tiver o código e a config consegue recuperar o rótulo a partir deles, e o `context_id` revela os
+trios irmãos. Eles servem só à contabilidade (checkpoint, pareamento, junção com o oráculo) e nunca podem entrar num
+descritor, num prompt de LLM ou em qualquer entrada de método. Os métodos usam só os valores de `y` e `z`.
 """
 
 import hashlib
@@ -153,7 +158,7 @@ def oracle_row(oracle: OracleRecord) -> dict:
 
 
 def instance_row(instance: ObservedInstance, oracle: OracleRecord, rel_path: str) -> dict:
-    """Linha de `instances.parquet`: só o que o método pode ver sobre a instância (sem mecanismo nem gerador)."""
+    """Linha de `instances.parquet`: metadados de controle, sem mecanismo nem gerador (os IDs não entram nos métodos)."""
     return {
         "sample_id": instance.sample_id,
         "context_id": oracle.context_id,

@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "baselines":
             p.add_argument("--skip-pklm", action="store_true", help="não roda o PKLM")
             p.add_argument("--only-pklm", action="store_true", help="roda só o PKLM (pklm.parquet)")
-        if name in ("evaluate", "report"):
+        if name == "evaluate":
             p.add_argument("--generators", nargs="*", default=[], help="filtra instâncias por gerador")
     for name in NOT_YET:
         p = sub.add_parser(name, help=NOT_YET[name])
@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "evaluate":
         print(pipeline.run_evaluate(args.run, config, n_jobs, tuple(args.generators)))
     elif args.command == "report":
-        print(report.run_report(args.run, config, tuple(args.generators)))
+        print(report.run_report(args.run, config))
     return 0
 
 

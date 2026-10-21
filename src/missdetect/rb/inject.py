@@ -209,8 +209,15 @@ def make_context(base: Base, n: int, k: int, rate: float, beta: float, direction
 
 
 def context_rows(table: pd.DataFrame, base: Base, context: Context) -> pd.DataFrame:
-    """Subamostra do contexto: as primeiras n linhas da permutação da base, na ordem original da tabela."""
-    rows = np.sort(_base_permutation(len(table), base.rows_seed)[: context.n])
+    """Subamostra do contexto: as primeiras n linhas da permutação da base, **na ordem da permutação**.
+
+    A ordem importa para os geradores que desempatam pela posição (simétrico com β = ∞, pares determinísticos da
+    mdatagen, janelas do tab_err). Na ordem original do arquivo, que costuma vir ordenada por alguma coluna, os empates
+    no driver seriam desfeitos por uma ordem correlacionada com Y, e uma máscara "MAR" passaria a depender de Y
+    (achado da revisão de 21/10/2026). Na ordem da permutação, independente dos valores, o desempate é aleatório.
+    As subamostras continuam aninhadas: o contexto com n linhas é prefixo do contexto com n' > n linhas.
+    """
+    rows = _base_permutation(len(table), base.rows_seed)[: context.n]
     return table.iloc[rows].reset_index(drop=True)
 
 
@@ -229,8 +236,8 @@ def rank_scores(v: np.ndarray, direction: str) -> np.ndarray:
 def symmetric_mask(v: np.ndarray, rate: float, beta: float, direction: str, rng: np.random.Generator) -> np.ndarray:
     """Exatamente round(rate·n) linhas, sorteadas sem reposição com pesos exp(beta·s) (Gumbel-top-k).
 
-    MCAR: beta = 0. MAR: v = driver. MNAR: v = alvo completo. beta = inf: as maiores pontuações (desempate pela ordem
-    das linhas, que é aleatória porque a subamostra foi sorteada).
+    MCAR: beta = 0. MAR: v = driver. MNAR: v = alvo completo. beta = inf: as maiores pontuações, com desempate pela
+    posição; por isso as linhas precisam vir numa ordem independente dos valores (ver `context_rows`).
     """
     n = len(v)
     m = round(rate * n)
@@ -353,7 +360,9 @@ def build_instance(
     order = np.random.default_rng(context.shuffle_seed).permutation(context.n)
     y = sub[context.target].to_numpy(dtype=float).copy()
     y[mask] = np.nan
-    z = sub[list(context.auxiliaries)].iloc[order].reset_index(drop=True)
+    # Colunas em ordem sorteada por contexto (igual para os três mecanismos): o driver não fica sempre em primeiro.
+    columns = np.random.default_rng(child_seed(context.shuffle_seed, "columns")).permutation(len(context.auxiliaries))
+    z = sub[[context.auxiliaries[j] for j in columns]].iloc[order].reset_index(drop=True)
     spec = {"context_id": context.context_id, "generator": generator, "mechanism": mechanism, "variant": variant}
     sample_id = stable_id(spec)
     mask_sha = stable_id({"mask": np.flatnonzero(mask[order]).tolist()}, length=64)
@@ -370,6 +379,25 @@ def build_instance(
         mask_sha256=mask_sha,
     )
     return observed, oracle, mask[order]
+
+
+class UnequalMissingCount(ValueError):
+    """Os três mecanismos de um (contexto, gerador) não têm o mesmo número de ausências."""
+
+
+def build_triple(
+    sub: pd.DataFrame, context: Context, generator: str, variants: dict[str, str]
+) -> list[tuple[ObservedInstance, OracleRecord, np.ndarray]]:
+    """As três instâncias (MCAR, MAR, MNAR) de um contexto e gerador, com contagem de ausências idêntica.
+
+    Uma diferença de contagem seria um sinal de rótulo na taxa realizada. Ocorre, por exemplo, na mdatagen com
+    `mix`/`run_0.5` e N ímpar (`round(N/2)` duas vezes contra N no MCAR). Nesse caso o trio inteiro é recusado.
+    """
+    items = [build_instance(sub, context, generator, m, variants.get(m, "")) for m in MECHANISMS]
+    counts = {int(mask.sum()) for _, _, mask in items}
+    if len(counts) != 1:
+        raise UnequalMissingCount(f"{generator}: contagens {sorted(counts)} em {context.context_id}")
+    return items
 
 
 def record(item: Base | Context) -> dict:

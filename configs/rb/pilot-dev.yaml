@@ -1,7 +1,9 @@
 # Piloto do passo 37: só as 8 famílias de desenvolvimento (passo 31). Gerador principal provisório = simétrico
 # (recomendação para a D4); secundários = pares determinísticos da mdatagen e tab_err nos contextos com n = 1000.
 # Nenhuma família confirmatória entra neste run.
-name: pilot-dev
+# Run r2 (21/10/2026): refeito depois da revisão do código. O run 20261021-pilot-dev-cba8168b099b (r1) usava a ordem
+# do arquivo para desempatar as máscaras determinísticas e o driver sempre na 1ª coluna; fica só como registro.
+name: pilot-dev-r2
 root_seed: 20261022
 output_root: results_rb
 plan_repo: ~/conductor/workspaces/modeloteseppgpo-v1/baghdad-v1

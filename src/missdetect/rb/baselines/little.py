@@ -58,5 +58,8 @@ def little_test(y: np.ndarray, z: np.ndarray) -> tuple[float, int, float]:
 
 
 def run(instance: ObservedInstance) -> dict:
+    """Erro se o teste for indefinido (sem ausências ou poucas linhas observadas): vira `status = failed`."""
     d2, df, p = little_test(instance.y, instance.z.to_numpy(dtype=float))
+    if not np.isfinite(p):
+        raise ValueError("teste de Little indefinido nesta instância")
     return {"little_d2": d2, "little_df": df, "little_p": p}

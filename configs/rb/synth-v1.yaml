@@ -1,4 +1,6 @@
-# Corpus sintético do passo 33 (congelado com a tag synth-v1 antes de qualquer resultado com dados reais).
+# Corpus sintético do passo 33, congelado com a tag synth-v1 antes do piloto (37) e sem dados confirmatórios. Um teste de
+# fumaça do pipeline já tinha rodado nas famílias de desenvolvimento. Reproduzível a partir da tag synth-v1 (o código
+# atual sorteia a ordem das colunas observadas, então os arquivos observados de uma regeneração seriam outros).
 # Mesmos geradores e grade de β do passo 32; se o piloto (37) recalibrar a grade, gerar synth-v2 antes do passo 39.
 name: synth-v1
 root_seed: 20261023

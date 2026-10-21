@@ -5,11 +5,15 @@ import dataclasses
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import stats
 
 from missdetect.rb.inject import (
     MECHANISMS,
+    Base,
     ObservedInstance,
+    UnequalMissingCount,
     build_instance,
+    build_triple,
     column_is_eligible,
     context_rows,
     make_context,
@@ -78,7 +82,7 @@ def test_three_mechanisms_share_context_and_only_target_is_masked():
     instances = {m: build_instance(sub, context, "symmetric", m) for m in MECHANISMS}
     z_frames = [obs.z for obs, _, _ in instances.values()]
     assert all(z.equals(z_frames[0]) for z in z_frames)
-    assert list(z_frames[0].columns) == list(context.auxiliaries) and context.target not in z_frames[0].columns
+    assert set(z_frames[0].columns) == set(context.auxiliaries) and context.target not in z_frames[0].columns
     assert not z_frames[0].isna().any().any()
     for obs, oracle, mask in instances.values():
         assert np.isnan(obs.y).sum() == mask.sum() == round(0.3 * 1000)
@@ -94,7 +98,7 @@ def test_nested_k_and_n_share_rows_and_mask():
     contexts = {k: make_context(base, 1000, k, 0.2, 1.0, "lower", ROOT) for k in (2, 4, 8)}
     built = {k: build_instance(context_rows(table, base, c), c, "symmetric", "MNAR") for k, c in contexts.items()}
     assert np.array_equal(built[2][2], built[8][2])  # mesma máscara para todos os k
-    assert list(built[4][0].z.columns)[:2] == list(built[2][0].z.columns)  # Z_2 ⊂ Z_4
+    assert set(built[2][0].z.columns) < set(built[4][0].z.columns)  # Z_2 ⊂ Z_4 (a ordem das colunas é sorteada)
     small = make_context(base, 500, 4, 0.2, 1.0, "lower", ROOT)
     rows_small = context_rows(table, base, small)
     rows_big = context_rows(table, base, contexts[4])
@@ -137,3 +141,52 @@ def test_tab_err_wrapper_is_seeded_and_exact():
         first, rate = tab_err_mask(sub, "y", "z0", mechanism, 0.3, seed=5)
         second, _ = tab_err_mask(sub, "y", "z0", mechanism, 0.3, seed=5)
         assert np.array_equal(first, second) and rate == pytest.approx(0.3)
+
+
+def test_ties_in_deterministic_masks_are_broken_independently_of_y():
+    """Regressão da revisão de 21/10: com a tabela ordenada por Y e o driver com um grande bloco de empate, a máscara
+    MAR com β = ∞ não pode depender de Y dentro do bloco (antes, o desempate seguia a ordem do arquivo)."""
+    rng = np.random.default_rng(0)
+    n = 3000
+    y = np.sort(rng.normal(size=n))  # arquivo ordenado por Y
+    driver = np.where(rng.random(n) < 0.4, 0.0, rng.normal(size=n).round(4))  # 40% empatados em 0
+    table = pd.DataFrame({"y": y, "d": driver, **{f"z{j}": rng.normal(size=n).round(4) for j in range(3)}})
+    base = Base("b", 1, 1, 0, "y", "d", "random", ("d", "z0", "z1", "z2"), 5, 2000, 0.0, 0.0)
+    aucs = []
+    for rate in (0.3, 0.5):
+        context = make_context(base, 2000, 4, rate, np.inf, "lower", ROOT)
+        sub = context_rows(table, base, context)
+        _, _, mask = build_instance(sub, context, "symmetric", "MAR")
+        order = np.random.default_rng(context.shuffle_seed).permutation(context.n)
+        tie = sub["d"].to_numpy()[order] == 0.0
+        y_ord = sub["y"].to_numpy()[order]
+        m_tie = mask[tie]
+        assert 0 < m_tie.sum() < tie.sum()  # o corte cai dentro do bloco de empate
+        u = stats.mannwhitneyu(y_ord[tie][m_tie], y_ord[tie][~m_tie]).statistic
+        aucs.append(u / (m_tie.sum() * (~m_tie).sum()))
+    assert all(abs(a - 0.5) < 0.06 for a in aucs), aucs
+
+
+def test_observed_columns_are_shuffled_per_context_and_shared_by_mechanisms():
+    table = _table()
+    positions = set()
+    for idx in range(6):
+        base, _ = sample_base(table, list(table.columns), 1, 99, idx, ROOT, driver_rule="maxcorr", n_max=600)
+        context = make_context(base, 600, 4, 0.3, 2.0, "upper", ROOT)
+        sub = context_rows(table, base, context)
+        cols = [list(build_instance(sub, context, "symmetric", m)[0].z.columns) for m in MECHANISMS]
+        assert cols[0] == cols[1] == cols[2]
+        assert set(cols[0]) == set(context.auxiliaries)
+        positions.add(cols[0].index(context.driver))
+    assert len(positions) > 1  # o driver não fica sempre na primeira coluna
+
+
+def test_build_triple_rejects_unequal_missing_counts():
+    table = _table(n=800)
+    base = _base(table)
+    context = make_context(base, 777, 4, 0.3, np.inf, "both", ROOT)  # N = 233 ímpar: mix/run_0.5 dão 232
+    sub = context_rows(table, base, context)
+    with pytest.raises(UnequalMissingCount):
+        build_triple(sub, context, "mdatagen", {"MCAR": "random", "MAR": "mix", "MNAR": "run_0.5"})
+    triple = build_triple(sub, context, "symmetric", {})
+    assert len({int(m.sum()) for _, _, m in triple}) == 1
