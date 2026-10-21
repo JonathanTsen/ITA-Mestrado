@@ -131,6 +131,21 @@ class _Trivial:
         return np.eye(N_CLASSES)[draws] * 0.999 + 0.001 / N_CLASSES
 
 
+class Passthrough:
+    """Método de regra já decidido por instância (ex.: MechDetect): X são as probabilidades; nada é ajustado.
+
+    Linhas com NaN (o método falhou na instância) viram probabilidades uniformes; o status de falha é marcado depois,
+    a partir do status do baseline."""
+
+    def fit(self, X, y, families):
+        return self
+
+    def predict_proba(self, X):
+        out = np.asarray(X, dtype=float).copy()
+        out[np.isnan(out).any(axis=1)] = 1 / N_CLASSES
+        return out
+
+
 def trivial_factory(kind: str, seed: int) -> Callable[[], _Trivial]:
     return lambda: _Trivial(kind, seed)
 

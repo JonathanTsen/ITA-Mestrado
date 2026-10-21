@@ -54,6 +54,8 @@ dependencies = [
     "pyarrow>=26.0.0",
     "joblib>=1.5.3",
     "tabmemcheck>=0.1.6",
+    "pyyaml>=6.0",
+    "threadpoolctl>=3.5",
 ]
 
 [project.optional-dependencies]

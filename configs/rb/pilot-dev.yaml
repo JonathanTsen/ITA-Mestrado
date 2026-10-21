@@ -1,0 +1,37 @@
+# Piloto do passo 37: só as 8 famílias de desenvolvimento (passo 31). Gerador principal provisório = simétrico
+# (recomendação para a D4); secundários = pares determinísticos da mdatagen e tab_err nos contextos com n = 1000.
+# Nenhuma família confirmatória entra neste run.
+name: pilot-dev
+root_seed: 20261022
+output_root: results_rb
+plan_repo: ~/conductor/workspaces/modeloteseppgpo-v1/baghdad-v1
+sources:
+  table: data_rb/sources_local.csv
+  csv_dir: /tmp/rb_mechdetect_run/mech-detect-datasets
+  roles: [dev]
+inject:
+  n_grid: [500, 1000, 2000]
+  k_grid: [2, 4, 8]
+  rate_grid: [0.1, 0.2, 0.3, 0.4, 0.5]
+  beta_grid: [0.5, 1, 2, 4, .inf]
+  directions: [lower, upper, both]
+  driver_rules: [maxcorr, random]
+  max_base_attempts: 20
+  secondary:
+    - {generator: mdatagen, n: 1000}
+    - {generator: tab_err, n: 1000}
+features:
+  n_jobs: 8
+evaluate:
+  learner: hgb                      # aprendiz primário provisório (D7)
+  descriptive_learners: [logreg]
+  routings: [hard, threshold, soft, fullprob]
+  n_splits: 5
+  n_repeats: 3
+baselines:
+  alpha: 0.05
+  mechdetect_cv_folds: 10
+  pklm_num_proj: 100
+  pklm_nrep: 200
+  pklm_max_instances: 240           # subconjunto do gerador principal (contextos inteiros, igual por família)
+  n_jobs: 8

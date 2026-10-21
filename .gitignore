@@ -97,3 +97,10 @@ Desktop.ini
 Output/
 # Per-run intermediate outputs we explicitly archive
 results/_archive/
+
+# =============================================================================
+# Revisão da banca (missdetect.rb): runs e corpus sintético são artefatos
+# regeneráveis; versionar só manifestos com hashes (data_rb/*_manifest.*)
+# =============================================================================
+results_rb/
+data_rb/synth/

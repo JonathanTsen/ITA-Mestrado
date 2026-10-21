@@ -42,6 +42,15 @@ DEFAULT_SEED = 1234  # semente usada por `run_all_experiments.sh`
 DEFAULT_CV_FOLDS = 10
 
 
+def mechdetect_pvalues(
+    auc_complete: np.ndarray, auc_shuffled: np.ndarray, auc_excluded: np.ndarray
+) -> tuple[float, float]:
+    """p-valores dos dois testes de Mann-Whitney unilaterais (complete > shuffled; complete > excluded)."""
+    p_shuffled = stats.mannwhitneyu(auc_complete, auc_shuffled, alternative="greater").pvalue
+    p_excluded = stats.mannwhitneyu(auc_complete, auc_excluded, alternative="greater").pvalue
+    return float(p_shuffled), float(p_excluded)
+
+
 def mechdetect_decide(
     auc_complete: np.ndarray,
     auc_shuffled: np.ndarray,
@@ -49,8 +58,7 @@ def mechdetect_decide(
     alpha: float = DEFAULT_ALPHA,
 ) -> str:
     """Decide o mecanismo com a regra do notebook oficial (dois testes, Bonferroni alpha/2)."""
-    p_shuffled = stats.mannwhitneyu(auc_complete, auc_shuffled, alternative="greater").pvalue
-    p_excluded = stats.mannwhitneyu(auc_complete, auc_excluded, alternative="greater").pvalue
+    p_shuffled, p_excluded = mechdetect_pvalues(auc_complete, auc_shuffled, auc_excluded)
     if p_shuffled < alpha / 2:
         return "MNAR" if p_excluded < alpha / 2 else "MAR"
     return "MCAR"

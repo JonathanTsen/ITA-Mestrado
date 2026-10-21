@@ -1,0 +1,24 @@
+# Teste de fumaça do pipeline (não é resultado): 8 famílias dev, grade mínima.
+name: smoke-dev
+root_seed: 1
+output_root: /tmp/rb_smoke
+sources:
+  table: data_rb/sources_local.csv
+  csv_dir: /tmp/rb_mechdetect_run/mech-detect-datasets
+  roles: [dev]
+inject:
+  n_grid: [500]
+  k_grid: [2]
+  rate_grid: [0.3]
+  beta_grid: [.inf]
+  secondary:
+    - {generator: mdatagen, n: 500}
+    - {generator: tab_err, n: 500}
+evaluate:
+  n_splits: 4
+  n_repeats: 1
+baselines:
+  mechdetect_cv_folds: 5
+  pklm_num_proj: 10
+  pklm_nrep: 20
+  pklm_max_instances: 24
