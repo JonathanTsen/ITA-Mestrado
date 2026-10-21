@@ -30,6 +30,9 @@ MECANISMOS = ["MCAR", "MAR", "MNAR"]
 
 
 def gerar_bootstrap():
+    # QUARENTENA (plano-revisao-banca/10): este script apaga data/real/processed_chunks
+    # (benchmark usado na qualificação) com shutil.rmtree. Não executar.
+    raise SystemExit("QUARENTENA: subdividir_dados_reais.py apaga data/real/processed_chunks; ver plano-revisao-banca/10.")
     if os.path.exists(OUTPUT):
         shutil.rmtree(OUTPUT)
 

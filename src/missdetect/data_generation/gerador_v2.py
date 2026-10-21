@@ -265,7 +265,7 @@ def generate_base_data(rng: np.random.Generator, dist_name: str) -> pd.DataFrame
 def main():
     parser = argparse.ArgumentParser(description="Gerador v2 com múltiplas variantes MissMecha")
     parser.add_argument("--n-per-variant", type=int, default=100, help="Datasets por variante (default: 100)")
-    parser.add_argument("--clean", action="store_true", default=True, help="Limpar pastas de saída antes de gerar")
+    parser.add_argument("--clean", action="store_true", default=False, help="Limpar pastas de saída antes de gerar (apaga com rmtree)")
     args = parser.parse_args()
 
     N_PER_VARIANT = args.n_per_variant

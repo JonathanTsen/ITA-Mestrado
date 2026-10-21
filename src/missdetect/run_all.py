@@ -46,6 +46,11 @@ if "--experiment" in sys.argv:
     if idx + 1 < len(sys.argv):
         EXPERIMENT = sys.argv[idx + 1]
 
+# QUARENTENA (plano-revisao-banca/10): impedir sobrescrita de resultados versionados
+_RESULTS_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "results"))
+if os.path.isdir(os.path.join(_RESULTS_DIR, EXPERIMENT)) and "--allow-overwrite" not in sys.argv:
+    sys.exit(f"QUARENTENA: results/{EXPERIMENT} já existe e não será sobrescrito (use outro --experiment).")
+
 # Parse --llm-approach (STEP04: v2, judge, embeddings, caafe)
 LLM_APPROACH = "judge"  # Default: novo approach do STEP04
 if "--llm-approach" in sys.argv:

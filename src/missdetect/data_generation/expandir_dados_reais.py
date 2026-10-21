@@ -31,15 +31,12 @@ Uso:
 """
 
 import os
-import ssl
 import warnings
 
 import numpy as np
 import pandas as pd
 from sklearn.datasets import fetch_openml
 
-# Contorna SSL em macOS
-ssl._create_default_https_context = ssl._create_unverified_context
 warnings.filterwarnings("ignore")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
