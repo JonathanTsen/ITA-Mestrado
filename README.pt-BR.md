@@ -23,11 +23,13 @@ baseline puramente estatístico contra uma variante aumentada por LLM em
 1.200 datasets sintéticos e 29 datasets reais, usando um classificador
 hierárquico em dois níveis robusto a ruído de rótulo.
 
-**Achado principal:** features de LLM contribuem marginalmente para a
-acurácia em dados reais (+1,9pp com Gemini Pro; nenhuma com Flash). É a
-**estrutura hierárquica + Naive Bayes ponderado por Cleanlab** que faz a
-diferença. Documentamos um **teto teórico** de ~60–65% (Rubin 1976 + 59,4%
-de ruído de rótulo medido) e discutimos a lacuna explicitamente.
+**Situação (outubro de 2026):** os números abaixo vêm da versão de
+qualificação da dissertação e estão em revisão; veja
+[`docs/revisao-banca/README.md`](docs/revisao-banca/README.md). Os rótulos de
+mecanismo dos datasets reais não foram estabelecidos por construção, então
+estes resultados ficam apenas como registro. Nenhum teto de acurácia é
+afirmado: MAR e MNAR não são identificáveis só com dados observados
+(Molenberghs et al. 2008), mas isso não determina nenhum limite numérico.
 
 ---
 
@@ -40,11 +42,12 @@ de ruído de rótulo medido) e discutimos a lacuna explicitamente.
 | Step 1 V2 Neutral — Flash + estatísticas | 29 | 47,44% | 51,14% | ~$3 |
 | Baseline ML-only (sem LLM) | 29 | 47,47% | 53,92% | $0 |
 | Acaso (3 classes) | — | 33,3% | 33,3% | $0 |
-| Teto teórico (Rubin 1976 + ruído medido) | — | ~60–65% | — | — |
 
-NaiveBayes consistentemente supera RandomForest, GradientBoosting, MLP e SVM
-por +6 a +13pp em validação cruzada — calibração de incerteza importa mais
-do que capacidade do modelo neste regime de rótulos ruidosos.
+O valor de 55,97% é Naive Bayes com Platt scaling, sem pesos do Cleanlab,
+escolhido como o melhor entre vários modelos e estratégias de roteamento em
+validação leave-one-group-out; o baseline da classe majoritária no mesmo
+protocolo fica em torno de 48%. Nenhum teste pareado sustenta a comparação
+entre classificadores, e a calibração das probabilidades não foi medida.
 
 Comece por [`docs/README.md`](docs/README.md), que organiza a documentacao
 atual. Veja [`docs/HISTORICO.md`](docs/HISTORICO.md) para o registro
@@ -54,19 +57,18 @@ experimental completo das fases do projeto.
 
 ## Por que isso é interessante
 
-Até onde sabemos, este é o **primeiro** estudo a combinar features
-derivadas de LLM com classificação hierárquica para o problema MCAR/MAR/MNAR.
-A literatura prévia testa apenas MCAR vs todo o resto (PKLM, teste de
-Little) ou usa apenas features estatísticas (MechDetect). O resultado
-negativo das features de LLM em dados reais ruidosos — que consideramos
-publicável — e a lacuna documentada entre o teto sintético (~80%) e o
-real (~60%) são contribuições que merecem ser reportadas.
+A literatura prévia ou testa apenas MCAR (teste de Little, PKLM), ou separa
+apenas MNAR dos demais mecanismos (Dekermanjian et al. 2022), ou usa os
+valores ausentes (MechDetect, cujo segundo teste precisa da coluna-alvo
+limpa). Este projeto estuda um classificador de três classes que usa apenas
+dados observados.
 
 Ressalva teórica: pelo resultado de impossibilidade de Molenberghs et al.
 (2008), todo modelo MNAR tem uma contraparte MAR com ajuste idêntico aos
 dados observados. Separação MAR/MNAR perfeita é, portanto, inalcançável
-apenas a partir de dados observados — nossos 49–56% devem ser lidos contra
-esse teto, não contra o acaso.
+apenas a partir de dados observados. Isso não determina nenhum nível de
+acurácia: os resultados são comparados com baselines triviais e com o estado
+da arte no mesmo protocolo.
 
 ---
 
@@ -192,8 +194,7 @@ Este README e a dissertação que o acompanha tornam quatro limitações
 explícitas:
 
 1. **MAR e MNAR são teoricamente indistinguíveis** apenas a partir de dados
-   observados (Molenberghs et al. 2008). Nossa faixa de 49–56% reflete esse
-   teto teórico — não um problema de modelagem.
+   observados (Molenberghs et al. 2008) sem hipóteses adicionais.
 2. **Ruído de rótulo** alto no benchmark real: 59,4% das amostras de
    bootstrap são sinalizadas pelo Cleanlab como potencialmente
    mal-rotuladas. Os rótulos são a melhor estimativa de especialistas de
