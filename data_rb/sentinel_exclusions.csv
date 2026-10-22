@@ -1,0 +1,10 @@
+# Colunas excluídas da tabela-fonte porque um valor codifica "não medido" (regra pré-registrada, decisão D4/D11 de 21/10/2026).
+# Critério: o valor é documentado pela fonte como código de não medido, OU é fisicamente impossível pela definição da
+# variável. Não há regra automática: massa num valor de fronteira, sozinha, não basta (80 colunas elegíveis com >= 10% em
+# zero ou no mínimo são, quase todas, variáveis legitimamente infladas de zeros; ver scripts/revisao_banca/decisoes).
+openml_id,column,sentinel_value,criterion,note
+37,plas,0,fisicamente impossível,concentração de glicose plasmática = 0 (5 linhas)
+37,pres,0,fisicamente impossível,pressão diastólica = 0 (35 linhas)
+37,skin,0,fisicamente impossível,espessura da prega cutânea do tríceps = 0 (227 linhas)
+37,insu,0,fisicamente impossível,insulina sérica de 2 h = 0 (374 linhas)
+37,mass,0,fisicamente impossível,IMC = 0 (11 linhas)

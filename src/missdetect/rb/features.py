@@ -1,4 +1,7 @@
-"""Descritores observáveis (passo 34a do plano; congelam como 34b no piloto, passo 37).
+"""Descritores observáveis, versão 34b (congelada com a tag `freeze-v1`, passo 37 do plano).
+
+Histórico: 34a-1 (primeira versão); 34a-2 (Ŷ cross-fit sem vazar a máscara); 34b (sem os três agregados de
+|U/(n₁n₀) − 0,5| do Mann-Whitney, que são idênticos aos de |AUC − 0,5| univariado; decisão D4 de 21/10/2026).
 
 Regras (Cap3, `sec:m_descriptors`):
 1. só informação observável: Y observado, Z e M; os valores de Y nas linhas com M = 1 nunca são usados, nem
@@ -26,7 +29,7 @@ from sklearn.preprocessing import StandardScaler
 
 from missdetect.rb.inject import ObservedInstance
 
-FEATURE_SCHEMA_VERSION = "34a-2"
+FEATURE_SCHEMA_VERSION = "34b"
 N_FOLDS = 5
 N_FOLDS_G4 = 10
 SEED = 0
@@ -131,20 +134,13 @@ def compute(instance: ObservedInstance) -> dict:
     # G2: máscara × auxiliares
     out["g2_cv_auc_logistic"] = float(np.nanmean(_cv_auc(z, m, "logistic")))
     out["g2_cv_auc_boosting"] = float(np.nanmean(_cv_auc(z, m, "boosting")))
-    uni_auc, mw, ks = [], [], []
+    uni_auc, ks = [], []
     for j in range(z.shape[1]):
         zj = z[:, j]
         a = _auc(m.astype(int), zj)
         uni_auc.append(abs(a - 0.5) if np.isfinite(a) else np.nan)
-        if m.any() and (~m).any():
-            u = stats.mannwhitneyu(zj[m], zj[~m], alternative="two-sided")
-            mw.append(abs(u.statistic / (m.sum() * (~m).sum()) - 0.5))
-            ks.append(stats.ks_2samp(zj[m], zj[~m]).statistic)
-        else:
-            mw.append(np.nan)
-            ks.append(np.nan)
+        ks.append(stats.ks_2samp(zj[m], zj[~m]).statistic if m.any() and (~m).any() else np.nan)
     out.update(_agg("g2_univariate_auc_dev", uni_auc))
-    out.update(_agg("g2_mann_whitney_dev", mw))
     out.update(_agg("g2_ks", ks))
     mi = mutual_info_classif(z, m, random_state=SEED) if m.any() and (~m).any() else np.full(z.shape[1], np.nan)
     out.update(_agg("g2_mutual_information", list(mi)))

@@ -4,11 +4,14 @@ Verifica a separação física observado × oráculo, o checkpoint por sample_id
 (inclusive os de regra) e que nada é sobrescrito.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from missdetect.rb import pipeline
+from missdetect.rb.bench import generate_family, load_sentinel_exclusions
 from missdetect.rb.config import parse_config
 from missdetect.rb.evaluate import check_pairing
 
@@ -125,3 +128,22 @@ def test_features_resume_from_checkpoint(run):
     again = pd.read_parquet(resumed / "features.parquet").set_index("sample_id").sort_index()
     cols = [c for c in again.columns if c.startswith("g")]
     pd.testing.assert_frame_equal(again[cols], full.set_index("sample_id").sort_index()[cols])
+
+
+def test_sentinel_columns_are_excluded_from_the_table(run, tmp_path):
+    _, config = run
+    sources = pd.read_csv(config.sources.table)
+    source = sources.iloc[0]
+    out = generate_family(tmp_path, Path(config.sources.csv_dir), source, config.inject, 9, frozenset({"a", "b"}))
+    assert out.contexts
+    for context in out.contexts:
+        assert context["target"] not in {"a", "b"}
+        assert not {"a", "b"} & set(context["auxiliaries"].split(";"))
+    assert {r["reason"] for r in out.skipped} >= {"coluna excluída (sentinela): a", "coluna excluída (sentinela): b"}
+
+
+def test_versioned_sentinel_list_is_read():
+    exclusions = load_sentinel_exclusions(
+        str(Path(__file__).resolve().parents[2] / "data_rb" / "sentinel_exclusions.csv")
+    )
+    assert exclusions == {37: {"plas", "pres", "skin", "insu", "mass"}}

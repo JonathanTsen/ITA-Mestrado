@@ -136,18 +136,40 @@ def _generators_for(context: Context, base: Base, cfg: InjectConfig) -> list[tup
     return out
 
 
-def generate_family(run_dir: Path, csv_dir: Path, source: pd.Series, cfg: InjectConfig, root_seed: int) -> FamilyOutput:
-    """Gera e grava todas as instâncias de uma família (representante do passo 31)."""
+def load_sentinel_exclusions(path: str) -> dict[int, set[str]]:
+    """{openml_id: colunas excluídas} a partir do CSV versionado (vazio se não houver arquivo)."""
+    if not path:
+        return {}
+    frame = pd.read_csv(path, comment="#")
+    return {int(k): set(g.column.astype(str)) for k, g in frame.groupby("openml_id")}
+
+
+def generate_family(
+    run_dir: Path,
+    csv_dir: Path,
+    source: pd.Series,
+    cfg: InjectConfig,
+    root_seed: int,
+    excluded_columns: frozenset[str] = frozenset(),
+) -> FamilyOutput:
+    """Gera e grava todas as instâncias de uma família (representante do passo 31).
+
+    `excluded_columns`: colunas que codificam "não medido" (regra dos sentinelas); saem da tabela inteira, nem alvo
+    nem auxiliar.
+    """
     t0 = pd.Timestamp.now()
     family_id, openml_id = int(source.family_id), int(source.openml_id)
-    numeric = str(source.numeric_columns).split(";")
+    numeric = [c for c in str(source.numeric_columns).split(";") if c not in excluded_columns]
     table = load_table(csv_dir, openml_id, numeric)
     out = FamilyOutput(family_id=family_id)
+    out.skipped = [{"family_id": family_id, "base_id": "", "reason": f"coluna excluída (sentinela): {c}"}
+                   for c in sorted(excluded_columns)]  # fmt: skip
     bases, reports = design_bases(table, numeric, family_id, openml_id, cfg, root_seed)
     out.eligibility = [{**r, "tried": json.dumps(r["tried"], default=_json_scalar)} for r in reports]
     out.bases = [{**record(base), "rate": rate} for rate, base in bases]
     base_by_id = {b.base_id: b for _, b in bases}
-    contexts, out.skipped = design_contexts(bases, cfg, root_seed, family_id)
+    contexts, skipped = design_contexts(bases, cfg, root_seed, family_id)
+    out.skipped += skipped
     for context in contexts:
         base = base_by_id[context.base_id]
         sub = context_rows(table, base, context)

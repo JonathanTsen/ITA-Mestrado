@@ -20,6 +20,7 @@ class SourcesConfig:
     table: str = "data_rb/sources_local.csv"
     csv_dir: str = ""
     roles: tuple[str, ...] = ("dev",)
+    sentinel_exclusions: str = ""  # CSV openml_id,column,...: colunas que codificam "não medido" (excluídas da tabela)
 
 
 @dataclass(frozen=True)

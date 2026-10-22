@@ -17,7 +17,7 @@ from missdetect.rb import features as feat
 from missdetect.rb.baselines import little, mechdetect_obs
 from missdetect.rb.baselines.logit_simple import LOGIT_SIMPLE_FEATURES
 from missdetect.rb.baselines.pklm_r import run_pklm
-from missdetect.rb.bench import generate_family
+from missdetect.rb.bench import generate_family, load_sentinel_exclusions
 from missdetect.rb.config import RunConfig
 from missdetect.rb.evaluate import (
     N_CLASSES,
@@ -48,9 +48,9 @@ NUISANCE = ("g0_missing_rate", "meta_n", "meta_k", "meta_n_unique_yobs")
 # ---------------------------------------------------------------------------------------------------------------------
 # Geração
 # ---------------------------------------------------------------------------------------------------------------------
-def _family_worker(run_dir: Path, csv_dir: Path, source: pd.Series, config: RunConfig):
+def _family_worker(run_dir: Path, csv_dir: Path, source: pd.Series, config: RunConfig, excluded: frozenset[str]):
     with threadpool_limits(1):
-        return generate_family(run_dir, csv_dir, source, config.inject, config.root_seed)
+        return generate_family(run_dir, csv_dir, source, config.inject, config.root_seed, excluded)
 
 
 def run_inject(config: RunConfig, n_jobs: int) -> Path:
@@ -58,10 +58,22 @@ def run_inject(config: RunConfig, n_jobs: int) -> Path:
     chosen = sources[sources.representative & sources.role.isin(config.sources.roles)].sort_values("family_id")
     if chosen.empty:
         raise ValueError("nenhuma família com os papéis pedidos")
+    exclusions = load_sentinel_exclusions(config.sources.sentinel_exclusions)
     run_dir = new_run_dir(config)
-    append_run_log(run_dir, config, "inject", {"families": chosen.family_id.astype(int).tolist()})
+    append_run_log(
+        run_dir,
+        config,
+        "inject",
+        {
+            "families": chosen.family_id.astype(int).tolist(),
+            "sentinel_exclusions": {str(k): sorted(v) for k, v in exclusions.items()},
+        },
+    )
     outputs = Parallel(n_jobs=n_jobs)(
-        delayed(_family_worker)(run_dir, Path(config.sources.csv_dir), row, config) for _, row in chosen.iterrows()
+        delayed(_family_worker)(
+            run_dir, Path(config.sources.csv_dir), row, config, frozenset(exclusions.get(int(row.openml_id), set()))
+        )
+        for _, row in chosen.iterrows()
     )
     _write_generation(run_dir, outputs, extra_tables=("eligibility", "skipped"))
     write_parquet(
