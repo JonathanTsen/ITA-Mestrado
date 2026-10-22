@@ -33,5 +33,5 @@ baselines:
   mechdetect_cv_folds: 10
   pklm_num_proj: 100
   pklm_nrep: 200
-  pklm_max_instances: 1200                         # 6 contextos inteiros por família (1.098 instâncias com 61 famílias)
+  pklm_max_instances: 1200                         # floor(1200 / (3 × nº de famílias)) contextos inteiros por família
   n_jobs: 8

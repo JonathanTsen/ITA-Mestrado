@@ -2,7 +2,7 @@
 
 > **Situação: RASCUNHO para ratificação do orientador (D11).** A tag `prereg-v1` só é criada depois da resposta do Prof. Vitor Curtis. Até lá, nenhuma instância das famílias confirmatórias é gerada. Toda mudança depois da tag vai para `desvios.md` (item 9).
 
-- **Rascunho:** 21/10/2026, revisado depois de uma revisão independente.
+- **Rascunho:** 21/10/2026; revisado no mesmo dia depois de uma revisão independente; atualizado em 22/10 (análises implementadas, metadados do OpenML).
 - **Configuração congelada:** tag `freeze-v1`, com `inject-v1.yaml`, os descritores 34b e as famílias. O adendo `data_rb/freeze_v1_addendum.json` registra o N efetivo.
 - **Corpus sintético:** tag `synth-v2`.
 - **Código da análise:** `src/missdetect/rb/stats.py`, entra no commit da tag.
@@ -14,7 +14,7 @@
 
 ## 1. Dados
 
-**Fontes.** As 101 tabelas OpenML avaliadas pelo MechDetect, a partir dos CSV distribuídos com o código dos autores (`calgo-lab/MechDetect@43c0f00`). O SHA-256 de cada arquivo está em `data_rb/sources_local.csv` e é conferido a cada leitura.
+**Fontes.** As 101 tabelas OpenML avaliadas pelo MechDetect, a partir dos CSV distribuídos com o código dos autores (`calgo-lab/MechDetect@43c0f00`). O SHA-256 de cada arquivo está em `data_rb/sources_local.csv` e é conferido a cada leitura. Os metadados do OpenML (nome, versão, licença, URL de origem) estão em `data_rb/openml_metadata_20261022.csv`, coletados em 22/10/2026. O número de linhas de cada CSV confere com o OpenML nas 101 tabelas, e os nomes do OpenML confirmaram o agrupamento em famílias sem mudança. A tese cita os IDs do OpenML e não redistribui os dados.
 
 **Filtros de tabela.** Ficam as tabelas:
 - sem valores ausentes;
@@ -31,7 +31,7 @@ Resultado: 98 de 101 tabelas.
 **Colunas sentinela.** Uma coluna sai da tabela quando um valor codifica "não medido", seja por documentação da fonte, seja por ser fisicamente impossível pela definição da variável.
 - A lista está em `data_rb/sentinel_exclusions.csv`. Hoje tem só a Pima, que é de desenvolvimento: `plas`, `pres`, `skin`, `insu` e `mass` iguais a 0.
 - Não há regra automática por massa num valor de fronteira.
-- Se os metadados do OpenML (pendentes) revelarem outra coluna desse tipo numa tabela confirmatória, ela entra na lista **antes** da produção, com registro em `desvios.md`.
+- As descrições do OpenML das 69 tabelas representantes foram conferidas em 22/10/2026 (`scripts/revisao_banca/passo31/openml_sentinelas.py`). Nenhuma documenta um código de "não medido" em coluna numérica, e a própria descrição da Pima diz "Missing Attribute Values: None". Por isso os zeros da Pima entram pelo critério de impossibilidade física, e a lista não muda.
 
 **Elegibilidade do par (Y, Z).** Calculada na subamostra de até 2.000 linhas da base (a maior subamostra), com todas as auxiliares candidatas, antes de qualquer máscara:
 - Y e o driver precisam ter ≥ 20 valores distintos e moda ≤ 50% das linhas;

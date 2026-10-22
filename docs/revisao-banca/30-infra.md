@@ -15,7 +15,7 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `synth.py` | 33 | corpus sintético (cópula gaussiana, R² latente controlado, mesmos geradores) |
 | `features.py` | 34 | descritores observáveis (schema `34b`, congelado em `freeze-v1`) |
 | `splits.py`, `models.py`, `evaluate.py` | 35 | CV por família, direto/hierárquico, calibração interna, métricas |
-| `baselines/` | 36, 39 | MechDetect oficial e observed-only, Little, PKLM (R), logística simples |
+| `baselines/` | 36, 39 | MechDetect oficial (clean e dirty) e observed-only, Little, PKLM (R), logística simples |
 | `pipeline.py`, `report.py` | 37 | etapas de um run e relatório do piloto |
 | `stats.py` | 38/46 | H1–H4: Wilcoxon-Pratt + Holm, Hodges–Lehmann com bootstrap, rank-biserial, ROPE (baycomp), decisão |
 | `analyses.py` | 39/40/46 | L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade da massa na fronteira |
@@ -27,42 +27,45 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 
 | Arquivo | Quem lê |
 |---|---|
-| `run.json`, `run.<etapa>.json` | todos: commits do código e do plano, sha256 do `uv.lock`, config, sementes, versões, máquina, data |
-| `eligibility.parquet`, `bases.parquet`, `contexts.parquet`, `skipped.parquet` | desenho |
+| `run.json`, `run.<etapa>.json` | todos: commits do código e do plano (com flag de árvore suja), sha256 do `uv.lock`, config, sementes, versões (Python, R, PKLMtest), máquina, data |
+| `eligibility.parquet`, `bases.parquet`, `contexts.parquet`, `skipped.parquet`, `family_status.parquet`, `timing_inject.parquet` | desenho: tentativas de elegibilidade, bases, contextos, colisões, sentinelas excluídos, trios recusados e famílias sem base |
 | `instances.parquet` | `sample_id`, `context_id`, `family_id`, `observed_path`, `realized_rate` — **sem** mecanismo |
-| `observed/<sample_id>.parquet` | descritores e baselines observed-only: coluna `y` (NaN nas ausentes) + auxiliares |
+| `observed/<sample_id>.parquet` | descritores e baselines observed-only: coluna `y` (NaN nas ausentes) + auxiliares em ordem sorteada |
 | `oracle.parquet` | só a avaliação: mecanismo, gerador, variante, determinismo, hash da máscara |
 | `oracle_complete/<context_id>.parquet` | só o painel oráculo e os testes: Y completo |
-| `features.parquet` (+ `features_parts/`) | checkpoint por `sample_id` |
-| `baselines.parquet`, `pklm.parquet` | MechDetect-O, MechDetect oráculo, Little; PKLM |
-| `eval-<geradores>/` | `predictions.parquet`, `per_family.parquet`, `summary.csv`, `choices.json` |
-| `report/` | relatório do piloto |
+| `features.parquet` (+ `features_parts/`), `feature_schema.json` | descritores 34b, com checkpoint por `sample_id` |
+| `oracle_features.parquet` | descritores-oráculo, só do painel oráculo |
+| `baselines.parquet`, `pklm.parquet` | MechDetect-O, MechDetect oráculo (clean), MechDetect dirty, Little; PKLM (subconjunto) |
+| `eval-symmetric/`, `eval-all/`, `eval-<gerador>/` | `predictions.parquet`, `per_family.parquet`, `summary.csv`, `choices.json` |
+| `stats_confirmatory.csv` | H1–H4 (Holm m = 4) |
+| `secondary/` | L1 secundária, recall por mecanismo, L2, CD, sensibilidade da massa na fronteira |
+| `eval-ablation/`, `eval-logo/`, `transfer-<corpus>/` | RQ2, leave-one-generator-out e transferência sintético → real |
+| `report/` | relatório do piloto (só nas famílias de desenvolvimento) |
 
-## Ordem de execução
+## Ordem de execução da produção (depois da tag `prereg-v1`)
+
+Os CSV-fonte ficam em `/tmp/rb_mechdetect_run/mech-detect-datasets/` (fora do repositório). Se tiverem sumido, reextraia com `tar -xzf ~/work/MechDetect/src/auc_roc_scores/datasets.tar.gz -C /tmp/rb_mechdetect_run/`. O `inject` confere o SHA-256 de cada arquivo antes de ler.
 
 ```bash
 export OMP_NUM_THREADS=1
-uv run --frozen python -m missdetect.rb.cli inject    --config configs/rb/pilot-dev.yaml
-uv run --frozen python -m missdetect.rb.cli features  --config configs/rb/pilot-dev.yaml --run <run>
-uv run --frozen python -m missdetect.rb.cli baselines --config configs/rb/pilot-dev.yaml --run <run>
-uv run --frozen python -m missdetect.rb.cli evaluate  --config configs/rb/pilot-dev.yaml --run <run> --generators symmetric
-uv run --frozen python -m missdetect.rb.cli evaluate  --config configs/rb/pilot-dev.yaml --run <run>
-uv run --frozen python -m missdetect.rb.cli report    --config configs/rb/pilot-dev.yaml --run <run>
+C=configs/rb/inject-v1.yaml
+uv run --frozen python -m missdetect.rb.cli inject          --config $C                # → results_rb/<run>
+uv run --frozen python -m missdetect.rb.cli features        --config $C --run <run>
+uv run --frozen python -m missdetect.rb.cli oracle-features --config $C --run <run>    # antes do evaluate
+uv run --frozen python -m missdetect.rb.cli baselines       --config $C --run <run>    # PKLM: 8 contextos por família
+uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators symmetric
+uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run>
+uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators mdatagen
+uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators tab_err
+uv run --frozen python -m missdetect.rb.cli stats           --config $C --run <run>    # H1–H3 (+ H4 com --llm-per-family)
+uv run --frozen python -m missdetect.rb.cli secondary       --config $C --run <run>
+uv run --frozen python -m missdetect.rb.cli ablation        --config $C --run <run>
+uv run --frozen python -m missdetect.rb.cli logo            --config $C --run <run>
+uv run --frozen python -m missdetect.rb.cli transfer        --config $C --run <run> --synth-run data_rb/synth/20261022-synth-v2-5d31a737645b
+uv run --frozen python -m missdetect.rb.cli evaluate        --config configs/rb/synth-v2.yaml --run data_rb/synth/20261022-synth-v2-5d31a737645b   # controle sintético
 ```
 
-O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`).
-
-Análises do pré-registro (depois do `evaluate`):
-
-```bash
-uv run --frozen python -m missdetect.rb.cli stats            --config <cfg> --run <run> [--llm-per-family <painel>]
-uv run --frozen python -m missdetect.rb.cli oracle-features  --config <cfg> --run <run>   # antes do evaluate, para o painel oráculo
-uv run --frozen python -m missdetect.rb.cli ablation         --config <cfg> --run <run>
-uv run --frozen python -m missdetect.rb.cli logo             --config <cfg> --run <run>
-uv run --frozen python -m missdetect.rb.cli transfer         --config <cfg> --run <run> --synth-run data_rb/synth/<synth-v2>
-uv run --frozen python -m missdetect.rb.cli secondary        --config <cfg> --run <run>
-```
-Os CSV das tabelas vêm de `MechDetect/src/auc_roc_scores/datasets.tar.gz` (ver `sources.py`).
+O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`). O piloto usou a mesma sequência com `configs/rb/pilot-dev.yaml`, mais `report`.
 
 ## Testes que provam a ausência de vazamento (`tests/rb/`)
 

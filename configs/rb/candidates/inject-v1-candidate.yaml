@@ -1,3 +1,5 @@
+# SUPERADO pelo configs/rb/inject-v1.yaml (tag freeze-v1). Os números abaixo são do piloto r1, inválido; os do r2
+# estão em plano-revisao-banca/execucao/37-piloto.md. Mantido só como histórico da proposta.
 # Candidato à config `inject-v1` (passo 37). NÃO congelado: depende da D4 (gerador principal, grade, N de famílias).
 # Mudança proposta pelo piloto: grade de β {1, 2, 4, 8, ∞} no lugar de {0,5; 1; 2; 4; ∞}.
 #   - β = 0,5 e β = 1 ficaram ambos no acaso, até para o MechDetect oráculo (macro-recall 0,33 e 0,39): redundantes;

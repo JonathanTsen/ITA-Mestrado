@@ -7,13 +7,13 @@ Comandos:
     inject     gera o benchmark real injetado num run novo (`results_rb/<data>-<nome>-<hash>/`)
     synth      gera o corpus sintético num run novo
     features   descritores observáveis de um run (checkpoint por sample_id)
-    baselines  MechDetect-O, painel oráculo, Little e PKLM de um run
+    baselines  MechDetect-O, MechDetect oráculo (clean e dirty), Little e PKLM de um run
     evaluate   avaliador único (CV por família) sobre os descritores e baselines de um run
     report     relatório do piloto (tempos, inelegíveis, detectabilidade, atalhos, sd_Δ, MDE)
-    llm        passos 42/43 (depende da D5)
+    llm        passos 42/43 (a implementar; precisa das chaves de API e da tag prereg-v1-llm)
     noise      passo 44
     stats      testes confirmatórios H1–H4 (Wilcoxon-Pratt + Holm, Hodges–Lehmann, ROPE) de um run avaliado
-    oracle-features  descritores-oráculo (Y completo) para o painel de informação privilegiada
+    oracle-features  descritores-oráculo (Y completo) para o painel oráculo; rodar antes do evaluate
     ablation   RQ2: todos os descritores × sem cada grupo G1–G4 (Holm m = 4)
     logo       leave-one-generator-out (exploratória)
     transfer   treino só no corpus sintético, aplicado ao run real (exploratória; --synth-run)
@@ -34,7 +34,7 @@ COMMANDS = (
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise",
 )  # fmt: skip
 NOT_YET = {
-    "llm": "passos 42/43: dependem da D5 (provedores e orçamento) — ainda não implementado",
+    "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
     "noise": "passo 44 — ainda não implementado",
 }
 
