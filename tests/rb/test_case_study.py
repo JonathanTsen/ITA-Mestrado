@@ -1,5 +1,7 @@
 """Testes do passo 45: estudo de caso com ausência natural, sem fabricar mecanismo (IND-22) e sem métrica de acerto."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -117,3 +119,18 @@ def test_registry_requires_a_reason_for_every_exclusion(tmp_path):
 def test_unusable_cases_fail_with_the_specific_reason(change, message):
     with pytest.raises(ValueError, match=message):
         build_case(change(_table()), _spec())
+
+
+def test_versioned_registry_is_valid_and_matches_the_manifest():
+    root = Path(__file__).resolve().parents[2] / "data_rb"
+    specs = parse_registry(root / "case_study_sources.csv")
+    ids = [s["case_id"] for s in specs]
+    assert len(ids) == len(set(ids))
+    sources = set(pd.read_csv(root / "case_study_manifest.csv").source)
+    for spec in specs:
+        if spec["include"]:
+            assert spec["source"] in sources, spec["case_id"]
+            assert spec["missing_rule"] in ("natural", "zero_impossible") or spec["missing_rule"].startswith(
+                "below_lod:"
+            )
+            assert spec["hypothesis"] and spec["evidence"], spec["case_id"]
