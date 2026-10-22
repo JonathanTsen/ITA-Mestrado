@@ -4,6 +4,7 @@ Verifica a separação física observado × oráculo, o checkpoint por sample_id
 (inclusive os de regra) e que nada é sobrescrito.
 """
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -234,3 +235,45 @@ def test_transfer_predicts_every_real_instance(extended):
     assert "transfer_all" in set(pred.method)
     matrix = pd.read_csv(transfer_dir / "transfer_matrix.csv")
     assert {"all", "symmetric"} <= set(matrix.train)
+
+
+@pytest.fixture(scope="module")
+def noisy(run, extended):
+    """RQ3 (passo 44) sobre o run pequeno (depois do `extended`, que grava eval-symmetric), uma semente por célula."""
+    run_dir, config = run
+    return run_dir, pipeline.run_noise(run_dir, config, n_jobs=2, n_seeds=1), config
+
+
+def test_noise_outputs_and_label_immutability(noisy):
+    run_dir, out_dir, _ = noisy
+    for name in ("predictions.parquet", "flags.parquet", "per_family.parquet", "rq3_tests.csv",
+                 "degradation_curves.csv", "flag_summary.csv", "overlap_by_beta.csv", "overlap_by_r2.csv",
+                 "settings.csv", "degradation.png"):  # fmt: skip
+        assert (out_dir / name).exists(), name
+    log = json.loads((run_dir / "run.noise.json").read_text())
+    assert log["labels_sha256_before"] == log["labels_sha256_after"]
+    assert log["oracle_sha256_before"] == log["oracle_sha256_after"]
+    pred = pd.read_parquet(out_dir / "predictions.parquet")
+    oracle = pd.read_parquet(run_dir / "oracle.parquet")[["sample_id", "mechanism"]]
+    truth = oracle.set_index("sample_id").mechanism.map({"MCAR": 0, "MAR": 1, "MNAR": 2})
+    assert (pred.y_true.to_numpy() == pred.sample_id.map(truth).to_numpy()).all()
+    tests = pd.read_csv(out_dir / "rq3_tests.csv")
+    assert len(tests) == 4
+
+
+def test_clean_noise_reference_equals_the_primary_evaluation(noisy):
+    run_dir, out_dir, _ = noisy
+    pred = pd.read_parquet(out_dir / "predictions.parquet")
+    clean = pred[(pred.noise_kind == "clean") & (pred.mitigation == "none")]
+    primary = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    primary = primary[primary.method == "direct_hgb"]
+    cols = ["repeat", "fold", "sample_id"]
+    merged = clean.merge(primary, on=cols, suffixes=("_noise", "_primary"))
+    assert len(merged) == len(primary) == len(clean)
+    np.testing.assert_allclose(merged.p_MCAR_noise, merged.p_MCAR_primary)
+
+
+def test_noise_is_not_overwritten(noisy):
+    run_dir, _, config = noisy
+    with pytest.raises(FileExistsError):
+        pipeline.run_noise(run_dir, config, n_jobs=1, n_seeds=1)

@@ -60,15 +60,19 @@ class Calibrated:
         self.method = method
         self.maps: list = []
 
-    def fit(self, oof_proba: np.ndarray, y: np.ndarray) -> "Calibrated":
+    def fit(self, oof_proba: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None = None) -> "Calibrated":
         self.maps = []
         for c in range(oof_proba.shape[1]):
             target = (y == c).astype(int)
             score = np.clip(oof_proba[:, c], 1e-6, 1 - 1e-6)
             if self.method == "platt":
-                model = LogisticRegression().fit(np.log(score / (1 - score)).reshape(-1, 1), target)
+                model = LogisticRegression().fit(
+                    np.log(score / (1 - score)).reshape(-1, 1), target, sample_weight=sample_weight
+                )
             else:
-                model = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0).fit(score, target)
+                model = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0).fit(
+                    score, target, sample_weight=sample_weight
+                )
             self.maps.append(model)
         return self
 
@@ -87,19 +91,26 @@ class Calibrated:
         return out / out.sum(axis=1, keepdims=True)
 
 
-def _oof(learner: BaseEstimator, X: np.ndarray, y: np.ndarray, folds) -> np.ndarray:
+def _weights(sample_weight: np.ndarray | None, rows) -> dict:
+    """Argumento `sample_weight` do `fit`, só quando há pesos (sem pesos, a chamada é idêntica à original)."""
+    return {} if sample_weight is None else {"sample_weight": sample_weight[rows]}
+
+
+def _oof(
+    learner: BaseEstimator, X: np.ndarray, y: np.ndarray, folds, sample_weight: np.ndarray | None = None
+) -> np.ndarray:
     n_classes = int(y.max()) + 1
     oof = np.full((len(y), n_classes), np.nan)
     for train, test in folds:
-        model = clone(learner).fit(X[train], y[train])
+        model = clone(learner).fit(X[train], y[train], **_weights(sample_weight, train))
         proba = np.zeros((len(test), n_classes))
         proba[:, model.classes_] = model.predict_proba(X[test])
         oof[test] = proba
     return oof
 
 
-def _log_loss(proba: np.ndarray, y: np.ndarray) -> float:
-    return float(-np.mean(np.log(np.clip(proba[np.arange(len(y)), y], 1e-12, None))))
+def _log_loss(proba: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None = None) -> float:
+    return float(-np.average(np.log(np.clip(proba[np.arange(len(y)), y], 1e-12, None)), weights=sample_weight))
 
 
 @dataclass
@@ -126,23 +137,27 @@ def fit_probabilistic(
     families: pd.Series,
     seed: int,
     calibrations=("platt", "isotonic"),
+    sample_weight: np.ndarray | None = None,
 ) -> tuple[FittedProbabilistic, np.ndarray]:
     """Ajusta o aprendiz no treino inteiro e escolhe o calibrador (ou nenhum) pelo log-loss nas predições OOF internas.
 
-    Devolve também as probabilidades OOF internas calibradas (usadas para escolher limiares e zonas)."""
+    Devolve também as probabilidades OOF internas calibradas (usadas para escolher limiares e zonas). Com
+    `sample_weight` (mitigação por pesos da RQ3), os pesos entram em todas as etapas: OOF, calibradores, escolha pelo
+    log-loss e modelo final."""
     folds = inner_splits(families, seed)
-    oof = _oof(learner, X, y, folds)
+    oof = _oof(learner, X, y, folds, sample_weight)
     n_classes = oof.shape[1]
     candidates = {"none": (None, oof)}
     for method in calibrations:
         cal_oof = np.zeros_like(oof)
         for train, test in folds:  # cross-fitting: o calibrador de cada fold não vê esse fold
-            cal_oof[test] = Calibrated(method).fit(oof[train], y[train]).transform(oof[test])
+            w = None if sample_weight is None else sample_weight[train]
+            cal_oof[test] = Calibrated(method).fit(oof[train], y[train], w).transform(oof[test])
         candidates[method] = (method, cal_oof)
-    scores = {name: _log_loss(p, y) for name, (_, p) in candidates.items()}
+    scores = {name: _log_loss(p, y, sample_weight) for name, (_, p) in candidates.items()}
     best = min(scores, key=scores.get)
-    final = clone(learner).fit(X, y)
-    calibrator = Calibrated(best).fit(oof, y) if best != "none" else None
+    final = clone(learner).fit(X, y, **_weights(sample_weight, slice(None)))
+    calibrator = Calibrated(best).fit(oof, y, sample_weight) if best != "none" else None
     return FittedProbabilistic(
         final, calibrator, n_classes, {"calibration": best, "inner_log_loss": scores}
     ), candidates[best][1]
@@ -180,9 +195,11 @@ class DirectClassifier:
     learner_params: dict
     seed: int
 
-    def fit(self, X: np.ndarray, y: np.ndarray, families: pd.Series) -> "DirectClassifier":
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, families: pd.Series, sample_weight: np.ndarray | None = None
+    ) -> "DirectClassifier":
         learner = make_learner(self.learner_name, self.seed, **self.learner_params)
-        self.model_, _ = fit_probabilistic(learner, X, y, families, self.seed)
+        self.model_, _ = fit_probabilistic(learner, X, y, families, self.seed, sample_weight=sample_weight)
         self.choices_ = dict(self.model_.choice)
         return self
 

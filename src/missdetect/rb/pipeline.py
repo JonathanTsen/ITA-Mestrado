@@ -5,15 +5,18 @@ As etapas que veem as instâncias (descritores, MechDetect-O, Little, PKLM) leem
 o painel oráculo leem `oracle.parquet` / `oracle_complete/`.
 """
 
+import hashlib
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from matplotlib.figure import Figure
 from threadpoolctl import threadpool_limits
 
 from missdetect.rb import features as feat
+from missdetect.rb import noise
 from missdetect.rb.analyses import (
     bootstrap_mean_ci,
     boundary_sensitivity,
@@ -607,4 +610,95 @@ def run_secondary(run_dir: Path, config: RunConfig) -> Path:
         write_json(out_dir / "descriptive_classifiers.json", cd)
     boundary_sensitivity(run_dir, pred, f"direct_{learner}").to_csv(out_dir / "boundary_sensitivity.csv", index=False)
     append_run_log(run_dir, config, "secondary", {"outputs": sorted(p.name for p in out_dir.iterdir())})
+    return out_dir
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# RQ3: ruído de rótulo controlado (passo 44; pré-registro, item 6)
+# ---------------------------------------------------------------------------------------------------------------------
+def _noise_worker(setting, X, y, frame: pd.DataFrame, config: RunConfig):
+    kind, rate, seed = setting
+    noisy = y.copy()
+    if kind != "clean":
+        rng = child_rng(config.root_seed, "noise", kind, rate, seed)
+        noisy = noise.corrupt_labels(y, frame.context_id, frame.family_id, rate, kind, rng)
+    ev = config.evaluate
+    pred, flags = noise.run_setting(
+        X, y, noisy, frame.family_id, frame.sample_id, config.root_seed, ev.learner,
+        child_seed(config.root_seed, "model"), ev.n_splits, ev.n_repeats,
+    )  # fmt: skip
+    cell = {"noise_kind": kind, "noise_rate": rate, "noise_seed": seed}
+    realized = {
+        **cell,
+        "n": len(y),
+        "n_corrupted": int((noisy != y).sum()),
+        "realized_rate": float(np.mean(noisy != y)),
+    }
+    return pred.assign(**cell), flags.assign(**cell), realized
+
+
+def _labels_sha(y: np.ndarray) -> str:
+    return hashlib.sha256(np.ascontiguousarray(y, dtype=np.int64).tobytes()).hexdigest()
+
+
+def _degradation_figure(curves: pd.DataFrame, path: Path) -> None:
+    fig = Figure(figsize=(9, 3.6))
+    for i, kind in enumerate(noise.KINDS):
+        ax = fig.add_subplot(1, 2, i + 1)
+        for mitigation in noise.MITIGATIONS:
+            c = curves[(curves.noise_kind == kind) & (curves.mitigation == mitigation)].sort_values("noise_rate")
+            ax.plot(c.noise_rate, c.macro_recall_mean, marker="o", label=mitigation)
+            ax.fill_between(c.noise_rate, c.ci_low, c.ci_high, alpha=0.15)
+        ax.axhline(1 / 3, color="grey", linestyle="--", linewidth=1)
+        ax.set_title("symmetric" if kind == "symmetric" else "MAR ↔ MNAR")
+        ax.set_xlabel("training label noise rate")
+        ax.set_ylabel("macro-recall (clean test)")
+        ax.set_ylim(0, 1)
+        ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+
+
+def run_noise(run_dir: Path, config: RunConfig, n_jobs: int, n_seeds: int = noise.N_SEEDS) -> Path:
+    """RQ3 (secundária, Holm m = 4): ruído de rótulo só no treino da configuração primária, no gerador principal, com
+    as mesmas partições da avaliação primária; teste sempre com os rótulos verdadeiros (hash conferido antes e depois).
+    """
+    out_dir = run_dir / "noise"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    oracle_sha_before = sha256_path(run_dir / "oracle.parquet")
+    frame = load_eval_frame(run_dir, ("symmetric",))
+    frame = frame.merge(pd.read_parquet(run_dir / "bases.parquet")[["base_id", "r2_cv"]], on="base_id", how="left")
+    X = frame[feature_columns(frame)].to_numpy(float)
+    y = frame.label.to_numpy()
+    labels_sha_before = _labels_sha(y)
+    settings = noise.noise_settings(n_seeds)
+    results = Parallel(n_jobs=n_jobs)(delayed(_noise_worker)(s, X, y, frame, config) for s in settings)
+    labels_sha_after = _labels_sha(frame.label.to_numpy())
+    oracle_sha_after = sha256_path(run_dir / "oracle.parquet")
+    if (labels_sha_before, oracle_sha_before) != (labels_sha_after, oracle_sha_after):
+        raise RuntimeError("os rótulos verdadeiros mudaram durante a RQ3")
+    pred = pd.concat([p for p, _, _ in results], ignore_index=True)
+    pred = mark_failures(pred.assign(method="noise_" + pred.mitigation), frame).drop(columns="method")
+    flags = pd.concat([f for _, f, _ in results], ignore_index=True)
+    per_family = noise.per_family_noise(pred)
+    curves = noise.degradation_curves(per_family)
+    by_beta, by_r2 = noise.overlap_flags(flags, frame[["sample_id", "beta", "r2_cv"]])
+    out_dir.mkdir()
+    write_parquet(pred, out_dir / "predictions.parquet")
+    write_parquet(flags, out_dir / "flags.parquet")
+    write_parquet(per_family, out_dir / "per_family.parquet")
+    noise.rq3_tests(per_family).to_csv(out_dir / "rq3_tests.csv", index=False)
+    curves.to_csv(out_dir / "degradation_curves.csv", index=False)
+    noise.flag_summary(flags).to_csv(out_dir / "flag_summary.csv", index=False)
+    by_beta.to_csv(out_dir / "overlap_by_beta.csv", index=False)
+    by_r2.to_csv(out_dir / "overlap_by_r2.csv", index=False)
+    pd.DataFrame([r for _, _, r in results]).to_csv(out_dir / "settings.csv", index=False)
+    _degradation_figure(curves, out_dir / "degradation.png")
+    append_run_log(
+        run_dir, config, "noise",
+        {"settings": [list(s) for s in settings], "n_instances": len(frame),
+         "labels_sha256_before": labels_sha_before, "labels_sha256_after": labels_sha_after,
+         "oracle_sha256_before": oracle_sha_before, "oracle_sha256_after": oracle_sha_after},
+    )  # fmt: skip
     return out_dir

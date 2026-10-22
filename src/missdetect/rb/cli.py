@@ -11,7 +11,7 @@ Comandos:
     evaluate   avaliador único (CV por família) sobre os descritores e baselines de um run
     report     relatório do piloto (tempos, inelegíveis, detectabilidade, atalhos, sd_Δ, MDE)
     llm        passos 42/43 (a implementar; precisa das chaves de API e da tag prereg-v1-llm)
-    noise      passo 44
+    noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     stats      testes confirmatórios H1–H4 (Wilcoxon-Pratt + Holm, Hodges–Lehmann, ROPE) de um run avaliado
     oracle-features  descritores-oráculo (Y completo) para o painel oráculo; rodar antes do evaluate
     ablation   RQ2: todos os descritores × sem cada grupo G1–G4 (Holm m = 4)
@@ -35,7 +35,6 @@ COMMANDS = (
 )  # fmt: skip
 NOT_YET = {
     "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
-    "noise": "passo 44 — ainda não implementado",
 }
 
 
@@ -63,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/per_family.parquet)")
     p.add_argument("--llm-per-family", type=Path, default=None, help="per_family.parquet do painel de LLM (H4)")
-    for name in ("oracle-features", "ablation", "logo", "transfer", "secondary"):
+    for name in ("oracle-features", "ablation", "logo", "transfer", "secondary", "noise"):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
         p.add_argument("--run", type=Path, required=True, help="diretório do run")
@@ -109,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_transfer(args.synth_run, args.run, config))
     elif args.command == "secondary":
         print(pipeline.run_secondary(args.run, config))
+    elif args.command == "noise":
+        print(pipeline.run_noise(args.run, config, n_jobs))
     elif args.command == "stats":
         print(pipeline.run_stats(args.run, config, args.llm_per_family))
     return 0
