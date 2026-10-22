@@ -38,6 +38,7 @@ from missdetect.rb.runs import (
     write_json,
     write_parquet,
 )
+from missdetect.rb.stats import confirmatory
 from missdetect.rb.synth import design as synth_design
 from missdetect.rb.synth import generate_base
 
@@ -76,6 +77,15 @@ def run_inject(config: RunConfig, n_jobs: int) -> Path:
         for _, row in chosen.iterrows()
     )
     _write_generation(run_dir, outputs, extra_tables=("eligibility", "skipped"))
+    # Famílias sem nenhuma base elegível saem do run por regra: ficam registradas aqui, nunca somem em silêncio.
+    status = pd.DataFrame(
+        [{"family_id": o.family_id, "n_bases": len(o.bases), "n_contexts": len(o.contexts), "n_instances": len(o.instances)}
+         for o in outputs]
+    )  # fmt: skip
+    write_parquet(status, run_dir / "family_status.parquet")
+    without = status[status.n_bases == 0].family_id.tolist()
+    if without:
+        print(f"famílias sem base elegível (excluídas por regra): {without}")
     write_parquet(
         pd.DataFrame([{"family_id": o.family_id, "seconds": o.seconds} for o in outputs]),
         run_dir / "timing_inject.parquet",
@@ -346,3 +356,18 @@ def run_evaluate(run_dir: Path, config: RunConfig, n_jobs: int, generators: tupl
     write_json(out_dir / "choices.json", {"choices": [c for _, cs in results for c in cs]})
     append_run_log(run_dir, config, label, {"n_instances": len(frame), "methods": list(specs), "n_jobs": n_jobs})
     return out_dir
+
+
+def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = None) -> Path:
+    """H1–H4 com Holm (m = 4) a partir das métricas por família da avaliação no gerador principal."""
+    out = run_dir / "stats_confirmatory.csv"
+    if out.exists():
+        raise FileExistsError(f"{out} já existe; não sobrescrevo.")
+    main = pd.read_parquet(run_dir / "eval-symmetric" / "per_family.parquet")
+    llm = pd.read_parquet(llm_per_family) if llm_per_family else None
+    result = confirmatory(main, llm)
+    result.to_csv(out, index=False)
+    append_run_log(
+        run_dir, config, "stats", {"hypotheses": result.hypothesis.tolist(), "llm_panel": bool(llm_per_family)}
+    )
+    return out

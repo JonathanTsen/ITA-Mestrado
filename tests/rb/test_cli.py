@@ -20,7 +20,7 @@ def test_help_lists_all_commands():
     assert set(COMMANDS) >= {"sources", "inject", "features", "evaluate", "baselines", "llm", "noise", "stats"}
 
 
-@pytest.mark.parametrize("command", ["llm", "noise", "stats"])
+@pytest.mark.parametrize("command", ["llm", "noise"])
 def test_pending_commands_fail_explicitly(command):
     with pytest.raises(SystemExit, match=r"não implementado|D5"):
         main([command])

@@ -147,3 +147,10 @@ def test_versioned_sentinel_list_is_read():
         str(Path(__file__).resolve().parents[2] / "data_rb" / "sentinel_exclusions.csv")
     )
     assert exclusions == {37: {"plas", "pres", "skin", "insu", "mass"}}
+
+
+def test_family_status_is_recorded(run):
+    run_dir, _ = run
+    status = pd.read_parquet(run_dir / "family_status.parquet")
+    assert len(status) == N_FAMILIES and (status.n_bases > 0).all()
+    assert status.n_instances.sum() == len(pd.read_parquet(run_dir / "instances.parquet"))

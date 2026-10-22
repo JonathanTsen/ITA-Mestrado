@@ -33,7 +33,7 @@ from missdetect.rb.inject import (
     sample_base,
 )
 from missdetect.rb.runs import instance_row, oracle_row, write_complete, write_observed
-from missdetect.rb.sources import id_like, read_local_csv
+from missdetect.rb.sources import id_like, read_local_csv, sha256_file
 
 # Pares determinísticos da mdatagen por direção (MAR sobre o driver ↔ MNAR sobre o próprio Y; MCAR uniforme).
 MDATAGEN_BY_DIRECTION = {
@@ -59,9 +59,16 @@ def _json_scalar(value):
     return value.item() if hasattr(value, "item") else str(value)
 
 
-def load_table(csv_dir: Path, openml_id: int, numeric_columns: list[str]) -> pd.DataFrame:
-    """Tabela completa sem identificadores, só com as colunas numéricas não constantes do perfil (passo 31)."""
-    frame = read_local_csv(Path(csv_dir) / f"{openml_id}.csv")
+def load_table(csv_dir: Path, openml_id: int, numeric_columns: list[str], expected_sha256: str = "") -> pd.DataFrame:
+    """Tabela completa sem identificadores, só com as colunas numéricas não constantes do perfil (passo 31).
+
+    Com `expected_sha256`, confere o arquivo contra o hash registrado no passo 31 antes de ler (os CSV ficam fora do
+    repositório) e falha se divergir.
+    """
+    path = Path(csv_dir) / f"{openml_id}.csv"
+    if expected_sha256 and sha256_file(path) != expected_sha256:
+        raise ValueError(f"{path}: SHA-256 difere do registrado em sources_local.csv")
+    frame = read_local_csv(path)
     frame = frame.drop(columns=id_like(frame))
     return frame[numeric_columns].astype(float)
 
@@ -160,7 +167,7 @@ def generate_family(
     t0 = pd.Timestamp.now()
     family_id, openml_id = int(source.family_id), int(source.openml_id)
     numeric = [c for c in str(source.numeric_columns).split(";") if c not in excluded_columns]
-    table = load_table(csv_dir, openml_id, numeric)
+    table = load_table(csv_dir, openml_id, numeric, str(source.get("sha256_raw", "") or ""))
     out = FamilyOutput(family_id=family_id)
     out.skipped = [{"family_id": family_id, "base_id": "", "reason": f"coluna excluída (sentinela): {c}"}
                    for c in sorted(excluded_columns)]  # fmt: skip

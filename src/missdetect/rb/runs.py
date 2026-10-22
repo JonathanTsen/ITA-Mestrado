@@ -65,6 +65,19 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def r_versions() -> dict:
+    """Versões do R e do PKLMtest (o PKLM roda via Rscript); vazio se o R não estiver instalado."""
+    script = (
+        'cat(R.version.string, "|", tryCatch(as.character(packageVersion("PKLMtest")), error=function(e) "ausente"))'
+    )
+    try:
+        out = subprocess.run(["Rscript", "-e", script], capture_output=True, text=True, check=True, timeout=60)
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        return {}
+    r_version, _, pklm = out.stdout.partition("|")
+    return {"R": r_version.strip(), "PKLMtest": pklm.strip()}
+
+
 def run_metadata(config: RunConfig, command: str) -> dict:
     root = repo_root()
     lock = root / "uv.lock"
@@ -87,6 +100,7 @@ def run_metadata(config: RunConfig, command: str) -> dict:
         "python": platform.python_version(),
         "versions": versions,
         "machine": {"platform": platform.platform(), "processor": platform.processor(), "node": platform.node()},
+        "r": r_versions(),
     }
 
 

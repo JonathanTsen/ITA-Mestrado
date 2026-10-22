@@ -12,7 +12,7 @@ Comandos:
     report     relatório do piloto (tempos, inelegíveis, detectabilidade, atalhos, sd_Δ, MDE)
     llm        passos 42/43 (depende da D5)
     noise      passo 44
-    stats      passo 46
+    stats      testes confirmatórios H1–H4 (Wilcoxon-Pratt + Holm, Hodges–Lehmann, ROPE) de um run avaliado
 
 Execute com OMP_NUM_THREADS=1; os workers também limitam threads com `threadpoolctl`.
 """
@@ -28,7 +28,6 @@ COMMANDS = ("sources", "inject", "synth", "features", "baselines", "evaluate", "
 NOT_YET = {
     "llm": "passos 42/43: dependem da D5 (provedores e orçamento) — ainda não implementado",
     "noise": "passo 44 — ainda não implementado",
-    "stats": "passo 46 — ainda não implementado",
 }
 
 
@@ -52,6 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
             p.add_argument("--only-pklm", action="store_true", help="roda só o PKLM (pklm.parquet)")
         if name == "evaluate":
             p.add_argument("--generators", nargs="*", default=[], help="filtra instâncias por gerador")
+    p = sub.add_parser("stats", help="testes confirmatórios H1–H4 de um run avaliado")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/per_family.parquet)")
+    p.add_argument("--llm-per-family", type=Path, default=None, help="per_family.parquet do painel de LLM (H4)")
     for name in NOT_YET:
         p = sub.add_parser(name, help=NOT_YET[name])
         p.add_argument("--config", type=Path)
@@ -67,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in NOT_YET:
         raise SystemExit(f"{args.command}: {NOT_YET[args.command]}")
     config = load_config(args.config)
-    n_jobs = args.n_jobs or config.features.n_jobs
+    n_jobs = getattr(args, "n_jobs", None) or config.features.n_jobs
     if args.command == "inject":
         print(pipeline.run_inject(config, n_jobs))
     elif args.command == "synth":
@@ -81,6 +84,8 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_evaluate(args.run, config, n_jobs, tuple(args.generators)))
     elif args.command == "report":
         print(report.run_report(args.run, config))
+    elif args.command == "stats":
+        print(pipeline.run_stats(args.run, config, args.llm_per_family))
     return 0
 
 
