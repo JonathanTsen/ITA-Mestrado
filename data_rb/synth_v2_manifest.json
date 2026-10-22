@@ -1,0 +1,23 @@
+{
+  "run_dir": "data_rb/synth/20261022-synth-v2-5d31a737645b",
+  "config_hash": "5d31a737645b",
+  "code_commit": "76c9829ab01fffc8525cceb82e7e406975c926fd",
+  "code_dirty": false,
+  "uv_lock_sha256": "11be0f4f2f02ec44dacebc1cc545c4413e2eae29beb571eeab25dd0331c8ef69",
+  "tables_sha256": {
+    "bases.parquet": "7884254200a17fb6ed3040c09c8b500407c6fe9986aa4f54026fb3b286f9a6b7",
+    "contexts.parquet": "3b294592b9cedf8c64e9bb0f2ffe0726383d10502208c2b6e0732055d0711047",
+    "instances.parquet": "981b0934335d1eb1c4e9ea8ba0bdbf1cbfb6c03917f5dbcda4a1a09f125ba58a",
+    "oracle.parquet": "ea16fb6390d78d489162508339491388981cd5fec80477bdfee9ae0931b2a209",
+    "synth_manifest.parquet": "71de2c59efaa6ecdbfa0e38c0a94c49d9bc1ba589bcc8dc747a6df8b71a292eb"
+  },
+  "n_instances": 5400,
+  "n_bases": 1800,
+  "beta_grid": [
+    1,
+    2,
+    4,
+    8,
+    "inf"
+  ]
+}
