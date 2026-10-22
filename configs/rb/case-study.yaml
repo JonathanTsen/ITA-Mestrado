@@ -1,0 +1,7 @@
+# Estudo de caso da tese (passo 45; decisão D3): aplica o modelo congelado da produção (fit-final no run confirmatório)
+# aos casos do registro data_rb/case_study_sources.csv. Sem métrica de acerto. Tabelas: scripts/revisao_banca/passo45.
+name: case-study
+root_seed: 20261101
+output_root: results_rb
+features:
+  n_jobs: 8

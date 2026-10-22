@@ -4,7 +4,7 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 
 - **Branch de trabalho:** `revisao-banca/fase-c`, criada a partir de `41e00a6`, com push no remoto e ainda **sem PR para a `main`** deste repositório.
 - **Pacote:** `src/missdetect/rb/`, isolado do código legado; testes em `tests/rb/`.
-- **Testes:** **145 passando** (`OMP_NUM_THREADS=1 uv run --frozen pytest -q`).
+- **Testes:** **197 passando** (`OMP_NUM_THREADS=1 uv run --frozen pytest -q`).
 
 ## Documentos deste diretório
 
@@ -31,6 +31,8 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 | `sentinel_exclusions.csv` | Colunas que codificam "não medido" (hoje só a Pima, por impossibilidade física) |
 | `families_freeze_v1.csv`, `freeze_v1_manifest.json`, `freeze_v1_addendum.json`, `eligibility_freeze_v1.csv` | Congelamento e N efetivo |
 | `synth_manifest.*`, `synth_v2_manifest.*` | Manifestos dos corpora sintéticos, com SHA-256 por instância |
+| `case_study_sources.csv` | Registro dos casos do estudo de caso (passo 45): alvo, regra de ausência, Z, hipótese, evidência, citação e motivo de exclusão |
+| `case_study_manifest.csv` | 18 fontes do estudo de caso obtidas pela origem: URL, data, SHA-256 dos brutos e da tabela, checagem e licença. Brutos e tabelas ficam fora do git (`case_study_raw/`, `case_study_tables/`) |
 
 ## Runs (fora do git: `results_rb/`, `data_rb/synth/`)
 
@@ -40,6 +42,9 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 | `results_rb/20261021-pilot-dev-r2-197f689ca15a` | Piloto r2 (válido), nas 8 famílias de desenvolvimento |
 | `results_rb/20261022-freeze-check-dev-cc3e7e671881` | Checagem da configuração congelada, mais os testes de fumaça das análises, nas famílias de desenvolvimento (sem baselines) |
 | `results_rb/20261022-rehearsal-dev-b4ca243467d6` | **Ensaio geral da produção** (`f3bb944`, árvore limpa): cadeia completa, inclusive baselines com o regime dirty, PKLM, `stats`, `secondary` e `report`, nas famílias de desenvolvimento ([`30-infra.md`](30-infra.md)) |
+| `results_rb/20261022-rehearsal-dev-b4ca243467d6/noise/` | RQ3 (passo 44) no ensaio geral (`8b32248`): 19 configurações de ruído, nenhuma falha |
+| `results_rb/20261022-rehearsal-dev-b4ca243467d6/final_model/` | Modelo de **desenvolvimento** congelado (`fit-final`), só para o teste de fumaça do estudo de caso |
+| `results_rb/_superseded/` | Primeira fumaça do estudo de caso (`28b6a27`/`1fdd523`), anterior às correções da revisão (Z que codificava a máscara em Mroz, Pima e NHANES; formato antigo do modelo) |
 | `data_rb/synth/20261021-synth-v1-be5730da3d49` | Corpus do piloto, com os descritores calculados (análise da D7) |
 | `data_rb/synth/20261022-synth-v2-5d31a737645b` | Corpus da produção, com os descritores calculados. O primeiro cálculo registrou `dirty: true` (`53a03f9`); foi refeito com a árvore limpa em `1355b73`, com valores idênticos, e o antigo está em `data_rb/synth/_superseded/` |
 
@@ -49,3 +54,4 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 
 - `scripts/revisao_banca/decisoes/`: curva de aprendizado da D7, tamanho do PKLM, varredura de sentinelas, elegibilidade das famílias no freeze.
 - `scripts/revisao_banca/passo31/`: metadados, qualidades e sentinelas do OpenML.
+- `scripts/revisao_banca/passo45/`: obtenção das fontes do estudo de caso (`obter_fontes.py`; `exportar_r.R` lê os pacotes do CRAN sem instalar).

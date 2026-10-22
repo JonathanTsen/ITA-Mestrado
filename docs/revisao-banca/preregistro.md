@@ -186,7 +186,9 @@ As 50 famílias efetivas, no formato família:representante:
 | Injeção, descritores 34b, avaliador, baselines (MechDetect-O, oráculo, Little, PKLM), relatório | Implementados e testados |
 | `stats.py` (H1–H4, Holm, Hodges–Lehmann, bootstrap, rank-biserial, ROPE, decisão) | Implementado e testado; congelado com a tag `prereg-v1` |
 | L1 secundário (teste pareado), recall por mecanismo, avaliação do L2, ablação da RQ2, descritores-oráculo, regime dirty, leave-one-generator-out, transferência, diagrama CD, sensibilidade da massa na fronteira | Implementados e testados como especificado acima (`analyses.py`; `pipeline.run_oracle_features`, `run_ablation`, `run_logo`, `run_transfer` e `run_secondary`; CLI `oracle-features`, `ablation`, `logo`, `transfer`, `secondary`); testes de fumaça nas famílias de desenvolvimento |
-| LLM (passos 42/43) e ruído (passo 44) | **A implementar.** O adendo LLM, com tag, vem antes de qualquer chamada confirmatória |
+| Ruído (passo 44, RQ3) | Implementado e testado como especificado acima (`noise.py`, `pipeline.run_noise`, CLI `noise`): ruído só no treino, coerente por contexto, 3 sementes; pesos e poda; contrastes na taxa 0,20 com Holm m = 4; teste de fumaça nas famílias de desenvolvimento |
+| Estudo de caso (D3, passo 45) | Implementado e testado (`case_study.py`, CLI `fit-final` e `case-study`): fontes obtidas de novo pela origem, sem fabricar mecanismo, modelo congelado com hash, sem métrica de acerto |
+| LLM (passos 42/43) | **A implementar.** O adendo LLM, com tag, vem antes de qualquer chamada confirmatória |
 
 Implementar um componente da tabela acima **não** é desvio. Mudar a especificação é, e vai para `desvios.md`.
 
