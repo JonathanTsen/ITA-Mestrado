@@ -1,0 +1,37 @@
+# Checagem do congelamento: idêntica à inject-v1 exceto pelo nome e por usar só as 8 famílias de desenvolvimento.
+# Prova que o pipeline roda com a configuração final (34b, β novo, sentinelas) antes da tag freeze-v1.
+name: freeze-check-dev
+root_seed: 20261101
+output_root: results_rb
+plan_repo: ~/conductor/workspaces/modeloteseppgpo-v1/baghdad-v1
+sources:
+  table: data_rb/sources_local.csv
+  csv_dir: /tmp/rb_mechdetect_run/mech-detect-datasets
+  roles: [dev]
+  sentinel_exclusions: data_rb/sentinel_exclusions.csv
+inject:
+  n_grid: [500, 1000, 2000]
+  k_grid: [2, 4, 8]
+  rate_grid: [0.1, 0.2, 0.3, 0.4, 0.5]
+  beta_grid: [1, 2, 4, 8, .inf]
+  directions: [lower, upper, both]
+  driver_rules: [maxcorr, random]
+  max_base_attempts: 20
+  secondary:
+    - {generator: mdatagen, n: 1000}
+    - {generator: tab_err, n: 1000}
+features:
+  n_jobs: 8
+evaluate:
+  learner: hgb                                     # D7: HGB com hiperparâmetros fixos (padrão), calibração na CV interna
+  descriptive_learners: [logreg, rf, svm, knn, mlp, nb]
+  routings: [fullprob, hard, threshold, soft]      # H2 usa fullprob; os demais são descritivos
+  n_splits: 5
+  n_repeats: 3
+baselines:
+  alpha: 0.05
+  mechdetect_cv_folds: 10
+  pklm_num_proj: 100
+  pklm_nrep: 200
+  pklm_max_instances: 1200                         # 6 contextos inteiros por família (1.098 instâncias com 61 famílias)
+  n_jobs: 8
