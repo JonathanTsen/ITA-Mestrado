@@ -85,6 +85,24 @@ def oracle_clean(
     return _summary("mdoracle", aucs, alpha)
 
 
+def dirty(
+    instance: ObservedInstance,
+    alpha: float = DEFAULT_ALPHA,
+    cv_folds: int = DEFAULT_CV_FOLDS,
+    seed: int = DEFAULT_SEED,
+) -> dict:
+    """MechDetect no regime "dirty": a tarefa "complete" recebe a coluna-alvo com os NaN, como no código dos autores.
+
+    Usa só dado observado, mas é degenerado: os próprios NaN revelam a máscara, então o teste 1 rejeita o MCAR quase
+    sempre (Jung et al., Sec. IV-C). É reportado à parte, por transparência, e nunca ranqueado.
+    """
+    frame = pd.DataFrame(instance.z.to_numpy(dtype=float), columns=[f"z{j}" for j in range(instance.z.shape[1])])
+    frame[Y_COMPLETE] = np.asarray(instance.y, dtype=float)
+    mask = np.isnan(frame[Y_COMPLETE].to_numpy())
+    aucs = mechdetect_aucs(frame, pd.Series(mask.astype(int)), Y_COMPLETE, seed=seed, cv_folds=cv_folds)
+    return _summary("mddirty", aucs, alpha)
+
+
 def decision_proba(decisions: pd.Series) -> np.ndarray:
     """Decisões → probabilidades one-hot na ordem (MCAR, MAR, MNAR), para o avaliador único."""
     index = decisions.map({m: i for i, m in enumerate(MECHANISMS)})

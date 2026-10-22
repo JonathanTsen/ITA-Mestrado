@@ -154,3 +154,83 @@ def test_family_status_is_recorded(run):
     status = pd.read_parquet(run_dir / "family_status.parquet")
     assert len(status) == N_FAMILIES and (status.n_bases > 0).all()
     assert status.n_instances.sum() == len(pd.read_parquet(run_dir / "instances.parquet"))
+
+
+@pytest.fixture(scope="module")
+def extended(run, tmp_path_factory):
+    """Comandos do pré-registro (itens 6–7) encadeados sobre o run pequeno, mais um mini-corpus sintético."""
+    run_dir, config = run
+    pipeline.run_oracle_features(run_dir, config, n_jobs=2)
+    pipeline.run_evaluate(run_dir, config, n_jobs=2, generators=("symmetric",))
+    pipeline.run_ablation(run_dir, config, n_jobs=2)
+    pipeline.run_logo(run_dir, config, n_jobs=2)
+    pipeline.run_secondary(run_dir, config)
+    pipeline.run_stats(run_dir, config)
+    synth_config = parse_config(
+        {
+            "name": "mini-synth",
+            "root_seed": 4,
+            "output_root": str(tmp_path_factory.mktemp("synth")),
+            "synth": {"n_bases": 12, "n_grid": [500], "k_grid": [2, 4]},
+        }
+    )
+    synth_dir = pipeline.run_synth(synth_config, n_jobs=2)
+    pipeline.run_features(synth_dir, synth_config, n_jobs=2)
+    transfer_dir = pipeline.run_transfer(synth_dir, run_dir, config)
+    return run_dir, transfer_dir
+
+
+def test_oracle_panel_is_separate_and_paired(extended):
+    run_dir, _ = extended
+    oracle = pd.read_parquet(run_dir / "oracle_features.parquet")
+    assert (oracle.oracle_status == "ok").all()
+    pred = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    assert {"direct_hgb_oracle_desc", "mechdetect_oracle", "mechdetect_dirty"} <= set(pred.method)
+    assert check_pairing(pred)
+
+
+def test_ablation_has_four_groups_and_holm(extended):
+    run_dir, _ = extended
+    tests = pd.read_csv(run_dir / "eval-ablation" / "ablation_tests.csv")
+    assert list(tests.hypothesis) == [f"RQ2_G{k}" for k in range(1, 5)]
+    assert (tests.p_holm >= tests.p_value - 1e-12).all()
+
+
+def test_logo_and_transfer_mark_feature_failures(extended):
+    run_dir, transfer_dir = extended
+    for path in (run_dir / "eval-logo" / "predictions.parquet", transfer_dir / "predictions.parquet"):
+        pred = pd.read_parquet(path)
+        failed = pred[pred.status != "ok"]
+        assert (failed.y_pred == -1).all()
+
+
+def test_logo_tests_on_held_out_generator(extended):
+    run_dir, _ = extended
+    pred = pd.read_parquet(run_dir / "eval-logo" / "predictions.parquet")
+    oracle = pd.read_parquet(run_dir / "oracle.parquet")[["sample_id", "generator"]]
+    merged = pred.merge(oracle, on="sample_id")
+    for method, g in merged.groupby("method"):
+        assert set(g.generator) == {method.split("_", 1)[1]}
+
+
+def test_secondary_and_stats_outputs(extended):
+    run_dir, _ = extended
+    l1 = pd.read_csv(run_dir / "secondary" / "l1_tests.csv")
+    assert set(l1.hypothesis) == {"L1_vs_Little", "L1_vs_MechDetectO_teste1"}  # sem PKLM neste run
+    assert l1.p_holm.min() == pytest.approx(min(3 * l1.p_value.min(), 1.0))  # Holm com m = 3 fixo (PKLM com p = 1)
+    sens = pd.read_csv(run_dir / "secondary" / "boundary_sensitivity.csv").iloc[0]
+    assert sens.n_families_common <= sens.n_families_total
+    assert (run_dir / "secondary" / "l2_evaluation.csv").exists()
+    assert (run_dir / "secondary" / "boundary_sensitivity.csv").exists()
+    stats_out = pd.read_csv(run_dir / "stats_confirmatory.csv")
+    assert set(stats_out.hypothesis) == {"H1", "H2", "H3"}
+
+
+def test_transfer_predicts_every_real_instance(extended):
+    run_dir, transfer_dir = extended
+    pred = pd.read_parquet(transfer_dir / "predictions.parquet")
+    n_real = len(pd.read_parquet(run_dir / "instances.parquet"))
+    assert pred.groupby("method").size().eq(n_real).all()
+    assert "transfer_all" in set(pred.method)
+    matrix = pd.read_csv(transfer_dir / "transfer_matrix.csv")
+    assert {"all", "symmetric"} <= set(matrix.train)

@@ -139,7 +139,7 @@ As 50 famílias efetivas, no formato família:representante:
 
 ## 6. Análises secundárias (cada uma com o seu próprio Holm) e exploratórias
 
-**Secundária, L1** (m = 3):
+**Secundária, L1** (m = 3 fixo; uma comparação que não puder rodar entra no Holm com p = 1):
 - **Classificador L1:** o L1 do hierárquico (`hier_hgb_fullprob`), que decide não-MCAR quando P(MCAR) < 0,5.
 - **Comparadores:** teste de Little (α = 0,05), teste 1 do MechDetect-O (α/2) e PKLM (α = 0,05; 100 projeções e 200 repetições; `set.seed(20261101)` antes de cada instância).
 - **Subconjunto do PKLM:** 8 contextos inteiros do gerador principal por família, 1.200 instâncias, escolhidos com `child_rng(20261101, "pklm_subset")` sobre os contextos ordenados por ID.
@@ -168,9 +168,9 @@ As 50 famílias efetivas, no formato família:representante:
 - classificadores descritivos com Friedman + Nemenyi (diagrama CD): HGB, logreg, RF, SVM, KNN, MLP e NB;
 - transferência sintético → real (`synth-v2`);
 - LLM-A3 e o provedor secundário;
-- sensibilidade sem os contextos cujo Y tem massa ≥ 10% num valor de fronteira;
+- sensibilidade sem os contextos cujo Y completo tem massa ≥ 10% em 0 ou no seu mínimo: diferença pareada nas famílias que sobram nos dois conjuntos (IC por bootstrap), com a lista das famílias que saem por inteiro;
 - controle sintético: CV agrupada por tabela-base no `synth-v2`;
-- avaliação do L2 diagnóstica (nas instâncias verdadeiramente não-MCAR) e operacional (nas roteadas);
+- avaliação do L2: diagnóstica (macro-recall MAR × MNAR nas instâncias verdadeiramente não-MCAR) e operacional (nas verdadeiramente não-MCAR que o L1 roteou ao L2), com a fração de MCAR roteadas à parte; falha conta como erro;
 - painel oráculo: o MechDetect como publicado e o nosso classificador com **descritores-oráculo** (34b + AUC de M predito do Y completo + [AUC(M | Y, Z) − AUC(M | Z)], por CV com HGB), mais o regime "dirty" do MechDetect, reportado como degenerado.
 
 **Auditoria de atalhos nas famílias confirmatórias:** se o classificador só com nuisance passar de 0,40 de macro-recall, isso é reportado como alerta, sem mudar a análise confirmatória.
@@ -185,7 +185,7 @@ As 50 famílias efetivas, no formato família:representante:
 |---|---|
 | Injeção, descritores 34b, avaliador, baselines (MechDetect-O, oráculo, Little, PKLM), relatório | Implementados e testados |
 | `stats.py` (H1–H4, Holm, Hodges–Lehmann, bootstrap, rank-biserial, ROPE, decisão) | Implementado e testado; congelado com a tag `prereg-v1` |
-| L1 secundário (teste pareado), ablação da RQ2, descritores-oráculo, regime dirty, leave-one-generator-out, transferência, diagrama CD, sensibilidade da massa na fronteira | **A implementar antes da produção**, exatamente como especificado acima |
+| L1 secundário (teste pareado), recall por mecanismo, avaliação do L2, ablação da RQ2, descritores-oráculo, regime dirty, leave-one-generator-out, transferência, diagrama CD, sensibilidade da massa na fronteira | Implementados e testados como especificado acima (`analyses.py`; `pipeline.run_oracle_features`, `run_ablation`, `run_logo`, `run_transfer` e `run_secondary`; CLI `oracle-features`, `ablation`, `logo`, `transfer`, `secondary`); testes de fumaça nas famílias de desenvolvimento |
 | LLM (passos 42/43) e ruído (passo 44) | **A implementar.** O adendo LLM, com tag, vem antes de qualquer chamada confirmatória |
 
 Implementar um componente da tabela acima **não** é desvio. Mudar a especificação é, e vai para `desvios.md`.

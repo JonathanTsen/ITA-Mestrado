@@ -14,8 +14,18 @@ from joblib import Parallel, delayed
 from threadpoolctl import threadpool_limits
 
 from missdetect.rb import features as feat
+from missdetect.rb.analyses import (
+    bootstrap_mean_ci,
+    boundary_sensitivity,
+    descriptive_classifiers,
+    l1_secondary,
+    l2_evaluation,
+    per_mechanism,
+)
 from missdetect.rb.baselines import little, mechdetect_obs
 from missdetect.rb.baselines.logit_simple import LOGIT_SIMPLE_FEATURES
+from missdetect.rb.baselines.oracle_descriptors import ORACLE_COLUMNS
+from missdetect.rb.baselines.oracle_descriptors import compute as oracle_compute
 from missdetect.rb.baselines.pklm_r import run_pklm
 from missdetect.rb.bench import generate_family, load_sentinel_exclusions
 from missdetect.rb.config import RunConfig
@@ -38,7 +48,8 @@ from missdetect.rb.runs import (
     write_json,
     write_parquet,
 )
-from missdetect.rb.stats import confirmatory
+from missdetect.rb.splits import outer_splits
+from missdetect.rb.stats import compare_family, confirmatory
 from missdetect.rb.synth import design as synth_design
 from missdetect.rb.synth import generate_base
 
@@ -176,6 +187,7 @@ def _baseline_row(run_dir: Path, sample_id: str, context_id: str, config: RunCon
             ("mdo", lambda: mechdetect_obs.observed_only(instance, cfg.alpha, cfg.mechdetect_cv_folds)),
             ("mdoracle", lambda: mechdetect_obs.oracle_clean(
                 instance, read_complete(run_dir, context_id), cfg.alpha, cfg.mechdetect_cv_folds)),
+            ("mddirty", lambda: mechdetect_obs.dirty(instance, cfg.alpha, cfg.mechdetect_cv_folds)),
             ("little", lambda: little.run(instance)),
         ):  # fmt: skip
             t0 = time.perf_counter()
@@ -254,6 +266,9 @@ def load_eval_frame(run_dir: Path, generators: tuple[str, ...] = ()) -> pd.DataF
     baselines = run_dir / "baselines.parquet"
     if baselines.exists():
         frame = frame.merge(pd.read_parquet(baselines), on="sample_id", how="left")
+    oracle_features = run_dir / "oracle_features.parquet"
+    if oracle_features.exists():
+        frame = frame.merge(pd.read_parquet(oracle_features), on="sample_id", how="left")
     if generators:
         frame = frame[frame.generator.isin(generators)]
     frame["label"] = frame.mechanism.map({m: i for i, m in enumerate(CLASSES)}).astype(int)
@@ -290,12 +305,15 @@ def method_specs(frame: pd.DataFrame, config: RunConfig) -> dict:
     for generator in sorted(frame.generator.unique()):
         nuisance[f"gen_{generator}"] = (frame.generator == generator).astype(float)
     specs[f"nuisance_{ev.learner}"] = (lambda: DirectClassifier(ev.learner, {}, seed), nuisance.to_numpy(float))
-    if "mdo_decision" in frame:
-        for name, prefix in RULE_METHODS.items():
+    for name, prefix in RULE_METHODS.items():
+        if f"{prefix}_decision" in frame:
             ok = frame[f"{prefix}_status"].eq("ok")
             proba = np.full((len(frame), N_CLASSES), np.nan)
             proba[ok.to_numpy()] = mechdetect_obs.decision_proba(frame.loc[ok, f"{prefix}_decision"])
             specs[name] = (Passthrough, proba)
+    if all(c in frame for c in ORACLE_COLUMNS):
+        X_oracle = frame[[*feature_columns(frame), *ORACLE_COLUMNS]].to_numpy(float)
+        specs[f"direct_{ev.learner}_oracle_desc"] = (lambda: DirectClassifier(ev.learner, {}, seed), X_oracle)
     return specs
 
 
@@ -311,7 +329,14 @@ def _method_worker(name: str, factory, X, frame: pd.DataFrame, config: RunConfig
     return pred, choices
 
 
-RULE_METHODS = {"mechdetect_obs": "mdo", "mechdetect_oracle": "mdoracle"}
+RULE_METHODS = {"mechdetect_obs": "mdo", "mechdetect_oracle": "mdoracle", "mechdetect_dirty": "mddirty"}
+# Painel de informação privilegiada ou degenerada: reportado à parte, nunca ranqueado com os métodos observed-only.
+ORACLE_PANEL = ("mechdetect_oracle", "mechdetect_dirty")
+ORACLE_SUFFIX = "_oracle_desc"
+
+
+def is_oracle_panel(method: str) -> bool:
+    return method in ORACLE_PANEL or method.endswith(ORACLE_SUFFIX)
 
 
 def mark_failures(pred: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
@@ -328,6 +353,11 @@ def mark_failures(pred: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
             hit = pred.method.eq(method) & pred.sample_id.isin(failed)
             rows |= hit
             reason[hit] = f"failed: {prefix}"
+    if "oracle_status" in frame:
+        failed = set(frame.loc[~frame.oracle_status.eq("ok"), "sample_id"])
+        hit = pred.method.str.endswith("_oracle_desc") & pred.sample_id.isin(failed)
+        rows |= hit
+        reason[hit] = "failed: oracle_descriptors"
     pred.loc[rows, [f"p_{c}" for c in CLASSES]] = 1 / N_CLASSES
     pred.loc[rows, "y_pred"] = -1
     pred.loc[rows, "status"] = reason[rows]
@@ -340,6 +370,8 @@ def run_evaluate(run_dir: Path, config: RunConfig, n_jobs: int, generators: tupl
     if out_dir.exists():
         raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
     frame = load_eval_frame(run_dir, generators)
+    if not (run_dir / "oracle_features.parquet").exists():
+        print("aviso: sem oracle_features.parquet; o painel oráculo não terá o classificador com descritores-oráculo")
     specs = method_specs(frame, config)
     results = Parallel(n_jobs=n_jobs)(
         delayed(_method_worker)(name, factory, X, frame, config) for name, (factory, X) in specs.items()
@@ -371,3 +403,208 @@ def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = No
         run_dir, config, "stats", {"hypotheses": result.hypothesis.tolist(), "llm_panel": bool(llm_per_family)}
     )
     return out
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Painel oráculo, ablação, leave-one-generator-out, transferência e análises secundárias (pré-registro, itens 6–7)
+# ---------------------------------------------------------------------------------------------------------------------
+def _oracle_row(run_dir: Path, sample_id: str, context_id: str) -> dict:
+    try:
+        with threadpool_limits(1):
+            row = oracle_compute(read_observed(run_dir, sample_id), read_complete(run_dir, context_id))
+        row["oracle_status"] = "ok"
+    except Exception as exc:
+        row = {"sample_id": sample_id, "oracle_status": f"failed: {exc!r}"}
+    return row
+
+
+def run_oracle_features(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """Descritores-oráculo (com o Y completo) para o painel de informação privilegiada."""
+    out = run_dir / "oracle_features.parquet"
+    if out.exists():
+        raise FileExistsError(f"{out} já existe; não sobrescrevo.")
+    instances = pd.read_parquet(run_dir / "instances.parquet")
+    rows = Parallel(n_jobs=n_jobs)(
+        delayed(_oracle_row)(run_dir, s, c) for s, c in zip(instances.sample_id, instances.context_id, strict=True)
+    )
+    write_parquet(pd.DataFrame(rows), out)
+    append_run_log(run_dir, config, "oracle-features", {"n_instances": len(rows)})
+    return out
+
+
+def _write_eval(out_dir: Path, pred: pd.DataFrame, extra: dict[str, pd.DataFrame] | None = None) -> pd.DataFrame:
+    out_dir.mkdir()
+    write_parquet(pred, out_dir / "predictions.parquet")
+    per_family, summary = summarize_by_family(pred)
+    write_parquet(per_family, out_dir / "per_family.parquet")
+    summary.reset_index().to_csv(out_dir / "summary.csv", index=False)
+    for name, table in (extra or {}).items():
+        table.to_csv(out_dir / f"{name}.csv", index=False)
+    return per_family
+
+
+GROUPS = ("g1_", "g2_", "g3_", "g4_")
+
+
+def run_ablation(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """RQ2 (secundária, Holm m = 4): configuração primária com todos os descritores × sem o grupo G_k, no gerador
+    principal, com as mesmas partições da avaliação primária."""
+    out_dir = run_dir / "eval-ablation"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    frame = load_eval_frame(run_dir, ("symmetric",))
+    learner = config.evaluate.learner
+    seed = child_seed(config.root_seed, "model")
+    cols = feature_columns(frame)
+    specs = {f"direct_{learner}": (lambda: DirectClassifier(learner, {}, seed), frame[cols].to_numpy(float))}
+    for k, prefix in enumerate(GROUPS, start=1):
+        keep = [c for c in cols if not c.startswith(prefix)]
+        specs[f"direct_{learner}_minus_G{k}"] = (
+            lambda: DirectClassifier(learner, {}, seed),
+            frame[keep].to_numpy(float),
+        )
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_method_worker)(name, factory, X, frame, config) for name, (factory, X) in specs.items()
+    )
+    pred = mark_failures(pd.concat([p for p, _ in results], ignore_index=True), frame)
+    if not check_pairing(pred):
+        raise RuntimeError("pareamento 1:1 violado")
+    per_family = summarize_by_family(pred)[0]
+    hypotheses = {f"RQ2_G{k}": (f"direct_{learner}", f"direct_{learner}_minus_G{k}") for k in range(1, 5)}
+    tests = compare_family(per_family, hypotheses)
+    _write_eval(out_dir, pred, {"ablation_tests": tests})
+    append_run_log(run_dir, config, "ablation", {"methods": list(specs), "n_instances": len(frame)})
+    return out_dir
+
+
+def run_logo(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """Leave-one-generator-out (exploratória): treino nos outros geradores das famílias de treino, teste no gerador
+    deixado de fora das famílias de teste; mais a referência "mesmo gerador" (treino e teste no gerador g)."""
+    out_dir = run_dir / "eval-logo"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    frame = load_eval_frame(run_dir)
+    learner = config.evaluate.learner
+    seed = child_seed(config.root_seed, "model")
+    X = frame[feature_columns(frame)].to_numpy(float)
+    y = frame.label.to_numpy()
+    families = frame.family_id.reset_index(drop=True)
+    generators = sorted(frame.generator.unique())
+    tasks = [
+        (g, mode, repeat, fold, train, test)
+        for g in generators
+        for mode in ("logo", "ingen")
+        for repeat, fold, train, test in outer_splits(families, config.root_seed, config.evaluate.n_splits, config.evaluate.n_repeats)
+    ]  # fmt: skip
+
+    def task(g, mode, repeat, fold, train, test):
+        gen = frame.generator.to_numpy()
+        tr = train[gen[train] != g] if mode == "logo" else train[gen[train] == g]
+        te = test[gen[test] == g]
+        if len(te) == 0:
+            return pd.DataFrame()
+        status = "ok"
+        try:
+            if len(np.unique(families.iloc[tr])) < 4:
+                raise ValueError("menos de 4 famílias de treino")
+            with threadpool_limits(1):
+                model = DirectClassifier(learner, {}, seed).fit(X[tr], y[tr], families.iloc[tr])
+                proba = model.predict_proba(X[te])
+        except Exception as exc:  # falha conta como erro, nunca some
+            status = f"failed: {type(exc).__name__}: {exc}"
+            proba = np.full((len(te), N_CLASSES), 1 / N_CLASSES)
+        pred_class = proba.argmax(1) if status == "ok" else np.full(len(te), -1)
+        return pd.DataFrame({
+            "method": f"{mode}_{g}", "repeat": repeat, "fold": fold, "sample_id": frame.sample_id.iloc[te].to_numpy(),
+            "family_id": families.iloc[te].to_numpy(), "y_true": y[te], "y_pred": pred_class,
+            **{f"p_{c}": proba[:, k] for k, c in enumerate(CLASSES)}, "status": status,
+        })  # fmt: skip
+
+    pred = pd.concat(Parallel(n_jobs=n_jobs)(delayed(task)(*t) for t in tasks), ignore_index=True)
+    pred = mark_failures(pred, frame)
+    per_family = summarize_by_family(pred)[0]
+    summary = []
+    for method, g in per_family.groupby("method"):
+        low, high = bootstrap_mean_ci(g.macro_recall.to_numpy())
+        summary.append({"method": method, "n_families": len(g), "macro_recall_mean": g.macro_recall.mean(),
+                        "ci_low": low, "ci_high": high})  # fmt: skip
+    _write_eval(out_dir, pred, {"logo_summary": pd.DataFrame(summary)})
+    append_run_log(run_dir, config, "logo", {"generators": generators})
+    return out_dir
+
+
+def run_transfer(synth_run: Path, real_run: Path, config: RunConfig) -> Path:
+    """Transferência sintético → real (exploratória): a configuração primária é treinada só no corpus sintético (escolhas
+    internas por CV agrupada por tabela-base), congelada e aplicada sem ajuste a todas as instâncias reais. Um modelo
+    por conjunto de geradores de treino (todos e cada um), para separar mudança de domínio de mudança de gerador."""
+    out_dir = real_run / f"transfer-{synth_run.name}"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    synth = load_eval_frame(synth_run)
+    real = load_eval_frame(real_run)
+    cols = feature_columns(real)
+    if cols != feature_columns(synth):
+        raise ValueError("descritores diferentes entre o corpus sintético e o run real")
+    learner = config.evaluate.learner
+    seed = child_seed(config.root_seed, "model")
+    parts, skipped = [], []
+    for train_set in ("all", *sorted(synth.generator.unique())):
+        tr = synth if train_set == "all" else synth[synth.generator == train_set]
+        if tr.family_id.nunique() < 4:  # a calibração interna exige 4 folds por família
+            skipped.append(train_set)
+            continue
+        with threadpool_limits(1):
+            model = DirectClassifier(learner, {}, seed).fit(
+                tr[cols].to_numpy(float), tr.label.to_numpy(), tr.family_id.reset_index(drop=True)
+            )
+            proba = model.predict_proba(real[cols].to_numpy(float))
+        parts.append(pd.DataFrame({
+            "method": f"transfer_{train_set}", "repeat": 0, "fold": 0, "sample_id": real.sample_id.to_numpy(),
+            "family_id": real.family_id.to_numpy(), "test_generator": real.generator.to_numpy(),
+            "y_true": real.label.to_numpy(), "y_pred": proba.argmax(1),
+            **{f"p_{c}": proba[:, k] for k, c in enumerate(CLASSES)}, "status": "ok",
+        }))  # fmt: skip
+    pred = mark_failures(pd.concat(parts, ignore_index=True), real)
+    matrix = []
+    for (method, test_gen), g in pred.groupby(["method", "test_generator"]):
+        per_family = summarize_by_family(g.drop(columns="test_generator"))[0]
+        low, high = bootstrap_mean_ci(per_family.macro_recall.to_numpy())
+        matrix.append({"train": method.removeprefix("transfer_"), "test_generator": test_gen,
+                       "n_families": len(per_family), "macro_recall_mean": per_family.macro_recall.mean(),
+                       "ci_low": low, "ci_high": high})  # fmt: skip
+    _write_eval(out_dir, pred.drop(columns="test_generator"), {"transfer_matrix": pd.DataFrame(matrix)})
+    append_run_log(real_run, config, f"transfer-{synth_run.name}", {"synth_run": str(synth_run), "skipped": skipped})
+    return out_dir
+
+
+def run_secondary(run_dir: Path, config: RunConfig) -> Path:
+    """L1 secundária, recall por mecanismo (H1, H2), avaliação do L2, classificadores descritivos (CD) e sensibilidade
+    da massa na fronteira, a partir da avaliação primária já gravada."""
+    out_dir = run_dir / "secondary"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    out_dir.mkdir()
+    learner = config.evaluate.learner
+    pred = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    per_family = pd.read_parquet(run_dir / "eval-symmetric" / "per_family.parquet")
+    l1_family, l1_tests = l1_secondary(run_dir, l1_method=f"hier_{learner}_fullprob")
+    l1_family.to_csv(out_dir / "l1_per_family.csv", index=False)
+    l1_tests.to_csv(out_dir / "l1_tests.csv", index=False)
+    mech = []
+    for name, (m, c) in {
+        "H1": (f"direct_{learner}", "mechdetect_obs"),
+        "H2": (f"hier_{learner}_fullprob", f"direct_{learner}"),
+    }.items():
+        if {m, c} <= set(per_family.method):
+            mech.append(per_mechanism(per_family, name, m, c))
+    if mech:
+        pd.concat(mech, ignore_index=True).to_csv(out_dir / "per_mechanism.csv", index=False)
+    l2_evaluation(pred, method=f"hier_{learner}_fullprob").to_csv(out_dir / "l2_evaluation.csv", index=False)
+    descriptive = tuple(f"direct_{m}" for m in (learner, *config.evaluate.descriptive_learners))
+    if len(set(descriptive) & set(per_family.method)) >= 3:  # Friedman exige pelo menos 3 classificadores
+        cd = descriptive_classifiers(per_family, out_dir / "cd_diagram.png", methods=descriptive)
+        cd.pop("nemenyi_p").to_csv(out_dir / "nemenyi_p.csv")
+        write_json(out_dir / "descriptive_classifiers.json", cd)
+    boundary_sensitivity(run_dir, pred, f"direct_{learner}").to_csv(out_dir / "boundary_sensitivity.csv", index=False)
+    append_run_log(run_dir, config, "secondary", {"outputs": sorted(p.name for p in out_dir.iterdir())})
+    return out_dir

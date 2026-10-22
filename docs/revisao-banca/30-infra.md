@@ -13,10 +13,13 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `sources.py` | 31 | tabelas-fonte, filtros, famílias, papéis dev/confirm |
 | `inject.py`, `bench.py` | 32 | geradores e elegibilidade; desenho por família (bases × n × k; β e direção balanceados) |
 | `synth.py` | 33 | corpus sintético (cópula gaussiana, R² latente controlado, mesmos geradores) |
-| `features.py` | 34 | descritores observáveis (schema `34a-2`) |
+| `features.py` | 34 | descritores observáveis (schema `34b`, congelado em `freeze-v1`) |
 | `splits.py`, `models.py`, `evaluate.py` | 35 | CV por família, direto/hierárquico, calibração interna, métricas |
 | `baselines/` | 36, 39 | MechDetect oficial e observed-only, Little, PKLM (R), logística simples |
 | `pipeline.py`, `report.py` | 37 | etapas de um run e relatório do piloto |
+| `stats.py` | 38/46 | H1–H4: Wilcoxon-Pratt + Holm, Hodges–Lehmann com bootstrap, rank-biserial, ROPE (baycomp), decisão |
+| `analyses.py` | 39/40/46 | L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade da massa na fronteira |
+| `baselines/oracle_descriptors.py` | 39 | descritores-oráculo (Y completo) do painel de informação privilegiada |
 
 ## Layout de um run
 
@@ -48,6 +51,17 @@ uv run --frozen python -m missdetect.rb.cli report    --config configs/rb/pilot-
 ```
 
 O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`).
+
+Análises do pré-registro (depois do `evaluate`):
+
+```bash
+uv run --frozen python -m missdetect.rb.cli stats            --config <cfg> --run <run> [--llm-per-family <painel>]
+uv run --frozen python -m missdetect.rb.cli oracle-features  --config <cfg> --run <run>   # antes do evaluate, para o painel oráculo
+uv run --frozen python -m missdetect.rb.cli ablation         --config <cfg> --run <run>
+uv run --frozen python -m missdetect.rb.cli logo             --config <cfg> --run <run>
+uv run --frozen python -m missdetect.rb.cli transfer         --config <cfg> --run <run> --synth-run data_rb/synth/<synth-v2>
+uv run --frozen python -m missdetect.rb.cli secondary        --config <cfg> --run <run>
+```
 Os CSV das tabelas vêm de `MechDetect/src/auc_roc_scores/datasets.tar.gz` (ver `sources.py`).
 
 ## Testes que provam a ausência de vazamento (`tests/rb/`)

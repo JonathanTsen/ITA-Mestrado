@@ -18,7 +18,7 @@ from scipy import stats
 
 from missdetect.rb.config import RunConfig
 from missdetect.rb.models import CLASSES, macro_recall
-from missdetect.rb.pipeline import feature_columns, load_eval_frame
+from missdetect.rb.pipeline import feature_columns, is_oracle_panel, load_eval_frame
 
 ALPHA = 0.05
 N_HYPOTHESES = 4
@@ -46,7 +46,7 @@ def timing(run_dir: Path, frame: pd.DataFrame) -> dict:
     out["features_seconds_by_n_k"] = (
         frame.groupby(["meta_n", "meta_k"]).feature_seconds.mean().round(3).reset_index().to_dict("records")
     )
-    for name in ("mdo", "mdoracle", "little"):
+    for name in ("mdo", "mdoracle", "mddirty", "little"):
         if f"{name}_seconds" in frame:
             out[f"{name}_seconds_mean"] = float(frame[f"{name}_seconds"].mean())
             out[f"{name}_seconds_by_n"] = frame.groupby("meta_n")[f"{name}_seconds"].mean().round(3).to_dict()
@@ -56,7 +56,7 @@ def timing(run_dir: Path, frame: pd.DataFrame) -> dict:
         out["pklm_seconds_mean"] = float(pklm.seconds.mean())
         out["pklm_seconds_by_n"] = pklm.groupby("meta_n").seconds.mean().round(2).to_dict()
     per_instance = out["inject_seconds_per_instance"] + out["features_seconds_mean"]
-    per_instance += sum(out.get(f"{n}_seconds_mean", 0.0) for n in ("mdo", "mdoracle", "little"))
+    per_instance += sum(out.get(f"{n}_seconds_mean", 0.0) for n in ("mdo", "mdoracle", "mddirty", "little"))
     mean_per_family = float(per_family.mean())
     n_primary = float(frame[frame.generator == "symmetric"].groupby("family_id").size().mean())
     out["projection_core_hours"] = {
@@ -255,7 +255,7 @@ def run_report(run_dir: Path, config: RunConfig) -> Path:
     cols = ["method", "macro_recall_mean", "macro_recall_sd", "accuracy_mean", "log_loss_mean", "ece_classwise_mean"]
     cols += [f"recall_{c}_mean" for c in CLASSES]
     # Painel oráculo (vê o Y completo) em arquivo à parte: nunca é ranqueado com os métodos observed-only.
-    oracle_rows = summary.method.eq("mechdetect_oracle")
+    oracle_rows = summary.method.map(is_oracle_panel)
     summary.loc[~oracle_rows, cols].to_csv(out_dir / "summary_primary.csv", index=False)
     summary.loc[oracle_rows, cols].to_csv(out_dir / "summary_oracle_panel.csv", index=False)
 
