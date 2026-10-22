@@ -41,7 +41,7 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 | `results_rb/20261022-freeze-check-dev-cc3e7e671881` | Checagem da configuração congelada, mais os testes de fumaça das análises, nas famílias de desenvolvimento (sem baselines) |
 | `results_rb/20261022-rehearsal-dev-b4ca243467d6` | **Ensaio geral da produção** (`f3bb944`, árvore limpa): cadeia completa, inclusive baselines com o regime dirty, PKLM, `stats`, `secondary` e `report`, nas famílias de desenvolvimento ([`30-infra.md`](30-infra.md)) |
 | `data_rb/synth/20261021-synth-v1-be5730da3d49` | Corpus do piloto, com os descritores calculados (análise da D7) |
-| `data_rb/synth/20261022-synth-v2-5d31a737645b` | Corpus da produção, com os descritores calculados |
+| `data_rb/synth/20261022-synth-v2-5d31a737645b` | Corpus da produção, com os descritores calculados. O primeiro cálculo registrou `dirty: true` (`53a03f9`); foi refeito com a árvore limpa em `1355b73`, com valores idênticos, e o antigo está em `data_rb/synth/_superseded/` |
 
 **Nenhuma instância das famílias confirmatórias foi gerada até agora.**
 
