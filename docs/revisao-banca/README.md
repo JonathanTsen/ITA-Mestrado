@@ -38,7 +38,8 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 |---|---|
 | `results_rb/20261021-pilot-dev-cba8168b099b` | Piloto r1. **Inválido:** desempate das máscaras pela ordem do arquivo |
 | `results_rb/20261021-pilot-dev-r2-197f689ca15a` | Piloto r2 (válido), nas 8 famílias de desenvolvimento |
-| `results_rb/20261022-freeze-check-dev-cc3e7e671881` | Checagem da configuração congelada, mais os testes de fumaça das análises, nas famílias de desenvolvimento |
+| `results_rb/20261022-freeze-check-dev-cc3e7e671881` | Checagem da configuração congelada, mais os testes de fumaça das análises, nas famílias de desenvolvimento (sem baselines) |
+| `results_rb/20261022-rehearsal-dev-b4ca243467d6` | **Ensaio geral da produção** (`f3bb944`, árvore limpa): cadeia completa, inclusive baselines com o regime dirty, PKLM, `stats`, `secondary` e `report`, nas famílias de desenvolvimento ([`30-infra.md`](30-infra.md)) |
 | `data_rb/synth/20261021-synth-v1-be5730da3d49` | Corpus do piloto, com os descritores calculados (análise da D7) |
 | `data_rb/synth/20261022-synth-v2-5d31a737645b` | Corpus da produção, com os descritores calculados |
 

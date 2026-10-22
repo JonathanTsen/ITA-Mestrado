@@ -16,7 +16,7 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `features.py` | 34 | descritores observáveis (schema `34b`, congelado em `freeze-v1`) |
 | `splits.py`, `models.py`, `evaluate.py` | 35 | CV por família, direto/hierárquico, calibração interna, métricas |
 | `baselines/` | 36, 39 | MechDetect oficial (clean e dirty) e observed-only, Little, PKLM (R), logística simples |
-| `pipeline.py`, `report.py` | 37 | etapas de um run e relatório do piloto |
+| `pipeline.py`, `report.py` | 37 | etapas de um run e relatório (tempos, inelegíveis, detectabilidade, atalhos, resumos separados observed-only × painel oráculo) |
 | `stats.py` | 38/46 | H1–H4: Wilcoxon-Pratt + Holm, Hodges–Lehmann com bootstrap, rank-biserial, ROPE (baycomp), decisão |
 | `analyses.py` | 39/40/46 | L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade da massa na fronteira |
 | `baselines/oracle_descriptors.py` | 39 | descritores-oráculo (Y completo) do painel de informação privilegiada |
@@ -40,7 +40,7 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `stats_confirmatory.csv` | H1–H4 (Holm m = 4) |
 | `secondary/` | L1 secundária, recall por mecanismo, L2, CD, sensibilidade da massa na fronteira |
 | `eval-ablation/`, `eval-logo/`, `transfer-<corpus>/` | RQ2, leave-one-generator-out e transferência sintético → real |
-| `report/` | relatório do piloto (só nas famílias de desenvolvimento) |
+| `report/` | relatório: tempos, inelegíveis, detectabilidade, atalhos, sd_Δ e os resumos **separados** `summary_primary.csv` (observed-only) e `summary_oracle_panel.csv`. O `summary.csv` de cada `eval-*` é bruto e lista todos os métodos, inclusive os do painel oráculo |
 
 ## Ordem de execução da produção (depois da tag `prereg-v1`)
 
@@ -62,10 +62,13 @@ uv run --frozen python -m missdetect.rb.cli secondary       --config $C --run <r
 uv run --frozen python -m missdetect.rb.cli ablation        --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli logo            --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli transfer        --config $C --run <run> --synth-run data_rb/synth/20261022-synth-v2-5d31a737645b
+uv run --frozen python -m missdetect.rb.cli report          --config $C --run <run>    # resumos observed-only × painel oráculo
 uv run --frozen python -m missdetect.rb.cli evaluate        --config configs/rb/synth-v2.yaml --run data_rb/synth/20261022-synth-v2-5d31a737645b   # controle sintético
 ```
 
-O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`). O piloto usou a mesma sequência com `configs/rb/pilot-dev.yaml`, mais `report`.
+O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`). O piloto usou a mesma sequência com `configs/rb/pilot-dev.yaml`.
+
+**Ensaio geral (22/10/2026):** a sequência completa acima, incluindo `report`, rodou sem erro com `configs/rb/rehearsal-dev.yaml` (inject-v1 nas 8 famílias de desenvolvimento; PKLM reduzido a 2 contextos por família) no commit `f3bb944`, com a árvore limpa. Run `results_rb/20261022-rehearsal-dev-b4ca243467d6`: 1.632 instâncias, nenhuma falha em nenhuma etapa, ≈ 52 min de relógio. Tempos por instância (núcleo): descritores 1,22 s; descritores-oráculo ≈ 0,6 s; MechDetect-O 3,98 s; oráculo 3,53 s; dirty 2,36 s; PKLM 57,1 s.
 
 ## Testes que provam a ausência de vazamento (`tests/rb/`)
 
