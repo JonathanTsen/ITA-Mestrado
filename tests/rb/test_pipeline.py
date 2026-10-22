@@ -277,3 +277,64 @@ def test_noise_is_not_overwritten(noisy):
     run_dir, _, config = noisy
     with pytest.raises(FileExistsError):
         pipeline.run_noise(run_dir, config, n_jobs=1, n_seeds=1)
+
+
+@pytest.fixture(scope="module")
+def final_model(run):
+    """Passo 45: modelo final congelado (aqui, treinado no run pequeno)."""
+    run_dir, config = run
+    return run_dir, pipeline.run_fit_final(run_dir, config), config
+
+
+def test_final_model_is_frozen_with_its_hash(final_model):
+    run_dir, model_dir, config = final_model
+    meta = json.loads((model_dir / "model.json").read_text())
+    assert meta["model_sha256"] == pipeline.sha256_path(model_dir / "model.joblib")
+    assert meta["generator"] == "symmetric"
+    instances = pd.read_parquet(run_dir / "oracle.parquet")
+    assert meta["n_instances"] == int((instances.generator == "symmetric").sum())
+    model, loaded = pipeline.load_final(model_dir)
+    assert loaded["feature_columns"] == meta["feature_columns"]
+    assert model.predict_proba(np.zeros((1, len(meta["feature_columns"])))).shape == (1, 3)
+    with pytest.raises(FileExistsError):
+        pipeline.run_fit_final(run_dir, config)
+
+
+def test_tampered_final_model_is_refused(final_model, tmp_path):
+    _, model_dir, _ = final_model
+    copy = tmp_path / "final_model"
+    copy.mkdir()
+    (copy / "model.json").write_text((model_dir / "model.json").read_text())
+    (copy / "model.joblib").write_bytes((model_dir / "model.joblib").read_bytes() + b"x")
+    with pytest.raises(ValueError, match="hash"):
+        pipeline.load_final(copy)
+
+
+def test_case_study_reports_probabilities_and_never_accuracy(final_model, tmp_path):
+    _, model_dir, _ = final_model
+    rng = np.random.default_rng(0)
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    z = rng.normal(size=(400, 3))
+    y = z[:, 0] + rng.normal(size=400)
+    y[z[:, 1] > 0.8] = np.nan
+    pd.DataFrame({"a": z[:, 0], "b": z[:, 1], "c": z[:, 2], "y": y}).to_csv(tables / "toy.csv", index=False)
+    base = {"source": "toy", "target": "y", "missing_rule": "natural", "z_include": "", "z_exclude": "",
+            "hypothesis": "MAR", "evidence": "construção", "citation": "-", "exclusion_reason": ""}  # fmt: skip
+    registry = tmp_path / "registry.csv"
+    pd.DataFrame([
+        base | {"case_id": "toy_y", "include": "True"},
+        base | {"case_id": "toy_out", "include": "False", "exclusion_reason": "duplicata"},
+        base | {"case_id": "toy_bad", "target": "nope", "include": "True"},
+    ]).to_csv(registry, index=False)  # fmt: skip
+    config = parse_config({"name": "case-study", "root_seed": 1, "output_root": str(tmp_path / "results")})
+    out = pipeline.run_case_study(model_dir, registry, tables, config, n_jobs=1)
+    cases = pd.read_csv(out / "case_predictions.csv").set_index("case_id")
+    assert cases.loc["toy_y", "status"] == "ok"
+    assert cases.loc[["toy_y"], ["p_MCAR", "p_MAR", "p_MNAR"]].sum(axis=1).iloc[0] == pytest.approx(1.0)
+    assert cases.loc["toy_bad", "status"].startswith("failed")
+    assert not any(w in c.lower() for c in cases.columns for w in ("accuracy", "f1", "agree", "concord", "correct"))
+    excluded = pd.read_csv(out / "excluded.csv")
+    assert list(excluded.case_id) == ["toy_out"]
+    log = json.loads((out / "run.case-study.json").read_text())
+    assert log["model_sha256"] == json.loads((model_dir / "model.json").read_text())["model_sha256"]

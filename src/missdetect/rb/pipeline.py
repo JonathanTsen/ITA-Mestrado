@@ -6,17 +6,19 @@ o painel oráculo leem `oracle.parquet` / `oracle_complete/`.
 """
 
 import hashlib
+import json
 import time
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from matplotlib.figure import Figure
 from threadpoolctl import threadpool_limits
 
+from missdetect.rb import case_study, noise
 from missdetect.rb import features as feat
-from missdetect.rb import noise
 from missdetect.rb.analyses import (
     bootstrap_mean_ci,
     boundary_sensitivity,
@@ -702,3 +704,85 @@ def run_noise(run_dir: Path, config: RunConfig, n_jobs: int, n_seeds: int = nois
          "oracle_sha256_before": oracle_sha_before, "oracle_sha256_after": oracle_sha_after},
     )  # fmt: skip
     return out_dir
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Modelo final congelado e estudo de caso com ausência natural (passo 45; decisão D3)
+# ---------------------------------------------------------------------------------------------------------------------
+def run_fit_final(run_dir: Path, config: RunConfig) -> Path:
+    """Configuração primária treinada em todas as instâncias do gerador principal do run, congelada com SHA-256."""
+    out_dir = run_dir / "final_model"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    frame = load_eval_frame(run_dir, ("symmetric",))
+    frame = frame[frame.feature_status.eq("ok")].reset_index(drop=True)
+    cols = feature_columns(frame)
+    learner = config.evaluate.learner
+    with threadpool_limits(1):
+        model = DirectClassifier(learner, {}, child_seed(config.root_seed, "model")).fit(
+            frame[cols].to_numpy(float), frame.label.to_numpy(), frame.family_id
+        )
+    out_dir.mkdir()
+    joblib.dump(model, out_dir / "model.joblib")
+    meta = {
+        "model_sha256": sha256_path(out_dir / "model.joblib"), "source_run": run_dir.name, "learner": learner,
+        "feature_schema": feat.FEATURE_SCHEMA_VERSION, "feature_columns": cols, "generator": "symmetric",
+        "n_instances": len(frame), "families": sorted(int(f) for f in frame.family_id.unique()),
+        "k_range": [int(frame.k.min()), int(frame.k.max())], "choices": model.choices_,
+    }  # fmt: skip
+    write_json(out_dir / "model.json", meta)
+    append_run_log(run_dir, config, "fit-final", {k: meta[k] for k in ("model_sha256", "n_instances", "families")})
+    return out_dir
+
+
+def load_final(model_dir: Path) -> tuple[DirectClassifier, dict]:
+    """Carrega o modelo congelado só se o SHA-256 do arquivo conferir com o registrado."""
+    meta = json.loads((model_dir / "model.json").read_text(encoding="utf-8"))
+    if sha256_path(model_dir / "model.joblib") != meta["model_sha256"]:
+        raise ValueError(f"o hash do modelo em {model_dir} não confere com model.json")
+    return joblib.load(model_dir / "model.joblib"), meta
+
+
+def _case_row(spec: dict, tables_dir: Path, model, meta: dict) -> dict:
+    row = {k: spec[k] for k in ("case_id", "source", "target", "missing_rule", "hypothesis", "evidence", "citation")}
+    try:
+        table = pd.read_csv(tables_dir / f"{spec['source']}.csv")
+        instance, info = case_study.build_case(table, spec)
+        with threadpool_limits(1):
+            descriptors = feat.compute(instance)
+            proba = model.predict_proba(np.array([[descriptors[c] for c in meta["feature_columns"]]], dtype=float))[0]
+        try:
+            little_p = little.run(instance)["little_p"]
+        except ValueError:
+            little_p = np.nan
+        low, high = meta["k_range"]
+        row |= info | {f"p_{c}": float(proba[i]) for i, c in enumerate(CLASSES)}
+        row |= {"most_probable": CLASSES[int(np.argmax(proba))], "k_in_training_range": low <= info["k"] <= high,
+                "little_p": little_p, "status": "ok"}  # fmt: skip
+    except Exception as exc:  # o caso fica registrado com o motivo da falha, nunca some
+        row |= {"status": f"failed: {type(exc).__name__}: {exc}"}
+    return row
+
+
+def run_case_study(model_dir: Path, registry: Path, tables_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """Aplica o modelo congelado, sem ajuste, aos casos do registro: P(MCAR), P(MAR) e P(MNAR) por coluna, ao lado da
+    hipótese documentada na literatura. Nenhuma métrica de acerto é calculada (VIT-07)."""
+    model, meta = load_final(model_dir)
+    specs = case_study.parse_registry(registry)
+    run_dir = new_run_dir(config)
+    included = [s for s in specs if s["include"]]
+    rows = Parallel(n_jobs=n_jobs)(delayed(_case_row)(s, tables_dir, model, meta) for s in included)
+    cases = pd.DataFrame(rows).assign(model_sha256=meta["model_sha256"])
+    cases.to_csv(run_dir / "case_predictions.csv", index=False)
+    excluded = pd.DataFrame(
+        [{"case_id": s["case_id"], "exclusion_reason": s["exclusion_reason"]} for s in specs if not s["include"]],
+        columns=["case_id", "exclusion_reason"],
+    )
+    excluded.to_csv(run_dir / "excluded.csv", index=False)
+    append_run_log(
+        run_dir, config, "case-study",
+        {"model_dir": str(model_dir), "model_sha256": meta["model_sha256"], "model_source_run": meta["source_run"],
+         "registry": str(registry), "registry_sha256": sha256_path(registry), "tables_dir": str(tables_dir),
+         "n_cases": len(included), "n_excluded": len(excluded)},
+    )  # fmt: skip
+    return run_dir

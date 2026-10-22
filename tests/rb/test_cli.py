@@ -31,3 +31,12 @@ def test_noise_is_implemented_and_requires_a_run(capsys):
         main(["noise", "--config", "configs/rb/inject-v1.yaml"])
     assert exc.value.code == 2  # erro do argparse: falta --run
     assert "--run" in capsys.readouterr().err
+
+
+def test_case_study_commands_are_listed_and_require_their_inputs(capsys):
+    assert {"fit-final", "case-study"} <= set(COMMANDS)
+    with pytest.raises(SystemExit) as exc:
+        main(["case-study", "--config", "configs/rb/inject-v1.yaml"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "--model" in err and "--registry" in err and "--tables" in err

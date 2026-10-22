@@ -104,3 +104,7 @@ results/_archive/
 # =============================================================================
 results_rb/
 data_rb/synth/
+# Estudo de caso (passo 45): brutos e tabelas padronizadas ficam fora do git (licenças variadas);
+# versiona-se só data_rb/case_study_manifest.csv, com URL, SHA-256 e licença de cada fonte
+data_rb/case_study_raw/
+data_rb/case_study_tables/

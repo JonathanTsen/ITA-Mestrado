@@ -12,6 +12,8 @@ Comandos:
     report     relatório do piloto (tempos, inelegíveis, detectabilidade, atalhos, sd_Δ, MDE)
     llm        passos 42/43 (a implementar; precisa das chaves de API e da tag prereg-v1-llm)
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
+    fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
+    case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
     stats      testes confirmatórios H1–H4 (Wilcoxon-Pratt + Holm, Hodges–Lehmann, ROPE) de um run avaliado
     oracle-features  descritores-oráculo (Y completo) para o painel oráculo; rodar antes do evaluate
     ablation   RQ2: todos os descritores × sem cada grupo G1–G4 (Holm m = 4)
@@ -31,7 +33,7 @@ from missdetect.rb.config import load_config
 
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
-    "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise",
+    "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
 )  # fmt: skip
 NOT_YET = {
     "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
@@ -62,13 +64,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/per_family.parquet)")
     p.add_argument("--llm-per-family", type=Path, default=None, help="per_family.parquet do painel de LLM (H4)")
-    for name in ("oracle-features", "ablation", "logo", "transfer", "secondary", "noise"):
+    for name in ("oracle-features", "ablation", "logo", "transfer", "secondary", "noise", "fit-final"):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
         p.add_argument("--run", type=Path, required=True, help="diretório do run")
         p.add_argument("--n-jobs", type=int, default=None)
         if name == "transfer":
             p.add_argument("--synth-run", type=Path, required=True, help="corpus sintético com descritores (synth-v2)")
+    p = sub.add_parser("case-study", help="estudo de caso com ausência natural (modelo congelado)")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--model", type=Path, required=True, help="diretório final_model/ de um run (fit-final)")
+    p.add_argument("--registry", type=Path, required=True, help="registro dos casos (data_rb/case_study_sources.csv)")
+    p.add_argument("--tables", type=Path, required=True, help="diretório das tabelas padronizadas (<fonte>.csv)")
+    p.add_argument("--n-jobs", type=int, default=None)
     for name in NOT_YET:
         p = sub.add_parser(name, help=NOT_YET[name])
         p.add_argument("--config", type=Path)
@@ -110,6 +118,10 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_secondary(args.run, config))
     elif args.command == "noise":
         print(pipeline.run_noise(args.run, config, n_jobs))
+    elif args.command == "fit-final":
+        print(pipeline.run_fit_final(args.run, config))
+    elif args.command == "case-study":
+        print(pipeline.run_case_study(args.model, args.registry, args.tables, config, n_jobs))
     elif args.command == "stats":
         print(pipeline.run_stats(args.run, config, args.llm_per_family))
     return 0
