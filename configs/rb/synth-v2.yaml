@@ -1,0 +1,21 @@
+# Corpus sintético do passo 33, versão 2 (decisão D4 de 21/10/2026): mesma receita do synth-v1, com a grade de β
+# {1, 2, 4, 8, ∞} adotada no congelamento e o código corrigido na revisão (colunas observadas em ordem sorteada; trios
+# com contagem igual). Congelado com a tag synth-v2 antes de qualquer resultado confirmatório. O synth-v1 fica como
+# registro do piloto.
+name: synth-v2
+root_seed: 20261022
+output_root: data_rb/synth
+plan_repo: ~/conductor/workspaces/modeloteseppgpo-v1/baghdad-v1
+synth:
+  n_bases: 1800
+  n_grid: [500, 1000, 2000]
+  k_grid: [2, 4, 8]
+  rate_grid: [0.1, 0.2, 0.3, 0.4, 0.5]
+  beta_grid: [1, 2, 4, 8, .inf]
+  directions: [lower, upper, both]
+  latent_r2_max: 0.9
+  marginals: [normal, lognormal, exponential, beta, uniform, mixture, discrete]
+  generator_shares: {symmetric: 4, mdatagen: 1, tab_err: 1}
+  max_attempts_per_base: 20
+features:
+  n_jobs: 8
