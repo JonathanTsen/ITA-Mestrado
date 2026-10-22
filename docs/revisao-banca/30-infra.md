@@ -91,3 +91,5 @@ O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--ski
 | 7 falha vira erro | `test_evaluate.py`, `pipeline.mark_failures` |
 | 8 imputação só no treino | `test_evaluate.py` |
 | regressão do Ŷ cross-fit (achado do piloto) | `test_baselines.py` |
+| RQ3: ruído só no treino e coerente por contexto; teste sempre com o rótulo verdadeiro (hash e `check_test_labels`); referência limpa idêntica à avaliação primária; sem pesos, `DirectClassifier` idêntico ao original; `noise/` nunca fica pela metade | `test_noise.py`, `test_pipeline.py` |
+| Estudo de caso: Y observado idêntico à fonte e nenhuma ausência preenchida (IND-22); registro válido e coerente com o manifesto e com os sentinelas da D4; diagnóstico de Z que codifica a máscara; modelo (com colunas e schema) e tabelas protegidos por hash; nenhuma coluna de acerto | `test_case_study.py`, `test_pipeline.py` |
