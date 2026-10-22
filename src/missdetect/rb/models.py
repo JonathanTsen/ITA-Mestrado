@@ -17,7 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
@@ -91,9 +91,13 @@ class Calibrated:
         return out / out.sum(axis=1, keepdims=True)
 
 
-def _weights(sample_weight: np.ndarray | None, rows) -> dict:
-    """Argumento `sample_weight` do `fit`, só quando há pesos (sem pesos, a chamada é idêntica à original)."""
-    return {} if sample_weight is None else {"sample_weight": sample_weight[rows]}
+def _weights(sample_weight: np.ndarray | None, rows, learner: BaseEstimator) -> dict:
+    """Argumento de pesos do `fit`, só quando há pesos (sem pesos, a chamada é idêntica à original). Num Pipeline, os
+    pesos vão para o último passo (`<passo>__sample_weight`)."""
+    if sample_weight is None:
+        return {}
+    key = f"{learner.steps[-1][0]}__sample_weight" if isinstance(learner, Pipeline) else "sample_weight"
+    return {key: sample_weight[rows]}
 
 
 def _oof(
@@ -102,7 +106,7 @@ def _oof(
     n_classes = int(y.max()) + 1
     oof = np.full((len(y), n_classes), np.nan)
     for train, test in folds:
-        model = clone(learner).fit(X[train], y[train], **_weights(sample_weight, train))
+        model = clone(learner).fit(X[train], y[train], **_weights(sample_weight, train, learner))
         proba = np.zeros((len(test), n_classes))
         proba[:, model.classes_] = model.predict_proba(X[test])
         oof[test] = proba
@@ -156,7 +160,7 @@ def fit_probabilistic(
         candidates[method] = (method, cal_oof)
     scores = {name: _log_loss(p, y, sample_weight) for name, (_, p) in candidates.items()}
     best = min(scores, key=scores.get)
-    final = clone(learner).fit(X, y, **_weights(sample_weight, slice(None)))
+    final = clone(learner).fit(X, y, **_weights(sample_weight, slice(None), learner))
     calibrator = Calibrated(best).fit(oof, y, sample_weight) if best != "none" else None
     return FittedProbabilistic(
         final, calibrator, n_classes, {"calibration": best, "inner_log_loss": scores}

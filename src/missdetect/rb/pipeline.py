@@ -7,6 +7,7 @@ o painel oráculo leem `oracle.parquet` / `oracle_complete/`.
 
 import hashlib
 import json
+import shutil
 import time
 from pathlib import Path
 
@@ -681,22 +682,29 @@ def run_noise(run_dir: Path, config: RunConfig, n_jobs: int, n_seeds: int = nois
     if (labels_sha_before, oracle_sha_before) != (labels_sha_after, oracle_sha_after):
         raise RuntimeError("os rótulos verdadeiros mudaram durante a RQ3")
     pred = pd.concat([p for p, _, _ in results], ignore_index=True)
+    noise.check_test_labels(pred, frame.set_index("sample_id").label)  # os workers recebem cópias: confere aqui
     pred = mark_failures(pred.assign(method="noise_" + pred.mitigation), frame).drop(columns="method")
     flags = pd.concat([f for _, f, _ in results], ignore_index=True)
     per_family = noise.per_family_noise(pred)
     curves = noise.degradation_curves(per_family)
+    tests = noise.rq3_tests(per_family)
+    summary = noise.flag_summary(flags)
     by_beta, by_r2 = noise.overlap_flags(flags, frame[["sample_id", "beta", "r2_cv"]])
-    out_dir.mkdir()
-    write_parquet(pred, out_dir / "predictions.parquet")
-    write_parquet(flags, out_dir / "flags.parquet")
-    write_parquet(per_family, out_dir / "per_family.parquet")
-    noise.rq3_tests(per_family).to_csv(out_dir / "rq3_tests.csv", index=False)
-    curves.to_csv(out_dir / "degradation_curves.csv", index=False)
-    noise.flag_summary(flags).to_csv(out_dir / "flag_summary.csv", index=False)
-    by_beta.to_csv(out_dir / "overlap_by_beta.csv", index=False)
-    by_r2.to_csv(out_dir / "overlap_by_r2.csv", index=False)
-    pd.DataFrame([r for _, _, r in results]).to_csv(out_dir / "settings.csv", index=False)
-    _degradation_figure(curves, out_dir / "degradation.png")
+    out_dir.mkdir()  # só depois de todas as análises: uma falha acima não deixa `noise/` pela metade
+    try:
+        write_parquet(pred, out_dir / "predictions.parquet")
+        write_parquet(flags, out_dir / "flags.parquet")
+        write_parquet(per_family, out_dir / "per_family.parquet")
+        tests.to_csv(out_dir / "rq3_tests.csv", index=False)
+        curves.to_csv(out_dir / "degradation_curves.csv", index=False)
+        summary.to_csv(out_dir / "flag_summary.csv", index=False)
+        by_beta.to_csv(out_dir / "overlap_by_beta.csv", index=False)
+        by_r2.to_csv(out_dir / "overlap_by_r2.csv", index=False)
+        pd.DataFrame([r for _, _, r in results]).to_csv(out_dir / "settings.csv", index=False)
+        _degradation_figure(curves, out_dir / "degradation.png")
+    except Exception:
+        shutil.rmtree(out_dir)
+        raise
     append_run_log(
         run_dir, config, "noise",
         {"settings": [list(s) for s in settings], "n_instances": len(frame),
@@ -710,7 +718,8 @@ def run_noise(run_dir: Path, config: RunConfig, n_jobs: int, n_seeds: int = nois
 # Modelo final congelado e estudo de caso com ausência natural (passo 45; decisão D3)
 # ---------------------------------------------------------------------------------------------------------------------
 def run_fit_final(run_dir: Path, config: RunConfig) -> Path:
-    """Configuração primária treinada em todas as instâncias do gerador principal do run, congelada com SHA-256."""
+    """Configuração primária treinada nas instâncias do gerador principal do run com descritores válidos, congelada
+    com SHA-256. O arquivo guarda o modelo junto com a ordem das colunas e a versão do schema, cobertos pelo hash."""
     out_dir = run_dir / "final_model"
     if out_dir.exists():
         raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
@@ -723,7 +732,10 @@ def run_fit_final(run_dir: Path, config: RunConfig) -> Path:
             frame[cols].to_numpy(float), frame.label.to_numpy(), frame.family_id
         )
     out_dir.mkdir()
-    joblib.dump(model, out_dir / "model.joblib")
+    joblib.dump(
+        {"model": model, "feature_columns": cols, "feature_schema": feat.FEATURE_SCHEMA_VERSION},
+        out_dir / "model.joblib",
+    )
     meta = {
         "model_sha256": sha256_path(out_dir / "model.joblib"), "source_run": run_dir.name, "learner": learner,
         "feature_schema": feat.FEATURE_SCHEMA_VERSION, "feature_columns": cols, "generator": "symmetric",
@@ -736,17 +748,27 @@ def run_fit_final(run_dir: Path, config: RunConfig) -> Path:
 
 
 def load_final(model_dir: Path) -> tuple[DirectClassifier, dict]:
-    """Carrega o modelo congelado só se o SHA-256 do arquivo conferir com o registrado."""
+    """Carrega o modelo congelado só se o SHA-256 do arquivo conferir com o registrado, se as colunas do `model.json`
+    forem as guardadas no arquivo e se o schema dos descritores for o atual."""
     meta = json.loads((model_dir / "model.json").read_text(encoding="utf-8"))
     if sha256_path(model_dir / "model.joblib") != meta["model_sha256"]:
         raise ValueError(f"o hash do modelo em {model_dir} não confere com model.json")
-    return joblib.load(model_dir / "model.joblib"), meta
+    payload = joblib.load(model_dir / "model.joblib")
+    if payload["feature_columns"] != meta["feature_columns"]:
+        raise ValueError(f"as colunas de {model_dir / 'model.json'} não são as guardadas no modelo")
+    if payload["feature_schema"] != feat.FEATURE_SCHEMA_VERSION:
+        raise ValueError(f"schema do modelo {payload['feature_schema']} ≠ schema atual {feat.FEATURE_SCHEMA_VERSION}")
+    return payload["model"], meta
 
 
-def _case_row(spec: dict, tables_dir: Path, model, meta: dict) -> dict:
+def _case_row(spec: dict, tables_dir: Path, model, meta: dict, expected_sha: dict[str, str]) -> dict:
     row = {k: spec[k] for k in ("case_id", "source", "target", "missing_rule", "hypothesis", "evidence", "citation")}
     try:
-        table = pd.read_csv(tables_dir / f"{spec['source']}.csv")
+        path = tables_dir / f"{spec['source']}.csv"
+        row["table_sha256"] = sha256_path(path)
+        if expected_sha and row["table_sha256"] != expected_sha.get(spec["source"]):
+            raise ValueError("o sha256 da tabela não confere com o manifesto")
+        table = pd.read_csv(path)
         instance, info = case_study.build_case(table, spec)
         with threadpool_limits(1):
             descriptors = feat.compute(instance)
@@ -758,20 +780,25 @@ def _case_row(spec: dict, tables_dir: Path, model, meta: dict) -> dict:
         low, high = meta["k_range"]
         row |= info | {f"p_{c}": float(proba[i]) for i, c in enumerate(CLASSES)}
         row |= {"most_probable": CLASSES[int(np.argmax(proba))], "k_in_training_range": low <= info["k"] <= high,
+                "z_determines_mask": info["mask_auc_from_z"] >= case_study.MASK_DETERMINED_AUC,
                 "little_p": little_p, "status": "ok"}  # fmt: skip
     except Exception as exc:  # o caso fica registrado com o motivo da falha, nunca some
         row |= {"status": f"failed: {type(exc).__name__}: {exc}"}
     return row
 
 
-def run_case_study(model_dir: Path, registry: Path, tables_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+def run_case_study(
+    model_dir: Path, registry: Path, tables_dir: Path, config: RunConfig, n_jobs: int, manifest: Path | None = None
+) -> Path:
     """Aplica o modelo congelado, sem ajuste, aos casos do registro: P(MCAR), P(MAR) e P(MNAR) por coluna, ao lado da
-    hipótese documentada na literatura. Nenhuma métrica de acerto é calculada (VIT-07)."""
+    hipótese documentada na literatura. Nenhuma métrica de acerto é calculada (VIT-07). Com `manifest`, cada tabela
+    só é usada se o seu SHA-256 conferir com o registrado na obtenção."""
     model, meta = load_final(model_dir)
     specs = case_study.parse_registry(registry)
+    expected = {} if manifest is None else dict(pd.read_csv(manifest)[["source", "table_sha256"]].to_numpy())
     run_dir = new_run_dir(config)
     included = [s for s in specs if s["include"]]
-    rows = Parallel(n_jobs=n_jobs)(delayed(_case_row)(s, tables_dir, model, meta) for s in included)
+    rows = Parallel(n_jobs=n_jobs)(delayed(_case_row)(s, tables_dir, model, meta, expected) for s in included)
     cases = pd.DataFrame(rows).assign(model_sha256=meta["model_sha256"])
     cases.to_csv(run_dir / "case_predictions.csv", index=False)
     excluded = pd.DataFrame(
@@ -783,6 +810,7 @@ def run_case_study(model_dir: Path, registry: Path, tables_dir: Path, config: Ru
         run_dir, config, "case-study",
         {"model_dir": str(model_dir), "model_sha256": meta["model_sha256"], "model_source_run": meta["source_run"],
          "registry": str(registry), "registry_sha256": sha256_path(registry), "tables_dir": str(tables_dir),
+         "manifest": str(manifest), "manifest_sha256": sha256_path(manifest) if manifest else None,
          "n_cases": len(included), "n_excluded": len(excluded)},
     )  # fmt: skip
     return run_dir

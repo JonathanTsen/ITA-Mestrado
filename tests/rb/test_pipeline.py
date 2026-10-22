@@ -5,6 +5,7 @@ Verifica a separação física observado × oráculo, o checkpoint por sample_id
 """
 
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -338,3 +339,56 @@ def test_case_study_reports_probabilities_and_never_accuracy(final_model, tmp_pa
     assert list(excluded.case_id) == ["toy_out"]
     log = json.loads((out / "run.case-study.json").read_text())
     assert log["model_sha256"] == json.loads((model_dir / "model.json").read_text())["model_sha256"]
+
+
+def test_final_model_columns_and_schema_are_protected(final_model, tmp_path, monkeypatch):
+    _, model_dir, _ = final_model
+    copy = tmp_path / "final_model"
+    copy.mkdir()
+    (copy / "model.joblib").write_bytes((model_dir / "model.joblib").read_bytes())
+    meta = json.loads((model_dir / "model.json").read_text())
+    meta["feature_columns"] = list(reversed(meta["feature_columns"]))
+    (copy / "model.json").write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="colunas"):
+        pipeline.load_final(copy)
+    monkeypatch.setattr(pipeline.feat, "FEATURE_SCHEMA_VERSION", "outra")
+    with pytest.raises(ValueError, match="schema"):
+        pipeline.load_final(model_dir)
+
+
+def test_case_study_checks_tables_against_the_manifest(final_model, tmp_path):
+    _, model_dir, _ = final_model
+    rng = np.random.default_rng(1)
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    z = rng.normal(size=(300, 2))
+    y = z[:, 0] + rng.normal(size=300)
+    y[z[:, 1] > 0.7] = np.nan
+    pd.DataFrame({"a": z[:, 0], "b": z[:, 1], "y": y}).to_csv(tables / "toy.csv", index=False)
+    pd.DataFrame({"a": z[:, 0], "b": z[:, 1], "y": y}).to_csv(tables / "other.csv", index=False)
+    manifest = tmp_path / "manifest.csv"
+    pd.DataFrame({"source": ["toy", "other"],
+                  "table_sha256": [pipeline.sha256_path(tables / "toy.csv"), "0" * 64]}).to_csv(manifest, index=False)  # fmt: skip
+    base = {"target": "y", "missing_rule": "natural", "z_include": "", "z_exclude": "", "hypothesis": "MAR",
+            "evidence": "-", "citation": "-", "include": "True", "exclusion_reason": ""}  # fmt: skip
+    registry = tmp_path / "registry.csv"
+    pd.DataFrame([base | {"case_id": "ok", "source": "toy"}, base | {"case_id": "bad", "source": "other"}]).to_csv(
+        registry, index=False
+    )
+    config = parse_config({"name": "case-study", "root_seed": 2, "output_root": str(tmp_path / "results")})
+    out = pipeline.run_case_study(model_dir, registry, tables, config, n_jobs=1, manifest=manifest)
+    cases = pd.read_csv(out / "case_predictions.csv").set_index("case_id")
+    assert cases.loc["ok", "status"] == "ok"
+    assert cases.loc["ok", "table_sha256"] == pipeline.sha256_path(tables / "toy.csv")
+    assert "sha256" in cases.loc["bad", "status"]
+    assert "z_determines_mask" in cases.columns
+
+
+def test_noise_leaves_no_partial_output_when_an_analysis_fails(run, extended, monkeypatch, tmp_path):
+    run_dir, config = run
+    copy = tmp_path / run_dir.name
+    shutil.copytree(run_dir, copy, ignore=shutil.ignore_patterns("noise", "run.noise.json"))
+    monkeypatch.setattr(pipeline.noise, "rq3_tests", lambda per_family: (_ for _ in ()).throw(RuntimeError("falha")))
+    with pytest.raises(RuntimeError, match="falha"):
+        pipeline.run_noise(copy, config, n_jobs=1, n_seeds=1)
+    assert not (copy / "noise").exists()

@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from missdetect.rb.case_study import auxiliary_columns, build_case, parse_registry
+from missdetect.rb.bench import load_sentinel_exclusions
+from missdetect.rb.case_study import auxiliary_columns, build_case, mask_predictability, parse_registry
 
 
 def _table(n: int = 200, seed: int = 0) -> pd.DataFrame:
@@ -134,3 +135,33 @@ def test_versioned_registry_is_valid_and_matches_the_manifest():
                 "below_lod:"
             )
             assert spec["hypothesis"] and spec["evidence"], spec["case_id"]
+
+
+def test_mask_predictability_flags_auxiliaries_that_encode_the_mask():
+    rng = np.random.default_rng(0)
+    m = rng.random(400) < 0.3
+    noise_z = pd.DataFrame({"a": rng.normal(size=400), "b": rng.normal(size=400)})
+    assert mask_predictability(noise_z, m) < 0.65
+    leaky = noise_z.assign(c=noise_z.a + 5.0 * m)  # uma combinação de Z separa a máscara
+    assert mask_predictability(leaky, m) > 0.99
+
+
+def test_build_case_reports_how_well_z_predicts_the_mask():
+    _, meta = build_case(_table(), _spec())
+    assert 0.0 <= meta["mask_auc_from_z"] <= 1.0
+
+
+def test_versioned_registry_follows_the_d4_sentinel_rule():
+    """A D4 tira as colunas sentinela de uma tabela como alvo e como auxiliar: num caso, elas só podem ser o próprio
+    alvo (com a regra de zero impossível) ou estar fora de Z."""
+    root = Path(__file__).resolve().parents[2] / "data_rb"
+    sentinels = load_sentinel_exclusions(str(root / "sentinel_exclusions.csv"))
+    for spec in parse_registry(root / "case_study_sources.csv"):
+        if not spec["include"] or not spec["source"].startswith("openml_"):
+            continue
+        cols = sentinels.get(int(spec["source"].split("_")[1]), set())
+        excluded = set(spec["z_exclude"].split(";"))
+        for col in cols - {spec["target"]}:
+            assert col in excluded, (spec["case_id"], col)
+        if spec["target"] in cols:
+            assert spec["missing_rule"] == "zero_impossible", spec["case_id"]

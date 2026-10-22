@@ -9,6 +9,7 @@ from missdetect.rb.models import DirectClassifier
 from missdetect.rb.noise import (
     MITIGATIONS,
     TEST_RATE,
+    check_test_labels,
     cleanlab_scores,
     corrupt_labels,
     degradation_curves,
@@ -287,3 +288,20 @@ def test_overlap_flags_by_beta_and_r2_use_only_the_clean_setting():
     assert beta.loc[1.0] == pytest.approx((1.0 + 0.0) / 2)  # família 0: a, b sinalizadas; família 1: d não
     assert beta.loc[8.0] == pytest.approx(0.0)
     assert set(by_r2.r2_bin) == {"<0,2", "≥0,5"}
+
+
+def test_pipeline_learners_accept_weights():
+    X, y, families = _blobs()
+    X_test = np.random.default_rng(9).normal(size=(300, 3))
+    base = DirectClassifier("logreg", {}, 0).fit(X, y, families).predict_proba(X_test)[:, MCAR].mean()
+    weights = np.where(y == MCAR, 10.0, 1.0)
+    heavy = DirectClassifier("logreg", {}, 0).fit(X, y, families, sample_weight=weights).predict_proba(X_test)[:, MCAR]
+    assert heavy.mean() > base + 0.05
+
+
+def test_check_test_labels_detects_a_corrupted_test_label():
+    pred = pd.DataFrame({"sample_id": ["a", "b", "a"], "y_true": [0, 1, 0]})
+    truth = pd.Series([0, 1], index=["a", "b"])
+    check_test_labels(pred, truth)
+    with pytest.raises(RuntimeError, match="rótulo"):
+        check_test_labels(pred.assign(y_true=[0, 2, 0]), truth)

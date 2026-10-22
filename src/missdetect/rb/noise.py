@@ -3,6 +3,8 @@
 - Só os rótulos de **treino** são corrompidos; o teste externo usa sempre os rótulos verdadeiros.
 - A corrupção é **coerente por contexto** (as instâncias de um contexto trocam juntas, como um erro de rotulagem do
   conjunto de dados) e estratificada por família: em cada família, exatamente round(taxa × nº de contextos) contextos.
+  O `round` do Python arredonda empates para o par (com 45 contextos, a taxa 0,10 vira 4/45 = 0,089; uma família com 5
+  contextos não recebe ruído a 0,10); a taxa realizada de cada configuração vai para `settings.csv`.
   - simétrica: cada rótulo do contexto vai para uma das outras duas classes com igual probabilidade (um ciclo
     MCAR → MAR → MNAR → MCAR ou o inverso, sorteado por contexto);
   - MAR ↔ MNAR: o MAR e o MNAR do contexto trocam entre si; o MCAR não muda.
@@ -69,6 +71,14 @@ def corrupt_labels(
             else:
                 noisy[rows] = np.where(y[rows] == MAR, MNAR, np.where(y[rows] == MNAR, MAR, y[rows]))
     return noisy
+
+
+def check_test_labels(pred: pd.DataFrame, truth: pd.Series) -> None:
+    """Confere, no processo principal, que o `y_true` de cada predição é o rótulo verdadeiro da instância."""
+    expected = pred.sample_id.map(truth)
+    wrong = expected.isna() | (expected.to_numpy() != pred.y_true.to_numpy())
+    if wrong.any():
+        raise RuntimeError(f"rótulo de teste diferente do verdadeiro em {int(wrong.sum())} predições")
 
 
 def flag_quality(flagged: np.ndarray, corrupted: np.ndarray, families: pd.Series) -> pd.DataFrame:

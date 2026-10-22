@@ -76,6 +76,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", type=Path, required=True, help="diretório final_model/ de um run (fit-final)")
     p.add_argument("--registry", type=Path, required=True, help="registro dos casos (data_rb/case_study_sources.csv)")
     p.add_argument("--tables", type=Path, required=True, help="diretório das tabelas padronizadas (<fonte>.csv)")
+    p.add_argument(
+        "--manifest", type=Path, default=Path("data_rb/case_study_manifest.csv"),
+        help="manifesto com o SHA-256 de cada tabela (conferido antes de usar)",
+    )  # fmt: skip
     p.add_argument("--n-jobs", type=int, default=None)
     for name in NOT_YET:
         p = sub.add_parser(name, help=NOT_YET[name])
@@ -121,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "fit-final":
         print(pipeline.run_fit_final(args.run, config))
     elif args.command == "case-study":
-        print(pipeline.run_case_study(args.model, args.registry, args.tables, config, n_jobs))
+        print(pipeline.run_case_study(args.model, args.registry, args.tables, config, n_jobs, args.manifest))
     elif args.command == "stats":
         print(pipeline.run_stats(args.run, config, args.llm_per_family))
     return 0

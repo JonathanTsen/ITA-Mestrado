@@ -11,12 +11,21 @@ ruído ou imputação. Uma ausência só é criada por uma regra documentada no 
 
 Auxiliares Z: as colunas listadas em `z_include`, ou, sem lista, **todas** as colunas completas que sejam numéricas ou
 binárias (binárias viram 0/1 pela ordem das categorias), menos o alvo, os identificadores, as constantes e `z_exclude`.
+Colunas que codificam a máscara ou o próprio Y (indicadores de medição, Y em outra unidade, outro analito censurado no
+mesmo limite de detecção, colunas sentinela da D4, somas que contêm Y) vão para `z_exclude` com o motivo na evidência.
+Como diagnóstico, `mask_auc_from_z` mede o quanto Z prevê a máscara (AUC de CV de uma logística); acima de 0,99, Z
+praticamente determina a máscara, e o caso é marcado.
 """
 
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.sources import id_like
@@ -26,6 +35,7 @@ REGISTRY_COLUMNS = (
     "include", "exclusion_reason",
 )  # fmt: skip
 MIN_OBSERVED = 10
+MASK_DETERMINED_AUC = 0.99
 
 
 def _split(value: str) -> list[str]:
@@ -73,6 +83,18 @@ def _encode(table: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
+def mask_predictability(z: pd.DataFrame, m: np.ndarray) -> float:
+    """AUC de CV (logística padronizada, até 5 folds estratificados) da máscara prevista a partir de Z."""
+    m = np.asarray(m, dtype=int)
+    folds = int(min(5, m.sum(), (1 - m).sum()))
+    if folds < 2:
+        return float("nan")
+    model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000))
+    cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=0)
+    proba = cross_val_predict(model, z.to_numpy(float), m, cv=cv, method="predict_proba")[:, 1]
+    return float(roc_auc_score(m, proba))
+
+
 def build_case(table: pd.DataFrame, spec: dict) -> tuple[ObservedInstance, dict]:
     """Instância observada de um caso: Y com as ausências da fonte (e só as da regra documentada) e as auxiliares."""
     rule, target = spec["missing_rule"], spec["target"]
@@ -110,9 +132,10 @@ def build_case(table: pd.DataFrame, spec: dict) -> tuple[ObservedInstance, dict]
         raise ValueError(f"caso {spec['case_id']} com menos de {MIN_OBSERVED} valores observados")
     if not cols:
         raise ValueError(f"caso {spec['case_id']}: nenhuma auxiliar completa (numérica ou binária) pela regra")
+    z = _encode(frame, cols)
     meta = {
         "case_id": spec["case_id"], "n": len(y), "k": len(cols), "z_columns": ";".join(cols),
         "n_missing_natural": int(natural.sum()), "n_missing_rule": int((hit & ~natural).sum()),
-        "n_rows_dropped": n_dropped, "missing_rate": float(m.mean()),
+        "n_rows_dropped": n_dropped, "missing_rate": float(m.mean()), "mask_auc_from_z": mask_predictability(z, m),
     }  # fmt: skip
-    return ObservedInstance(spec["case_id"], y, _encode(frame, cols)), meta
+    return ObservedInstance(spec["case_id"], y, z), meta
