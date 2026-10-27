@@ -167,6 +167,7 @@ def extended(run, tmp_path_factory):
     pipeline.run_ablation(run_dir, config, n_jobs=2)
     pipeline.run_logo(run_dir, config, n_jobs=2)
     pipeline.run_secondary(run_dir, config)
+    pipeline.run_cross_generator(run_dir, config, n_jobs=2)
     pipeline.run_stats(run_dir, config)
     synth_config = parse_config(
         {
@@ -225,7 +226,16 @@ def test_secondary_and_stats_outputs(extended):
     assert (run_dir / "secondary" / "l2_evaluation.csv").exists()
     assert (run_dir / "secondary" / "boundary_sensitivity.csv").exists()
     stats_out = pd.read_csv(run_dir / "stats_confirmatory.csv")
-    assert set(stats_out.hypothesis) == {"H1", "H2", "H3"}
+    assert list(stats_out.hypothesis) == ["H1", "H2", "H2e", "H3", "H5", "H6"]
+    assert stats_out.p_holm.min() == pytest.approx(min(6 * stats_out.p_value.min(), 1.0))  # Holm m = 6
+    level = pd.read_csv(run_dir / "stats_level.csv")
+    assert {"direct_hgb", "cross_direct_hgb"} <= set(level.method)
+    oracle = pd.read_csv(run_dir / "secondary" / "oracle_panel_tests.csv")
+    assert list(oracle.hypothesis) == ["ORA_symmetric"]
+    assert oracle.p_holm.iloc[0] == pytest.approx(
+        min(3 * oracle.p_value.iloc[0], 1.0)
+    )  # m = 3 (geradores sem eval: p = 1)
+    assert list(pd.read_csv(run_dir / "secondary" / "g4_tests.csv").hypothesis) == ["G4"]
 
 
 def test_transfer_predicts_every_real_instance(extended):
@@ -392,3 +402,18 @@ def test_noise_leaves_no_partial_output_when_an_analysis_fails(run, extended, mo
     with pytest.raises(RuntimeError, match="falha"):
         pipeline.run_noise(copy, config, n_jobs=1, n_seeds=1)
     assert not (copy / "noise").exists()
+
+
+def test_cross_generator_uses_primary_partitions_and_tests_only_external_generators(extended):
+    run_dir, _ = extended
+    pred = pd.read_parquet(run_dir / "eval-cross" / "predictions.parquet")
+    assert set(pred.method) == {"cross_direct_hgb", "cross_logit_simple", "ingen_direct_hgb", "mechdetect_obs"}
+    assert check_pairing(pred)
+    generator = pd.read_parquet(run_dir / "oracle.parquet").set_index("sample_id").generator
+    assert (pred.sample_id.map(generator) != "symmetric").all()
+    primary = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    primary_folds = primary.groupby(["repeat", "fold"]).family_id.agg(set)
+    for (repeat, fold), fams in pred.groupby(["repeat", "fold"]).family_id.agg(set).items():
+        assert fams <= primary_folds[(repeat, fold)]  # mesmas famílias de teste da avaliação primária
+    summary = pd.read_csv(run_dir / "eval-cross" / "cross_summary.csv")
+    assert "loss_ingen_minus_cross" in set(summary.quantity)

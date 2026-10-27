@@ -5,13 +5,18 @@ import pandas as pd
 import pytest
 
 from missdetect.rb.stats import (
+    DELTA,
     bayes_signed_rank,
     confirmatory,
     decide,
+    decide_equivalence,
     hodges_lehmann,
     holm,
+    level_estimate,
+    llm_hypothesis,
     rank_biserial,
     wilcoxon_p,
+    wilcoxon_tost,
 )
 
 
@@ -52,11 +57,22 @@ def test_bayes_sign_convention_right_means_method_better():
 
 
 def test_decide_table():
-    assert decide(0.01, 0.05, 0.0) == "superior"
-    assert decide(0.01, -0.05, 0.0) == "inferior"
-    assert decide(0.30, 0.001, 0.97) == "praticamente equivalente"
-    assert decide(0.30, 0.01, 0.50) == "evidência insuficiente"
-    assert decide(0.01, 0.005, 0.97) == "superior, dentro da ROPE"
+    assert decide(0.01, 0.05) == "superior"
+    assert decide(0.01, -0.05) == "inferior"
+    assert decide(0.01, 0.005) == "superior (efeito menor que δ)"
+    assert decide(0.30, 0.01) == "evidência insuficiente"
+
+
+def test_decide_equivalence():
+    assert decide_equivalence(0.01) == "equivalentes dentro de ±δ"
+    assert decide_equivalence(0.20) == "equivalência não demonstrada"
+
+
+def test_tost_detects_equivalence_only_inside_the_margin():
+    rng = np.random.default_rng(0)
+    assert wilcoxon_tost(rng.normal(0.0, 0.01, 50), DELTA) < 0.001
+    assert wilcoxon_tost(rng.normal(0.05, 0.01, 50), DELTA) > 0.5
+    assert wilcoxon_tost(rng.normal(0.0, 0.08, 50), DELTA) > 0.05  # dispersão grande: não dá para afirmar
 
 
 def _per_family(effects: dict[str, float], n: int = 40, seed: int = 0) -> pd.DataFrame:
@@ -69,21 +85,40 @@ def _per_family(effects: dict[str, float], n: int = 40, seed: int = 0) -> pd.Dat
     return pd.DataFrame(rows)
 
 
-def test_confirmatory_known_effects_and_missing_h4():
-    pf = _per_family({"direct_hgb": 0.0, "mechdetect_obs": -0.10, "hier_hgb_fullprob": 0.0, "trivial_uniform": 0.0})
-    res = confirmatory(pf).set_index("hypothesis")
-    assert set(res.index) == {"H1", "H2", "H3"}
+def _inputs(n: int = 40):
+    main = _per_family({"direct_hgb": 0.0, "mechdetect_obs": -0.10, "hier_hgb_fullprob": 0.0, "logit_simple": -0.03}, n)
+    cross = _per_family({"cross_direct_hgb": 0.0, "mechdetect_obs": -0.08}, n, seed=5)
+    rng = np.random.default_rng(7)
+    auc = pd.DataFrame({"family_id": range(n), "auc": rng.normal(0.70, 0.05, n)})
+    return main, cross, auc
+
+
+def test_confirmatory_family_has_six_tests_with_holm():
+    res = confirmatory(*_inputs()).set_index("hypothesis")
+    assert list(res.index) == ["H1", "H2", "H2e", "H3", "H5", "H6"]
+    assert res.p_holm.min() == pytest.approx(min(6 * res.p_value.min(), 1.0))
     assert res.loc["H1", "decision"] == "superior" and res.loc["H1", "hodges_lehmann"] == pytest.approx(0.10, abs=0.01)
     assert res.loc["H1", "ci_low"] < 0.10 < res.loc["H1", "ci_high"]
-    assert res.loc["H3", "decision"].startswith("superior")
-    assert res.loc["H2", "decision"] in {"praticamente equivalente", "evidência insuficiente"}
-    # H4 ausente entra no Holm com p = 1 (m = 4): o menor p é multiplicado por 4
-    assert res.p_holm.min() == pytest.approx(min(4 * res.p_value.min(), 1.0))
+    assert res.loc["H3", "decision"] == "superior" and res.loc["H3", "comparator"] == "logit_simple"
+    assert res.loc["H5", "method"] == "cross_direct_hgb" and res.loc["H5", "decision"] == "superior"
+    assert res.loc["H6", "comparator"] == "0,5" and res.loc["H6", "decision"] == "superior"
+    assert res.loc["H6", "hodges_lehmann"] == pytest.approx(0.20, abs=0.03)
+    assert res.loc["H2", "decision"] == "evidência insuficiente"
+    assert res.loc["H2e", "test"] == "tost" and res.loc["H2e", "decision"] == "equivalentes dentro de ±δ"
 
 
-def test_confirmatory_with_llm_panel():
-    main = _per_family({"direct_hgb": 0.0, "mechdetect_obs": -0.10, "hier_hgb_fullprob": 0.0, "trivial_uniform": 0.0})
+def test_llm_hypothesis_is_its_own_family():
     llm = _per_family({"direct_hgb": 0.0, "llm_a1": -0.08}, n=30, seed=3)
-    res = confirmatory(main, llm).set_index("hypothesis")
+    res = llm_hypothesis(llm).set_index("hypothesis")
+    assert list(res.index) == ["H4"]
     assert res.loc["H4", "n_families"] == 30
+    assert res.loc["H4", "p_holm"] == pytest.approx(res.loc["H4", "p_value"])  # m = 1
     assert res.loc["H4", "decision"] == "inferior"  # d = llm_a1 − primária < 0: o LLM é inferior
+
+
+def test_level_estimate_has_a_bootstrap_interval():
+    main, _, _ = _inputs()
+    level = level_estimate(main, "direct_hgb")
+    truth = main[main.method == "direct_hgb"].macro_recall.mean()
+    assert level["mean"] == pytest.approx(truth)
+    assert level["ci_low"] < truth < level["ci_high"] and level["n_families"] == 40

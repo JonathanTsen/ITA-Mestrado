@@ -24,8 +24,10 @@ from missdetect.rb.analyses import (
     bootstrap_mean_ci,
     boundary_sensitivity,
     descriptive_classifiers,
+    generator_family_tests,
     l1_secondary,
     l2_evaluation,
+    mar_mnar_auc,
     per_mechanism,
 )
 from missdetect.rb.baselines import little, mechdetect_obs
@@ -55,7 +57,15 @@ from missdetect.rb.runs import (
     write_parquet,
 )
 from missdetect.rb.splits import outer_splits
-from missdetect.rb.stats import compare_family, confirmatory
+from missdetect.rb.stats import (
+    PRIMARY,
+    bootstrap_hl_ci,
+    compare_family,
+    confirmatory,
+    hodges_lehmann,
+    level_estimate,
+    llm_hypothesis,
+)
 from missdetect.rb.synth import design as synth_design
 from missdetect.rb.synth import generate_base
 
@@ -397,17 +407,28 @@ def run_evaluate(run_dir: Path, config: RunConfig, n_jobs: int, generators: tupl
 
 
 def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = None) -> Path:
-    """H1–H4 com Holm (m = 4) a partir das métricas por família da avaliação no gerador principal."""
+    """Família confirmatória principal (H1, H2, H2e, H3, H5, H6; Holm m = 6) e, com o painel de LLM, a H4 (m = 1).
+
+    Lê `eval-symmetric/` (H1–H3 e a AUC MAR × MNAR da H6) e `eval-cross/` (H5; rode `cross-generator` antes)."""
     out = run_dir / "stats_confirmatory.csv"
     if out.exists():
         raise FileExistsError(f"{out} já existe; não sobrescrevo.")
+    cross_path = run_dir / "eval-cross" / "per_family.parquet"
+    if not cross_path.exists():
+        raise FileNotFoundError(f"{cross_path} não existe: rode `cross-generator` antes do `stats` (H5)")
     main = pd.read_parquet(run_dir / "eval-symmetric" / "per_family.parquet")
-    llm = pd.read_parquet(llm_per_family) if llm_per_family else None
-    result = confirmatory(main, llm)
+    cross = pd.read_parquet(cross_path)
+    auc = mar_mnar_auc(pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet"), PRIMARY)
+    result = confirmatory(main, cross, auc)
     result.to_csv(out, index=False)
-    append_run_log(
-        run_dir, config, "stats", {"hypotheses": result.hypothesis.tolist(), "llm_panel": bool(llm_per_family)}
-    )
+    level = [level_estimate(main, PRIMARY), level_estimate(cross, "cross_direct_hgb")]
+    pd.DataFrame(level).to_csv(run_dir / "stats_level.csv", index=False)
+    auc.to_csv(run_dir / "stats_h6_auc_by_family.csv", index=False)
+    extra = {"hypotheses": result.hypothesis.tolist(), "llm_panel": bool(llm_per_family)}
+    if llm_per_family:
+        llm = llm_hypothesis(pd.read_parquet(llm_per_family))
+        llm.to_csv(run_dir / "stats_llm.csv", index=False)
+    append_run_log(run_dir, config, "stats", extra)
     return out
 
 
@@ -612,6 +633,22 @@ def run_secondary(run_dir: Path, config: RunConfig) -> Path:
         cd.pop("nemenyi_p").to_csv(out_dir / "nemenyi_p.csv")
         write_json(out_dir / "descriptive_classifiers.json", cd)
     boundary_sensitivity(run_dir, pred, f"direct_{learner}").to_csv(out_dir / "boundary_sensitivity.csv", index=False)
+    # Painel oráculo pareado por gerador (Holm m = 3) e as estatísticas do MechDetect como descritores (m = 1)
+    oracle = generator_family_tests(run_dir, f"direct_{learner}_oracle_desc", "mechdetect_oracle", "ORA")
+    if oracle is not None:
+        oracle.to_csv(out_dir / "oracle_panel_tests.csv", index=False)
+    if {f"direct_{learner}", f"g4only_{learner}"} <= set(per_family.method):
+        compare_family(per_family, {"G4": (f"direct_{learner}", f"g4only_{learner}")}).to_csv(
+            out_dir / "g4_tests.csv", index=False
+        )
+    # Gerador da mdatagen com a sua própria CV (Holm m = 2)
+    mdatagen = run_dir / "eval-mdatagen" / "per_family.parquet"
+    if mdatagen.exists():
+        hypotheses = {
+            "MDG_simples": (f"direct_{learner}", "logit_simple"),
+            "MDG_mdo": (f"direct_{learner}", "mechdetect_obs"),
+        }
+        compare_family(pd.read_parquet(mdatagen), hypotheses).to_csv(out_dir / "mdatagen_tests.csv", index=False)
     append_run_log(run_dir, config, "secondary", {"outputs": sorted(p.name for p in out_dir.iterdir())})
     return out_dir
 
@@ -814,3 +851,108 @@ def run_case_study(
          "n_cases": len(included), "n_excluded": len(excluded)},
     )  # fmt: skip
     return run_dir
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Geradores externos (H5, confirmatória; pré-registro v2)
+# ---------------------------------------------------------------------------------------------------------------------
+EXTERNAL_METHODS = ("cross_direct_hgb", "cross_logit_simple", "ingen_direct_hgb", "mechdetect_obs")
+
+
+def run_cross_generator(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """H5: a configuração primária treinada só no gerador principal, nas mesmas partições da avaliação primária, aplicada
+    sem ajuste às instâncias dos geradores externos (mdatagen e tab_err) das famílias de teste.
+
+    Métodos, todos nas mesmas instâncias: `cross_direct_hgb` (a H5), `mechdetect_obs` (o comparador da H5),
+    `cross_logit_simple` (a logística simples, também treinada no principal) e `ingen_direct_hgb` (a configuração
+    primária treinada nos próprios geradores externos das famílias de treino, referência para a perda fora do gerador,
+    descritiva)."""
+    out_dir = run_dir / "eval-cross"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    frame = load_eval_frame(run_dir)
+    sym = frame[frame.generator == "symmetric"].reset_index(drop=True)
+    ext = frame[frame.generator != "symmetric"].reset_index(drop=True)
+    if ext.empty:
+        raise ValueError("o run não tem instâncias de geradores externos")
+    ev = config.evaluate
+    seed = child_seed(config.root_seed, "model")
+    cols, simple = feature_columns(frame), list(LOGIT_SIMPLE_FEATURES)
+    mdo_ok = ext.mdo_status.eq("ok").to_numpy() if "mdo_status" in ext else np.zeros(len(ext), bool)
+    mdo_proba = np.full((len(ext), N_CLASSES), np.nan)
+    if mdo_ok.any():
+        mdo_proba[mdo_ok] = mechdetect_obs.decision_proba(ext.loc[mdo_ok, "mdo_decision"])
+    families = sym.family_id.reset_index(drop=True)
+
+    def task(method, repeat, fold, train, test):
+        train_fams = set(families.iloc[train])
+        test_fams = set(families.iloc[test])
+        te = np.flatnonzero(ext.family_id.isin(test_fams).to_numpy())
+        if len(te) == 0:
+            return pd.DataFrame()
+        status = "ok"
+        try:
+            with threadpool_limits(1):
+                if method == "mechdetect_obs":
+                    proba = Passthrough().predict_proba(mdo_proba[te])
+                elif method == "ingen_direct_hgb":
+                    tr = np.flatnonzero(ext.family_id.isin(train_fams).to_numpy())
+                    model = DirectClassifier(ev.learner, {}, seed)
+                    model.fit(ext[cols].to_numpy(float)[tr], ext.label.to_numpy()[tr], ext.family_id.iloc[tr])
+                    proba = model.predict_proba(ext[cols].to_numpy(float)[te])
+                else:
+                    use = cols if method == "cross_direct_hgb" else simple
+                    learner = ev.learner if method == "cross_direct_hgb" else "logreg"
+                    model = DirectClassifier(learner, {}, seed)
+                    model.fit(sym[use].to_numpy(float)[train], sym.label.to_numpy()[train], families.iloc[train])
+                    proba = model.predict_proba(ext[use].to_numpy(float)[te])
+        except Exception as exc:  # falha conta como erro, nunca some
+            status = f"failed: {type(exc).__name__}: {exc}"
+            proba = np.full((len(te), N_CLASSES), 1 / N_CLASSES)
+        y_pred = proba.argmax(1) if status == "ok" else np.full(len(te), -1)
+        return pd.DataFrame({
+            "method": method, "repeat": repeat, "fold": fold, "sample_id": ext.sample_id.iloc[te].to_numpy(),
+            "family_id": ext.family_id.iloc[te].to_numpy(), "y_true": ext.label.to_numpy()[te], "y_pred": y_pred,
+            **{f"p_{c}": proba[:, k] for k, c in enumerate(CLASSES)}, "status": status,
+        })  # fmt: skip
+
+    tasks = [
+        (method, repeat, fold, train, test)
+        for repeat, fold, train, test in outer_splits(families, config.root_seed, ev.n_splits, ev.n_repeats)
+        for method in EXTERNAL_METHODS
+    ]
+    pred = pd.concat(Parallel(n_jobs=n_jobs)(delayed(task)(*t) for t in tasks), ignore_index=True)
+    pred = mark_failures(pred, ext)
+    if not check_pairing(pred):
+        raise RuntimeError("pareamento 1:1 violado")
+    per_family = summarize_by_family(pred)[0]
+    _write_eval(out_dir, pred, {"cross_summary": _cross_summary(pred, per_family, ext)})
+    append_run_log(
+        run_dir, config, "cross-generator",
+        {"methods": list(EXTERNAL_METHODS), "n_instances": len(ext), "generators": sorted(ext.generator.unique())},
+    )  # fmt: skip
+    return out_dir
+
+
+def _cross_summary(pred: pd.DataFrame, per_family: pd.DataFrame, ext: pd.DataFrame) -> pd.DataFrame:
+    """Descritivo: macro-recall por método (todos os geradores externos e cada um) e a perda fora do gerador
+    (ingen − cross, Hodges–Lehmann das diferenças por família com IC por bootstrap)."""
+    rows = []
+    for method, g in per_family.groupby("method"):
+        low, high = bootstrap_mean_ci(g.macro_recall.to_numpy())
+        rows.append({"quantity": "macro_recall", "method": method, "generator": "external", "n_families": len(g),
+                     "value": g.macro_recall.mean(), "ci_low": low, "ci_high": high})  # fmt: skip
+    by_gen = pred.merge(ext[["sample_id", "generator"]], on="sample_id")
+    for generator, part in by_gen.groupby("generator"):
+        pf = summarize_by_family(part.drop(columns="generator"))[0]
+        for method, g in pf.groupby("method"):
+            low, high = bootstrap_mean_ci(g.macro_recall.to_numpy())
+            rows.append({"quantity": "macro_recall", "method": method, "generator": generator, "n_families": len(g),
+                         "value": g.macro_recall.mean(), "ci_low": low, "ci_high": high})  # fmt: skip
+    wide = per_family.pivot(index="family_id", columns="method", values="macro_recall")
+    d = (wide["ingen_direct_hgb"] - wide["cross_direct_hgb"]).dropna().to_numpy()
+    if len(d):
+        low, high = bootstrap_hl_ci(d)
+        rows.append({"quantity": "loss_ingen_minus_cross", "method": "cross_direct_hgb", "generator": "external",
+                     "n_families": len(d), "value": hodges_lehmann(d), "ci_low": low, "ci_high": high})  # fmt: skip
+    return pd.DataFrame(rows)

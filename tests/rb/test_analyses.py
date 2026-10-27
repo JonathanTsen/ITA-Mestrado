@@ -10,6 +10,7 @@ from missdetect.rb.analyses import (
     descriptive_classifiers,
     l1_per_family,
     l2_evaluation,
+    mar_mnar_auc,
     per_mechanism,
 )
 from missdetect.rb.baselines import mechdetect_obs, oracle_descriptors
@@ -117,3 +118,34 @@ def test_l2_evaluation_counts_failures_as_errors():
     res = l2_evaluation(pd.DataFrame(rows)).iloc[0]
     assert res.l2_diagnostic_macro_recall == pytest.approx(0.5)  # 1 acerto em 2 MAR; a falha é erro
     assert res.non_mcar_routed_fraction == pytest.approx(0.5)  # a falha não é roteada
+
+
+def _l2_pred(p_mnar_of, n_families: int = 3, n: int = 40, repeats: int = 2) -> pd.DataFrame:
+    rows = []
+    rng = np.random.default_rng(0)
+    for rep in range(repeats):
+        for f in range(n_families):
+            for i in range(n):
+                y = i % 3
+                pm = p_mnar_of(y, rng)
+                rows.append({"method": "direct_hgb", "repeat": rep, "fold": 0, "sample_id": f"f{f}s{i}", "family_id": f,
+                             "y_true": y, "y_pred": 0, "p_MCAR": 0.2, "p_MAR": 0.8 * (1 - pm), "p_MNAR": 0.8 * pm,
+                             "status": "ok"})  # fmt: skip
+    return pd.DataFrame(rows)
+
+
+def test_mar_mnar_auc_is_one_when_mnar_scores_higher_and_half_when_uninformative():
+    perfect = mar_mnar_auc(_l2_pred(lambda y, rng: 0.9 if y == 2 else 0.1), "direct_hgb")
+    assert list(perfect.columns) == ["family_id", "auc"]
+    assert (perfect.auc == 1.0).all() and len(perfect) == 3
+    flat = mar_mnar_auc(_l2_pred(lambda y, rng: 0.5), "direct_hgb")
+    assert (flat.auc == 0.5).all()
+    noisy = mar_mnar_auc(_l2_pred(lambda y, rng: rng.random()), "direct_hgb")
+    assert noisy.auc.between(0.2, 0.8).all()
+
+
+def test_mar_mnar_auc_treats_failures_as_uninformative():
+    pred = _l2_pred(lambda y, rng: 0.9 if y == 2 else 0.1, n_families=1)
+    pred.loc[pred.sample_id.isin(["f0s1", "f0s2"]), ["p_MCAR", "p_MAR", "p_MNAR"]] = 1 / 3  # falha: uniforme
+    pred.loc[pred.sample_id.isin(["f0s1", "f0s2"]), "y_pred"] = -1
+    assert mar_mnar_auc(pred, "direct_hgb").auc.iloc[0] < 1.0

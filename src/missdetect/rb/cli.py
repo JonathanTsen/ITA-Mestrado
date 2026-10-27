@@ -14,12 +14,14 @@ Comandos:
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
     case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
-    stats      testes confirmatórios H1–H4 (Wilcoxon-Pratt + Holm, Hodges–Lehmann, ROPE) de um run avaliado
+    stats      família confirmatória H1, H2, H2e, H3, H5, H6 (Wilcoxon-Pratt, TOST, Holm m = 6) e a H4 (LLM, m = 1)
     oracle-features  descritores-oráculo (Y completo) para o painel oráculo; rodar antes do evaluate
     ablation   RQ2: todos os descritores × sem cada grupo G1–G4 (Holm m = 4)
     logo       leave-one-generator-out (exploratória)
     transfer   treino só no corpus sintético, aplicado ao run real (exploratória; --synth-run)
-    secondary  L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade
+    secondary  L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade, painel oráculo
+               por gerador, mdatagen e estatísticas do MechDetect como descritores
+    cross-generator  H5: primária treinada só no gerador principal, testada nos geradores externos; rodar antes do stats
 
 Execute com OMP_NUM_THREADS=1; os workers também limitam threads com `threadpoolctl`.
 """
@@ -34,6 +36,7 @@ from missdetect.rb.config import load_config
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
+    "cross-generator",
 )  # fmt: skip
 NOT_YET = {
     "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
@@ -64,7 +67,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/per_family.parquet)")
     p.add_argument("--llm-per-family", type=Path, default=None, help="per_family.parquet do painel de LLM (H4)")
-    for name in ("oracle-features", "ablation", "logo", "transfer", "secondary", "noise", "fit-final"):
+    for name in (
+        "oracle-features",
+        "ablation",
+        "logo",
+        "transfer",
+        "secondary",
+        "noise",
+        "fit-final",
+        "cross-generator",
+    ):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
         p.add_argument("--run", type=Path, required=True, help="diretório do run")
@@ -122,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_secondary(args.run, config))
     elif args.command == "noise":
         print(pipeline.run_noise(args.run, config, n_jobs))
+    elif args.command == "cross-generator":
+        print(pipeline.run_cross_generator(args.run, config, n_jobs))
     elif args.command == "fit-final":
         print(pipeline.run_fit_final(args.run, config))
     elif args.command == "case-study":

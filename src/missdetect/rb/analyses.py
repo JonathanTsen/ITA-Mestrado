@@ -9,7 +9,9 @@ modelo (ablação, leave-one-generator-out, transferência) ficam em `pipeline.p
 - `l2_evaluation`: L2 diagnóstico (nas instâncias verdadeiramente não-MCAR) e operacional (nas roteadas ao L2).
 - `descriptive_classifiers`: Friedman + Nemenyi e diagrama CD entre os classificadores descritivos (só descritivo).
 - `boundary_sensitivity`: escore por família sem os contextos cujo Y completo tem massa ≥ 10% num valor de fronteira.
-- `bootstrap_mean_ci`: IC percentil da média entre famílias, para as análises exploratórias.
+- `generator_family_tests`: uma comparação por gerador (simétrico, mdatagen, tab_err), com Holm m = 3.
+- `mar_mnar_auc`: AUC MAR × MNAR por família nas instâncias verdadeiramente não-MCAR (H6, confirmatória).
+- `bootstrap_mean_ci` (de `stats`): IC percentil da média entre famílias, para as análises exploratórias.
 """
 
 from pathlib import Path
@@ -19,22 +21,15 @@ import pandas as pd
 import scikit_posthocs as sp
 from matplotlib.figure import Figure
 from scipy import stats
+from sklearn.metrics import roc_auc_score
 
 from missdetect.rb.models import CLASSES
-from missdetect.rb.stats import N_BOOT, SEED, _adjust, _raw_comparison
+from missdetect.rb.stats import _adjust, _raw_comparison, bootstrap_mean_ci
 
 L1_ALPHA = 0.05
 L1_METHOD = "hier_hgb_fullprob"
 BOUNDARY_MASS = 0.10
 DESCRIPTIVE = ("direct_hgb", "direct_logreg", "direct_rf", "direct_svm", "direct_knn", "direct_mlp", "direct_nb")
-
-
-def bootstrap_mean_ci(values: np.ndarray, n_boot: int = N_BOOT, seed: int = SEED) -> tuple[float, float]:
-    values = np.asarray(values, dtype=float)
-    rng = np.random.default_rng(seed)
-    means = values[rng.integers(0, len(values), (n_boot, len(values)))].mean(axis=1)
-    low, high = np.percentile(means, [2.5, 97.5])
-    return float(low), float(high)
 
 
 def _l1_rows(frame: pd.DataFrame, method: str, reject: np.ndarray, failed: np.ndarray, repeat: int = 0) -> pd.DataFrame:
@@ -49,6 +44,38 @@ def _l1_rows(frame: pd.DataFrame, method: str, reject: np.ndarray, failed: np.nd
             "failed": failed,
         }
     )
+
+
+GENERATORS = ("symmetric", "mdatagen", "tab_err")
+
+
+def generator_family_tests(run_dir: Path, method: str, comparator: str, prefix: str) -> pd.DataFrame | None:
+    """Método × comparador em cada gerador, cada um com a sua CV (`eval-<gerador>/`), com Holm m = 3. Um gerador sem
+    avaliação ou sem os dois métodos entra no Holm com p = 1. Devolve None se nenhum gerador tiver os dois."""
+    raw, missing = [], {}
+    for generator in GENERATORS:
+        name = f"{prefix}_{generator}"
+        path = run_dir / f"eval-{generator}" / "per_family.parquet"
+        per_family = pd.read_parquet(path) if path.exists() else None
+        if per_family is None or not {method, comparator} <= set(per_family.method):
+            missing[name] = 1.0
+        else:
+            raw.append(_raw_comparison(per_family, name, method, comparator, "macro_recall"))
+    return _adjust(raw, missing) if raw else None
+
+
+def mar_mnar_auc(pred: pd.DataFrame, method: str) -> pd.DataFrame:
+    """H6: por família, AUC de P(MNAR) / (P(MAR) + P(MNAR)) nas instâncias verdadeiramente não-MCAR (positivo =
+    MNAR), média das repetições. Uma falha tem probabilidades uniformes e vira escore 0,5, isto é, não informa."""
+    g = pred[(pred.method == method) & pred.y_true.isin([1, 2])]
+    denom = (g.p_MAR + g.p_MNAR).to_numpy()
+    score = np.divide(g.p_MNAR.to_numpy(), denom, out=np.full(len(g), 0.5), where=denom > 0)
+    frame = g.assign(score=score, target=(g.y_true == 2).astype(int))
+    rows = []
+    for (family, repeat), h in frame.groupby(["family_id", "repeat"]):
+        auc = roc_auc_score(h.target, h.score) if h.target.nunique() == 2 else np.nan
+        rows.append({"family_id": family, "repeat": repeat, "auc": float(auc)})
+    return pd.DataFrame(rows).groupby("family_id", as_index=False).auc.mean()
 
 
 def l1_decisions(run_dir: Path, eval_dir: str = "eval-symmetric", l1_method: str = L1_METHOD) -> pd.DataFrame:
