@@ -87,9 +87,13 @@ def _per_family(effects: dict[str, float], n: int = 40, seed: int = 0) -> pd.Dat
 
 def _inputs(n: int = 40):
     main = _per_family({"direct_hgb": 0.0, "mechdetect_obs": -0.10, "hier_hgb_fullprob": 0.0, "logit_simple": -0.03}, n)
-    cross = _per_family({"cross_direct_hgb": 0.0, "mechdetect_obs": -0.08}, n, seed=5)
+    cross = _per_family({"cross_direct_hgb": 0.0, "cross_logit_simple": -0.04, "mechdetect_obs": -0.08}, n, seed=5)
     rng = np.random.default_rng(7)
-    auc = pd.DataFrame({"family_id": range(n), "auc": rng.normal(0.70, 0.05, n)})
+    base = rng.normal(0.70, 0.05, n)
+    auc = pd.concat([
+        pd.DataFrame({"family_id": range(n), "method": "direct_hgb", "auc": base + 0.05}),
+        pd.DataFrame({"family_id": range(n), "method": "logit_simple", "auc": base + rng.normal(0, 0.01, n)}),
+    ])  # fmt: skip
     return main, cross, auc
 
 
@@ -100,9 +104,10 @@ def test_confirmatory_family_has_six_tests_with_holm():
     assert res.loc["H1", "decision"] == "superior" and res.loc["H1", "hodges_lehmann"] == pytest.approx(0.10, abs=0.01)
     assert res.loc["H1", "ci_low"] < 0.10 < res.loc["H1", "ci_high"]
     assert res.loc["H3", "decision"] == "superior" and res.loc["H3", "comparator"] == "logit_simple"
-    assert res.loc["H5", "method"] == "cross_direct_hgb" and res.loc["H5", "decision"] == "superior"
-    assert res.loc["H6", "comparator"] == "0,5" and res.loc["H6", "decision"] == "superior"
-    assert res.loc["H6", "hodges_lehmann"] == pytest.approx(0.20, abs=0.03)
+    assert res.loc["H5", "method"] == "cross_direct_hgb" and res.loc["H5", "comparator"] == "cross_logit_simple"
+    assert res.loc["H5", "decision"] == "superior"
+    assert res.loc["H6", "method"] == "direct_hgb" and res.loc["H6", "comparator"] == "logit_simple"
+    assert res.loc["H6", "decision"] == "superior" and res.loc["H6", "hodges_lehmann"] == pytest.approx(0.05, abs=0.01)
     assert res.loc["H2", "decision"] == "evidência insuficiente"
     assert res.loc["H2e", "test"] == "tost" and res.loc["H2e", "decision"] == "equivalentes dentro de ±δ"
 

@@ -50,7 +50,7 @@ def run(tmp_path_factory):
                 "beta_grid": [float("inf")],
                 "secondary": [{"generator": "tab_err", "n": 500}],
             },
-            "evaluate": {"n_splits": 2, "n_repeats": 1, "descriptive_learners": []},
+            "evaluate": {"n_splits": 2, "n_repeats": 1, "descriptive_learners": ["logreg"]},
             "baselines": {"mechdetect_cv_folds": 3},
         }
     )
@@ -166,8 +166,8 @@ def extended(run, tmp_path_factory):
     pipeline.run_evaluate(run_dir, config, n_jobs=2, generators=("symmetric",))
     pipeline.run_ablation(run_dir, config, n_jobs=2)
     pipeline.run_logo(run_dir, config, n_jobs=2)
-    pipeline.run_secondary(run_dir, config)
     pipeline.run_cross_generator(run_dir, config, n_jobs=2)
+    pipeline.run_secondary(run_dir, config)
     pipeline.run_stats(run_dir, config)
     synth_config = parse_config(
         {
@@ -236,6 +236,11 @@ def test_secondary_and_stats_outputs(extended):
         min(3 * oracle.p_value.iloc[0], 1.0)
     )  # m = 3 (geradores sem eval: p = 1)
     assert list(pd.read_csv(run_dir / "secondary" / "g4_tests.csv").hypothesis) == ["G4"]
+    assert list(pd.read_csv(run_dir / "secondary" / "external_mdo_tests.csv").hypothesis) == ["EXT_mdo"]
+    h6 = stats_out.set_index("hypothesis").loc["H6"]
+    assert (h6.method, h6.comparator) == ("direct_hgb", "logit_simple")
+    decomposition = pd.read_csv(run_dir / "stats_h3_decomposition.csv")
+    assert {"learner", "descriptors"} <= set(decomposition.component)
 
 
 def test_transfer_predicts_every_real_instance(extended):

@@ -66,10 +66,13 @@ def generator_family_tests(run_dir: Path, method: str, comparator: str, prefix: 
 
 def mar_mnar_auc(pred: pd.DataFrame, method: str) -> pd.DataFrame:
     """H6: por família, AUC de P(MNAR) / (P(MAR) + P(MNAR)) nas instâncias verdadeiramente não-MCAR (positivo =
-    MNAR), média das repetições. Uma falha tem probabilidades uniformes e vira escore 0,5, isto é, não informa."""
+    MNAR), média das repetições. Uma falha conta como erro: recebe o pior escore para a sua classe verdadeira (MNAR → 0,
+    MAR → 1)."""
     g = pred[(pred.method == method) & pred.y_true.isin([1, 2])]
     denom = (g.p_MAR + g.p_MNAR).to_numpy()
     score = np.divide(g.p_MNAR.to_numpy(), denom, out=np.full(len(g), 0.5), where=denom > 0)
+    failed = (~g.status.eq("ok")).to_numpy() if "status" in g else np.zeros(len(g), bool)
+    score = np.where(failed, (g.y_true != 2).astype(float).to_numpy(), score)
     frame = g.assign(score=score, target=(g.y_true == 2).astype(int))
     rows = []
     for (family, repeat), h in frame.groupby(["family_id", "repeat"]):

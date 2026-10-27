@@ -144,8 +144,12 @@ def test_mar_mnar_auc_is_one_when_mnar_scores_higher_and_half_when_uninformative
     assert noisy.auc.between(0.2, 0.8).all()
 
 
-def test_mar_mnar_auc_treats_failures_as_uninformative():
-    pred = _l2_pred(lambda y, rng: 0.9 if y == 2 else 0.1, n_families=1)
-    pred.loc[pred.sample_id.isin(["f0s1", "f0s2"]), ["p_MCAR", "p_MAR", "p_MNAR"]] = 1 / 3  # falha: uniforme
-    pred.loc[pred.sample_id.isin(["f0s1", "f0s2"]), "y_pred"] = -1
-    assert mar_mnar_auc(pred, "direct_hgb").auc.iloc[0] < 1.0
+def test_mar_mnar_auc_counts_failures_as_errors():
+    """Uma falha recebe o pior escore para a sua classe verdadeira (MNAR → 0, MAR → 1)."""
+    pred = _l2_pred(lambda y, rng: 0.9 if y == 2 else 0.1, n_families=1, repeats=1)
+    failed = pred.sample_id.isin(["f0s1", "f0s2"])  # s1 é MAR (y = 1), s2 é MNAR (y = 2)
+    pred.loc[failed, ["p_MCAR", "p_MAR", "p_MNAR"]] = 1 / 3
+    pred.loc[failed, ["y_pred", "status"]] = [-1, "failed: x"]
+    n_mar = n_mnar = 13  # 40 instâncias: 13 MAR (y = 1) e 13 MNAR (y = 2)
+    worst = 1 - (n_mnar + n_mar - 1) / (n_mar * n_mnar)  # o MNAR falho fica abaixo de todos os MAR e o MAR falho acima
+    assert mar_mnar_auc(pred, "direct_hgb").auc.iloc[0] == pytest.approx(worst)

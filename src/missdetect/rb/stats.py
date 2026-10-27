@@ -6,7 +6,8 @@ Para cada hipótese "método × comparador", sobre os escores por família (macr
   correção de continuidade; p ajustado por Holm dentro da família de hipóteses;
 - equivalência (só onde pré-registrada, H2e): TOST de Wilcoxon com margem δ = 0,02, isto é, dois testes unilaterais
   sobre d + δ (H0: mediana ≤ −δ) e d − δ (H0: mediana ≥ δ); o p é o maior dos dois e entra no mesmo Holm;
-- teste de uma amostra (H6): AUC MAR × MNAR por família contra 0,5, com o mesmo Wilcoxon sobre AUC − 0,5;
+- H6 compara a AUC MAR × MNAR por família da configuração primária com a da logística simples (pareado, mesmo
+  Wilcoxon); na escala de AUC, δ = 0,02 também é a margem de relevância prática;
 - estimando comparativo: Hodges–Lehmann (mediana das médias de Walsh d_i + d_j / 2, i ≤ j), com IC95% percentil por
   bootstrap de famílias (10.000 réplicas, semente fixa). O IC não é ajustado por multiplicidade e é só descritivo: a
   decisão vem do p ajustado;
@@ -15,7 +16,8 @@ Para cada hipótese "método × comparador", sobre os escores por família (macr
   método)`, de modo que "direita" = método melhor; `prior=0.5`, 50.000 amostras, semente fixa. **Só descritivo** na
   versão 2 do pré-registro: a equivalência é decidida pelo TOST.
 
-Família confirmatória principal (Holm m = 6): H1, H2 (diferença), H2e (equivalência), H3, H5 e H6. A H4 (LLM) é uma
+Família confirmatória principal (Holm m = 6): H1, H2 (diferença), H2e (equivalência), H3, H5 (fora do gerador, contra a
+logística simples treinada no mesmo gerador) e H6 (AUC MAR × MNAR contra a logística simples). A H4 (LLM) é uma
 família própria (m = 1). Uma hipótese que não puder rodar entra no Holm da sua família com p = 1.
 
 Tabela de decisão (uma única regra, pré-registrada):
@@ -164,7 +166,8 @@ DIFFERENCE = {  # hipótese: (método, comparador, tabela de escores)
     "H1": (PRIMARY, "mechdetect_obs", "main"),
     "H2": ("hier_hgb_fullprob", PRIMARY, "main"),
     "H3": (PRIMARY, "logit_simple", "main"),
-    "H5": ("cross_direct_hgb", "mechdetect_obs", "cross"),
+    "H5": ("cross_direct_hgb", "cross_logit_simple", "cross"),
+    "H6": (PRIMARY, "logit_simple", "auc"),
 }
 ORDER = ("H1", "H2", "H2e", "H3", "H5", "H6")
 H4 = ("llm_a1", PRIMARY)
@@ -198,12 +201,6 @@ def _raw_equivalence(per_family: pd.DataFrame, name: str, method: str, comparato
     return _describe(name, method, comparator, "tost", a, b, wilcoxon_tost(a - b))
 
 
-def _raw_one_sample(name: str, method: str, values: np.ndarray, reference: float, label: str) -> dict:
-    values = np.asarray(values, dtype=float)
-    ref = np.full(len(values), reference)
-    return _describe(name, method, label, "wilcoxon_1amostra", values, ref, wilcoxon_p(values - reference))
-
-
 def _adjust(raw: list[dict], extra_p: dict[str, float] | None = None) -> pd.DataFrame:
     """Holm sobre todas as hipóteses da família (inclusive as que não rodaram, com p = 1) e rótulo de decisão."""
     p_values = {r["hypothesis"]: r["p_value"] for r in raw} | (extra_p or {})
@@ -232,27 +229,24 @@ def confirmatory(
     """Família confirmatória principal (Holm m = 6).
 
     - `per_family_main`: escores por família no gerador principal (H1, H2, H2e, H3);
-    - `per_family_cross`: escores por família nos geradores externos, com o modelo treinado só no principal (H5);
-    - `auc_mar_mnar`: AUC MAR × MNAR por família da configuração primária, colunas `family_id` e `auc` (H6).
+    - `per_family_cross`: escores por família nos geradores externos, com os modelos treinados só no principal (H5);
+    - `auc_mar_mnar`: AUC MAR × MNAR por família, colunas `family_id`, `method` e `auc`, com a configuração primária e
+      a logística simples (H6).
 
     Uma tabela ausente faz a hipótese correspondente entrar no Holm com p = 1."""
-    tables = {"main": per_family_main, "cross": per_family_cross}
+    tables = {"main": per_family_main, "cross": per_family_cross, "auc": auc_mar_mnar}
+    metric = {"main": "macro_recall", "cross": "macro_recall", "auc": "auc"}
     raw, missing = [], {}
     for name in ORDER:
         if name == "H2e":
             method, comparator, _ = DIFFERENCE["H2"]
             raw.append(_raw_equivalence(per_family_main, name, method, comparator, "macro_recall"))
-        elif name == "H6":
-            if auc_mar_mnar is None:
-                missing[name] = 1.0
-            else:
-                raw.append(_raw_one_sample(name, PRIMARY, auc_mar_mnar.auc.to_numpy(), 0.5, "0,5"))
+            continue
+        method, comparator, table = DIFFERENCE[name]
+        if tables[table] is None:
+            missing[name] = 1.0
         else:
-            method, comparator, table = DIFFERENCE[name]
-            if tables[table] is None:
-                missing[name] = 1.0
-            else:
-                raw.append(_raw_comparison(tables[table], name, method, comparator, "macro_recall"))
+            raw.append(_raw_comparison(tables[table], name, method, comparator, metric[table]))
     return _adjust(raw, missing)
 
 
@@ -265,4 +259,7 @@ def level_estimate(per_family: pd.DataFrame, method: str = PRIMARY, metric: str 
     """Estimando de nível: média entre famílias do escore por família, com IC95% por bootstrap de famílias."""
     values = per_family.loc[per_family.method == method, metric].dropna().to_numpy(float)
     low, high = bootstrap_mean_ci(values)
-    return {"method": method, "n_families": len(values), "mean": float(values.mean()), "ci_low": low, "ci_high": high}
+    return {
+        "method": method, "metric": metric, "n_families": len(values), "mean": float(values.mean()),
+        "ci_low": low, "ci_high": high,
+    }  # fmt: skip

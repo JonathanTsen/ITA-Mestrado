@@ -65,6 +65,7 @@ from missdetect.rb.stats import (
     hodges_lehmann,
     level_estimate,
     llm_hypothesis,
+    paired_differences,
 )
 from missdetect.rb.synth import design as synth_design
 from missdetect.rb.synth import generate_base
@@ -406,6 +407,21 @@ def run_evaluate(run_dir: Path, config: RunConfig, n_jobs: int, generators: tupl
     return out_dir
 
 
+def _h3_decomposition(per_family: pd.DataFrame) -> pd.DataFrame:
+    """Descritivo: separa a diferença da H3 em aprendiz (HGB × logística, 28 descritores) e descritores (28 × 4, com
+    logística), por Hodges–Lehmann com IC por bootstrap. Não é teste."""
+    rows = []
+    parts = {"learner": (PRIMARY, "direct_logreg"), "descriptors": ("direct_logreg", "logit_simple")}
+    for component, (a, b) in parts.items():
+        if {a, b} <= set(per_family.method):
+            d = paired_differences(per_family, a, b).to_numpy()
+            low, high = bootstrap_hl_ci(d)
+            rows.append({"component": component, "method": a, "comparator": b, "n_families": len(d),
+                         "hodges_lehmann": hodges_lehmann(d), "ci_low": low, "ci_high": high})  # fmt: skip
+    columns = ["component", "method", "comparator", "n_families", "hodges_lehmann", "ci_low", "ci_high"]
+    return pd.DataFrame(rows, columns=columns)
+
+
 def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = None) -> Path:
     """Família confirmatória principal (H1, H2, H2e, H3, H5, H6; Holm m = 6) e, com o painel de LLM, a H4 (m = 1).
 
@@ -418,12 +434,18 @@ def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = No
         raise FileNotFoundError(f"{cross_path} não existe: rode `cross-generator` antes do `stats` (H5)")
     main = pd.read_parquet(run_dir / "eval-symmetric" / "per_family.parquet")
     cross = pd.read_parquet(cross_path)
-    auc = mar_mnar_auc(pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet"), PRIMARY)
+    pred = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    auc = pd.concat([mar_mnar_auc(pred, m).assign(method=m) for m in (PRIMARY, "logit_simple")], ignore_index=True)
     result = confirmatory(main, cross, auc)
     result.to_csv(out, index=False)
-    level = [level_estimate(main, PRIMARY), level_estimate(cross, "cross_direct_hgb")]
+    level = [
+        level_estimate(main, PRIMARY),
+        level_estimate(cross, "cross_direct_hgb"),
+        level_estimate(auc, PRIMARY, "auc"),
+    ]
     pd.DataFrame(level).to_csv(run_dir / "stats_level.csv", index=False)
     auc.to_csv(run_dir / "stats_h6_auc_by_family.csv", index=False)
+    _h3_decomposition(main).to_csv(run_dir / "stats_h3_decomposition.csv", index=False)
     extra = {"hypotheses": result.hypothesis.tolist(), "llm_panel": bool(llm_per_family)}
     if llm_per_family:
         llm = llm_hypothesis(pd.read_parquet(llm_per_family))
@@ -640,6 +662,12 @@ def run_secondary(run_dir: Path, config: RunConfig) -> Path:
     if {f"direct_{learner}", f"g4only_{learner}"} <= set(per_family.method):
         compare_family(per_family, {"G4": (f"direct_{learner}", f"g4only_{learner}")}).to_csv(
             out_dir / "g4_tests.csv", index=False
+        )
+    # Geradores externos contra o MechDetect-O, nas instâncias da H5 (m = 1)
+    cross = run_dir / "eval-cross" / "per_family.parquet"
+    if cross.exists():
+        compare_family(pd.read_parquet(cross), {"EXT_mdo": ("cross_direct_hgb", "mechdetect_obs")}).to_csv(
+            out_dir / "external_mdo_tests.csv", index=False
         )
     # Gerador da mdatagen com a sua própria CV (Holm m = 2)
     mdatagen = run_dir / "eval-mdatagen" / "per_family.parquet"
