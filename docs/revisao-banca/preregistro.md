@@ -7,7 +7,7 @@
 
 - **Configuração congelada:** tag `freeze-v1`, com `inject-v1.yaml`, os descritores 34b e as famílias. O adendo `data_rb/freeze_v1_addendum.json` registra o N efetivo.
 - **Corpus sintético:** tag `synth-v2`.
-- **Código da análise:** `src/missdetect/rb/stats.py` (decisão), `analyses.py` (AUC MAR × MNAR, testes por gerador) e `pipeline.py` (etapas `cross-generator` e `stats`). Entram no commit da tag.
+- **Código da análise:** `src/missdetect/rb/stats.py` (decisão), `analyses.py` (AUC MAR × MNAR, testes por gerador) e `pipeline.py` (etapas `cross-generator`, `secondary` e `stats`). Entram no commit da tag.
 - **Decisões:** são do autor, preparadas com apoio e ratificadas pelo orientador; a evidência de cada uma está em `plano-revisao-banca/execucao/08-decisoes-tomadas.md`, no repositório da tese.
 - **Versões:**
   - Python: scikit-learn 1.8.0, SciPy 1.17.1, NumPy 2.4.4, pandas 2.3.3, baycomp 1.0.3, mdatagen 0.2.0, tab-err 0.2.1;
@@ -44,7 +44,7 @@
 | Logística simples | Regressão logística com 4 estatísticas (taxa de ausência, AUC de M a partir de Z, desvio do AUC de M a partir de Ŷ(Z), assimetria de Y observado) |
 | MechDetect-O | Adaptação nossa, pré-especificada, do MechDetect que usa só dados observados |
 | Painel oráculo | Métodos que veem o Y completo (o MechDetect como publicado e o nosso classificador com descritores-oráculo); nunca ranqueados com os demais |
-| Só-nuisance | Classificador que só vê fatores do desenho (taxa, n, k, gerador); auditoria de atalhos |
+| Só-nuisance | Classificador que só vê fatores do desenho e da instância que não informam o mecanismo (taxa de ausência, n, k, nº de valores distintos de Y observado e o gerador); auditoria de atalhos |
 | Macro-recall | Média dos recalls das três classes; com classes balanceadas, igual à acurácia |
 | HL | Estimador de Hodges–Lehmann da diferença entre métodos |
 | Holm | Correção para múltiplas hipóteses na mesma família |
@@ -80,15 +80,17 @@ Nenhuma instância confirmatória foi gerada, nenhum modelo foi treinado com ela
 
 | Mudança | Motivo e número que a motivou |
 |---|---|
-| A H3 deixa de comparar com o classificador uniforme e passa a comparar com a **logística simples** | Contra o uniforme, o resultado era conhecido (0,656 contra 0,333). Contra a logística simples, o desfecho está em aberto (Δ ≈ 0,001 no ensaio), e é a pergunta que mede o valor dos descritores |
-| H5 nova: **geradores externos** | Treinado e testado no mesmo gerador, o desempenho pode refletir a assinatura do gerador. No ensaio, treinando só no simétrico e testando na mdatagen e no tab_err: 0,684 contra 0,641 do MechDetect-O |
-| H6 nova: **MAR × MNAR** | É a questão central da área e não tinha teste confirmatório. No ensaio, a AUC foi 0,83 |
+| A H3 deixa de comparar com o classificador uniforme e passa a comparar com o **modelo logístico mínimo** (a logística simples) | Contra o uniforme, o resultado era conhecido (0,656 contra 0,333). Contra a logística simples, o desfecho está em aberto: HL = +0,007 no ensaio (diferença média +0,001) |
+| H5 nova: **geradores externos**, contra a logística simples treinada no mesmo gerador | Treinado e testado no mesmo gerador, o desempenho pode refletir a assinatura do gerador. No ensaio, treinando só no simétrico e testando na mdatagen e no tab_err: configuração primária 0,684, logística simples 0,721 (HL −0,046), MechDetect-O 0,641; perda fora do gerador 0,164 [0,054; 0,243]. O MechDetect-O é fraco por construção, então ele vira comparador secundário |
+| H6 nova: **MAR × MNAR**, contra a logística simples | É a questão central da área e não tinha teste confirmatório. Contra 0,5 o teste seria trivial (no ensaio, as 8 famílias ficaram acima de 0,5, mínimo 0,679; AUC média 0,83). Contra a logística simples: HL +0,069 [0,024; 0,095] |
 | H2 com **equivalência por TOST**; a ROPE bayesiana fica só descritiva | Com a regra da v1, um Δ ≈ 0 terminaria em "evidência insuficiente" e não poderia ser afirmado |
 | A H4 vira **família própria** | A H4 depende de chaves de API e de um adendo; não deve mexer no Holm das demais |
-| Secundárias novas: painel oráculo por gerador, mdatagen com a própria CV, estatísticas do MechDetect como descritores | A comparação justa com o MechDetect como publicado não tinha teste. No ensaio, o MechDetect publicado empata com o nosso classificador oráculo no tab_err |
+| Secundárias novas: painel oráculo por gerador, mdatagen com a própria CV, estatísticas do MechDetect como descritores, geradores externos × MechDetect-O | A comparação com o MechDetect como publicado não tinha teste. No ensaio, não houve diferença detectável entre ele e o nosso classificador oráculo no tab_err |
 | Tabela de interpretação (5.2), proteções (9) e registro externo (10) | Evitar "mover a trave" e dar anterioridade verificável por terceiros |
 
-Essas mudanças foram feitas vendo só resultados de desenvolvimento. Elas tornam a família confirmatória **mais difícil**: duas das hipóteses novas têm desfecho em aberto no ensaio.
+Uma segunda revisão independente (27/10) trocou os comparadores da H5 e da H6 pelos descritos acima (antes eram o MechDetect-O e 0,5), passou a contar falhas como erro na H6 e completou a tabela de interpretação.
+
+Essas mudanças foram feitas vendo só resultados de desenvolvimento. Elas tornam a família confirmatória **mais difícil**: H3 e H5 têm desfecho em aberto no ensaio (a H5 é desfavorável ao método), e a H6 deixa de ser um teste contra o acaso. Só a H1 continua esperada por construção, e isso está declarado.
 
 ## 1. Dados
 
@@ -143,8 +145,8 @@ As 50 famílias efetivas, no formato família:representante:
 - **Principal: simétrico.** Gumbel-top-k com pesos exp(β·s) sobre o posto, contagem exata de ausências, linhas na ordem da permutação aleatória; β = 0 é o MCAR.
 - **Por que o simétrico, e não a mdatagen, é o principal** (decisão D4):
   - ele controla β e o determinismo **do mesmo modo** no MAR e no MNAR;
-  - na mdatagen 0.2.0, as variantes estocásticas existem só no MAR. Usá-la como gerador principal confundiria o mecanismo com o determinismo e abriria um atalho: "determinístico ⇒ MNAR";
-  - o MBOV tem déficit de taxa.
+  - na mdatagen 0.2.0, o MAR tem variantes estocásticas (`rank`, `median`), mas o MNAR univariado é determinístico na prática: `uMNAR.run(deterministic=False)` também ordena pela própria coluna, e o aleatório só desempata. A única variante MNAR estocástica, `MBOV_randomness`, entrega taxa abaixo da pedida (déficit de 0,15 a 6,41 p.p.) e quebraria a regra dos trios com a mesma contagem;
+  - usar a mdatagen como principal deixaria MAR estocástico contra MNAR determinístico, e o determinismo viraria atalho ("determinístico ⇒ MNAR").
   - O plano de resposta à banca previa a mdatagen como principal. Esta mudança vai declarada no documento de resposta, e a mdatagen entra em duas análises testadas: na H5 (confirmatória) e numa secundária com a própria CV (seção 6).
 - **Externos**, nos contextos com n = min(1000, nº de linhas):
   - **mdatagen 0.2.0** em pares determinísticos: lower → `lowest`/`run_0`; upper → `highest`/`run_1`; both → `mix`/`run_0.5`; o MCAR usa `random`;
@@ -157,6 +159,7 @@ As 50 famílias efetivas, no formato família:representante:
 - Taxas de 10% a 50%; n entre 500 e 2.000; k entre 2 e 8; classes balanceadas.
 - MAR pelo posto de um único driver observado.
 - MNAR por auto-mascaramento: a ausência depende do próprio Y (inferior, superior ou nas duas caudas).
+- **Geradores externos:** só as variantes **determinísticas** (os pares da mdatagen e o tab_err). A H5 mede a generalização para elas, não para mecanismos externos estocásticos.
 - **Fora do escopo:** o MNAR por variável latente (a ausência depende de uma coluna retirada da tabela). O rótulo dessa variante dependeria de um limiar estimado e deixaria de valer por construção; ela também não foi congelada em `freeze-v1`. Também ficam fora várias colunas incompletas ao mesmo tempo, Z com ausências e MCAR raro (este último aparece só na análise exploratória de prevalência, seção 6).
 
 **Separação observado × oráculo.** Os métodos recebem só `y` (com NaN) e `z`. IDs, caminhos e o oráculo nunca entram em descritores nem em prompts.
@@ -174,7 +177,7 @@ As 50 famílias efetivas, no formato família:representante:
   - roteamento **fullprob**: (P(MCAR), P(MAR), P(MNAR)) = (p₁, (1 − p₁)·p₂, (1 − p₁)·(1 − p₂)), com p₁ = P(MCAR) do L1 e p₂ = P(MAR | não-MCAR) do L2.
 - **Logística simples (H3):** `LogisticRegression` multinomial do scikit-learn 1.8.0 (`max_iter=2000`, demais parâmetros padrão), com imputação pela mediana e padronização ajustadas só no treino. Usa as 4 colunas `g0_missing_rate`, `g2_cv_auc_boosting`, `g3_auc_mask_from_yhat_dev` e `g1_skewness`, a mesma regra de calibração e as mesmas partições.
 - **Validação cruzada:** CV externa de 5 folds por família, com 3 repetições em atribuições diferentes. A unidade de teste é a família inteira.
-- **Escopo do treino:** a avaliação primária treina e testa **só nas instâncias do gerador principal** (`evaluate --generators symmetric`). A H5 usa os mesmos modelos de cada fold, aplicados aos geradores externos (etapa `cross-generator`).
+- **Escopo do treino:** a avaliação primária treina e testa **só nas instâncias do gerador principal** (`evaluate --generators symmetric`). Na H5, a configuração primária e a logística simples são treinadas no gerador principal das famílias de treino de cada fold, nas mesmas partições, e aplicadas sem ajuste aos geradores externos das famílias de teste (etapa `cross-generator`). O modelo da configuração primária é idêntico ao do fold correspondente da avaliação primária.
 - **Falhas:** uma falha de extração, de baseline ou de chamada conta como erro (probabilidades uniformes, classe −1). Nunca é descartada.
 
 ## 3. Estimandos e métricas
@@ -184,7 +187,7 @@ As 50 famílias efetivas, no formato família:representante:
 **Estimandos:**
 - **de nível:** a média, entre as 50 famílias efetivas, do escore por família da configuração primária no gerador principal, com IC95% por bootstrap de famílias. A referência de acaso (1/3) é descritiva. É reportado **sempre com a quebra por β** e por taxa, porque depende da grade do desenho. O mesmo vale para a configuração primária nos geradores externos (H5);
 - **comparativo** (hipóteses de diferença): o **Hodges–Lehmann** das diferenças por família, isto é, a mediana das médias de Walsh. A diferença média ± dp é só descritiva;
-- **H6:** a AUC MAR × MNAR por família. É a AUC de P(MNAR) / (P(MAR) + P(MNAR)) nas instâncias verdadeiramente não-MCAR (positivo = MNAR), média das 3 repetições. Falha vale 0,5.
+- **H6:** a AUC MAR × MNAR por família, da configuração primária e da logística simples. É a AUC de P(MNAR) / (P(MAR) + P(MNAR)) nas instâncias verdadeiramente não-MCAR (positivo = MNAR), média das 3 repetições. Uma falha conta como erro: recebe o pior escore para a sua classe verdadeira (MNAR → 0, MAR → 1). A AUC da configuração primária, com IC, entra no estimando de nível.
 
 **Métricas secundárias:** F1-macro, recall por classe, log-loss, Brier multiclasse, ECE por classe (10 bins de igual massa) e AUC um-contra-o-resto. No desenho balanceado, a acurácia coincide com o macro-recall e não conta como evidência independente.
 
@@ -199,14 +202,18 @@ As 50 famílias efetivas, no formato família:representante:
 - **H2 — RQ1, diferença:** o hierárquico (fullprob) e o direto, com o mesmo aprendiz e os mesmos descritores, diferem.
 - **H2e — RQ1, equivalência:** o hierárquico e o direto são equivalentes dentro de ±δ (TOST).
   - As nulas de H2 e H2e são disjuntas, e as duas entram na mesma família de Holm.
-- **H3 — RQ2, valor dos descritores:** a configuração primária e a **logística simples** diferem.
+- **H3 — RQ2, configuração completa × modelo mínimo:** a configuração primária e o **modelo logístico mínimo** (a logística simples) diferem.
+  - A comparação mistura aprendiz (HGB × logística) e conjunto de descritores (28 × 4). Por isso a frase na tese fala da configuração, não só dos descritores, e a decomposição é reportada como descritiva (HL com IC): aprendiz = primária × logística com os 28 descritores; descritores = logística com 28 × logística com 4. No ensaio: −0,010 e +0,006.
   - Com δ = 0,02 e o dp observado no ensaio (0,058), a equivalência com N = 50 não teria poder. Por isso a H3 só tem teste de diferença.
   - O classificador uniforme fica como referência descritiva do estimando de nível.
-- **H5 — generalização para geradores externos:** nas instâncias da mdatagen e do tab_err das famílias de teste, a configuração primária e o MechDetect-O diferem.
-  - A configuração primária é a mesma, treinada **só** no gerador principal, em cada fold da avaliação primária, e aplicada sem ajuste.
-  - O escore por família junta as instâncias dos dois geradores externos.
-  - Descritivos, sem teste: o nível com IC, a quebra por gerador, a logística simples treinada no principal e a **perda fora do gerador**. A perda é o HL de (configuração primária treinada nos próprios geradores externos − treinada no principal), nas mesmas instâncias.
-- **H6 — MAR × MNAR (substituto testável do "teto"):** a AUC MAR × MNAR por família difere de 0,5 (Wilcoxon de uma amostra sobre AUC − 0,5).
+- **H5 — generalização para geradores externos:** nas instâncias da mdatagen e do tab_err das famílias de teste, a configuração primária e a logística simples, **ambas treinadas só no gerador principal**, diferem.
+  - Pergunta: o conjunto completo é mais (ou menos) robusto à troca de gerador do que o modelo mínimo?
+  - Os modelos são os de cada fold da avaliação primária, aplicados sem ajuste. O escore por família junta as instâncias dos dois geradores externos.
+  - Descritivos, sem teste: o nível da configuração primária com IC, a quebra por gerador e a **perda fora do gerador**. A perda é o HL de (configuração primária treinada nos próprios geradores externos − treinada no principal), nas mesmas instâncias.
+  - O MechDetect-O nas mesmas instâncias é uma secundária (seção 6).
+- **H6 — MAR × MNAR (substituto testável do "teto"; RQ2, "em particular MAR de MNAR"):** a AUC MAR × MNAR por família da configuração primária e a da logística simples diferem (pareado).
+  - Na escala de AUC, δ = 0,02 também é a margem de relevância prática.
+  - A AUC da configuração primária contra 0,5 é descritiva (estimando de nível).
 
 ### Família da H4 (m = 1, α = 0,05)
 
@@ -217,14 +224,15 @@ As 50 famílias efetivas, no formato família:representante:
     - em cada família, os 6 contextos do gerador principal com r ∈ {0,1; 0,3; 0,5} × k ∈ {2, maior k disponível} e n = min(1000, nº de linhas);
     - total: 540 instâncias.
   - **Escores:** o LLM tem o macro-recall por família nas 18 instâncias do painel. A configuração primária tem as predições da CV principal restritas às mesmas 18 instâncias (escore por repetição, média das 3).
-  - **Informação desigual, declarada:** o LLM vê no máximo 200 linhas sorteadas; a configuração primária vê a instância inteira. Na sensibilidade pré-registrada, a configuração primária é aplicada à mesma subamostra de ≤ 200 linhas que o LLM recebe, com os descritores recalculados.
-  - **Memorização:** uma família em que o LLM reconhece a base (sondas do `tabmemcheck` ou acerto na pergunta "qual é o nome desta base?") sai da análise principal da H4 e entra numa sensibilidade.
+  - **Informação desigual, declarada:** o LLM vê no máximo 200 linhas sorteadas; a configuração primária vê a instância inteira. Na sensibilidade pré-registrada, a configuração primária é **retreinada** com subamostras de ≤ 200 linhas das instâncias de treino, nas mesmas partições, e aplicada à mesma subamostra que o LLM recebe (aplicar o modelo treinado com n ≥ 500 a 200 linhas seria extrapolação contra a primária).
+  - **Memorização:** uma família em que o LLM reconhece a base sai da análise principal da H4 e entra numa sensibilidade. Famílias excluídas não são repostas; o N efetivo da H4 é reportado. O critério exato (quais sondas do `tabmemcheck`, o limiar, se a sonda usa a tabela crua ou a cega, e a pergunta "qual é o nome desta base?") é congelado no adendo LLM.
   - **Adendo LLM, com tag `prereg-v1-llm`, antes de qualquer chamada confirmatória.** Congela:
     - IDs e datas dos modelos (o mais capaz, de uso geral, não-preview de cada provedor na data do adendo);
     - prompt e renderizador por hash (tabela cega: colunas `c0…ck`, transformação afim positiva por coluna, 3 algarismos significativos, ≤ 200 linhas sorteadas, linhas e colunas permutadas);
     - esquema JSON;
     - temperatura 0 ou o menor esforço de raciocínio;
-    - até 2 retentativas; saída inválida = falha = erro.
+    - até 2 retentativas; saída inválida = falha = erro;
+    - o critério de memorização (item anterior).
     - Prompt e renderizador são desenvolvidos **só com famílias de desenvolvimento**; nenhum resultado das famílias confirmatórias informa o adendo.
   - **Poder:** com 18 instâncias por família, só o ruído binomial dá dp de ≈ 0,11 no escore de um método. O MDE fica entre ≈ 6 e 8 p.p. com N = 30; ele é recalculado por simulação no adendo. (A estimativa de 5,4 p.p. da v1 usava o dp do classificador e subestimava o MDE.)
   - **Se a H4 não rodar** (sem chaves ou corte de orçamento), a RQ4 fica sem resposta confirmatória, e isso é declarado. A família principal não muda.
@@ -233,18 +241,17 @@ As 50 famílias efetivas, no formato família:representante:
 
 - **Teste de diferença:** Wilcoxon de postos sinalizados sobre as diferenças por família (`scipy.stats.wilcoxon`, `zero_method="pratt"`, `method="asymptotic"`, `correction=False`, bilateral).
 - **Teste de equivalência (H2e):** TOST de Wilcoxon, com as mesmas opções. São dois testes unilaterais, sobre d + δ (H0: mediana ≤ −δ) e d − δ (H0: mediana ≥ δ); o p é o maior dos dois.
-- **Teste de uma amostra (H6):** o mesmo Wilcoxon sobre AUC − 0,5.
-- **Holm** sobre os 6 testes da família principal. Ele controla o erro do tipo I sob dependência arbitrária, inclusive com N diferentes entre hipóteses.
+- **Holm** sobre os 6 testes da família principal. Ele controla o erro do tipo I sob dependência arbitrária, inclusive com N diferentes entre hipóteses. Uma hipótese que não puder rodar entra no Holm com p = 1, e m continua 6.
 - **Efeito:**
   - Hodges–Lehmann com **IC95% percentil por bootstrap de famílias** (10.000 réplicas, semente 20261101). O IC **não** é ajustado por multiplicidade e é só descritivo: a decisão vem do p ajustado. Se o IC excluir zero com p ajustado ≥ 0,05, vale o p;
   - correlação rank-biserial pareada (Kerby), sem as diferenças nulas. O Pratt do teste inclui os zeros no ranqueamento; a diferença é declarada.
 - **Teste bayesiano de postos sinalizados:** `baycomp.SignedRankTest.probs(comparador, método, rope=0.02, prior=0.5, nsamples=50000, random_state=20261101)`, com a região direita = método melhor. **Só descritivo.**
 - **Tabela de decisão** (única; implementada em `stats.decide` e `stats.decide_equivalence`):
-  - **teste de diferença:** "superior" ou "inferior" se o p de Holm < 0,05, pelo sinal do HL. Se |HL| < δ, o rótulo é "superior (efeito menor que δ)": significativo, mas abaixo da relevância prática. Nos demais casos, "evidência insuficiente";
+  - **teste de diferença:** "superior" ou "inferior" se o p de Holm < 0,05, pelo sinal do HL. Se |HL| < δ, o rótulo ganha "(efeito menor que δ)", isto é, "superior (efeito menor que δ)" ou "inferior (efeito menor que δ)": significativo, mas abaixo da relevância prática. Nos demais casos, "evidência insuficiente";
   - **TOST:** "equivalentes dentro de ±δ" se o p de Holm < 0,05; senão, "equivalência não demonstrada".
 - **Por que δ = 0,02:**
-  - no ensaio, só a repartição dos folds já muda o escore de uma família em ≈ 0,02: a mediana do dp entre as 3 repetições foi 0,024 na configuração primária e 0,022 no hierárquico (0,011 na logística simples, que tem menos parâmetros);
-  - numa família típica (135 instâncias, 45 por classe), cada instância vale 1/45 no recall da sua classe, ou 0,0074 no macro-recall. Então 0,02 equivale a ≈ 3 instâncias a mais acertadas.
+  - numa família típica (135 instâncias, 45 por classe), cada instância vale 1/45 no recall da sua classe, ou 0,0074 no macro-recall. Então 0,02 equivale a ≈ 3 instâncias a mais acertadas;
+  - é também a ordem do ruído de partição: no ensaio, a mediana do dp entre repetições foi 0,024 por repetição na configuração primária, o que dá ≈ 0,014 na média das 3 repetições que forma o escore.
   - Diferenças menores que isso ficam no ruído da partição e não mudariam a escolha de um usuário.
 - **Dependência entre famílias:** o escore de cada família vem de modelos treinados nas outras famílias (Nadeau e Bengio, 2003). O pareamento atenua o efeito, mas os testes podem ser um pouco anticonservadores, e isso é declarado.
 
@@ -258,27 +265,31 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 | H2 | 0,031 | 1,5 p.p. | 2,8 p.p. |
 | H3 | 0,058 | 2,9 p.p. | 5,1 p.p. |
 | H5 | 0,086 | 4,2 p.p. | 7,6 p.p. |
-| H6 (AUC − 0,5) | 0,098 | 0,048 de AUC | 0,087 de AUC |
+| H6 (diferença de AUC) | 0,051 | 0,025 de AUC | 0,045 de AUC |
 
-- **H2e:** com o dp do ensaio (0,031), o TOST tem poder de 0,8 para declarar equivalência se a diferença verdadeira for menor que ≈ 0,006 a 0,009, conforme a posição da H2e no Holm. Com o dp do pior caso, o poder fica marginal.
+- **H2e:** com o dp do ensaio (0,031), o TOST tem poder de 0,8 para declarar equivalência se a diferença verdadeira for menor que ≈ 0,006 a 0,009, conforme a posição da H2e no Holm. Com o dp do pior caso, o poder é baixo: ≈ 0,1 a 0,6 mesmo com diferença verdadeira nula.
 - **H4:** ver a seção 4.
 
 ### 5.2 Tabela de interpretação (desfecho → frase na tese → efeito na contribuição)
 
 | Hipótese | Desfecho | Frase na tese | Efeito na contribuição |
 |---|---|---|---|
-| H1 | superior | "Sem acesso aos valores removidos, o MechDetect quase não detecta MNAR; o nosso método supera essa adaptação" | Delimita a aplicabilidade do estado da arte; não é vitória sobre o MechDetect publicado |
-| H1 | evidência insuficiente ou inferior | "Mesmo a adaptação observed-only do MechDetect não foi superada" | Contribuição frágil: a tese reporta isso no resumo |
-| H2 / H2e | equivalentes | "Decompor em L1 e L2 não muda o desempenho (±2 p.p.)" | Responde a RQ1 com um nulo informativo; a configuração direta fica como recomendação |
-| H2 | superior ou inferior | "O hierárquico foi superior (ou inferior) em d [IC]" | Responde a RQ1 diretamente |
+| H1 | superior | "Sem acesso aos valores removidos, a adaptação observed-only do MechDetect foi inferior à configuração primária" | Delimita a aplicabilidade do estado da arte; não é vitória sobre o MechDetect publicado |
+| H1 | evidência insuficiente ou inferior | "Mesmo a adaptação observed-only do MechDetect não foi superada" | Contribuição frágil, declarada no resumo |
+| H1, H3, H5, H6 | superior ou inferior "(efeito menor que δ)" | "A diferença foi significativa, mas menor que 2 p.p. (ou 0,02 de AUC)" | Não sustenta afirmação de vantagem prática: tratada como sem diferença relevante |
+| H2 / H2e | equivalentes (H2 não significativa) | "Decompor em L1 e L2 não muda o desempenho (±2 p.p.)" | Responde a RQ1 com um nulo informativo; a configuração direta fica como recomendação |
+| H2 / H2e | H2 significativa **e** equivalentes | "Há diferença, mas menor que 2 p.p.: na prática, equivalentes" | Igual à linha anterior |
+| H2 | superior ou inferior, sem equivalência | "O hierárquico foi superior (ou inferior) em d [IC]" | Responde a RQ1 diretamente |
 | H2 / H2e | nenhum dos dois | "Os dados não permitem afirmar diferença nem equivalência" | RQ1 sem resposta conclusiva |
-| H3 | superior | "Os 28 descritores acrescentam d [IC] a um modelo de 4 estatísticas" | Sustenta o conjunto de descritores |
-| H3 | evidência insuficiente | "Não há evidência de que o conjunto completo supere a logística simples" | A contribuição passa a ser o protocolo e a formulação; recomenda-se o modelo simples; a RQ2 é discutida à luz disso |
-| H3 | inferior | "A logística simples foi superior" | Idem, com mais força |
-| H5 | superior | "Treinado só no gerador principal, o método mantém vantagem em geradores externos", sempre com a perda fora do gerador ao lado | Responde à crítica de circularidade |
-| H5 | evidência insuficiente ou inferior | "Fora do gerador de treino, a vantagem não se sustenta" | Limitação central, declarada no resumo |
-| H6 | superior | "Sob a classe de mecanismos injetada, MAR e MNAR são distinguíveis acima do acaso (AUC [IC])" | É o substituto testável do "teto"; não implica identificabilidade em geral |
-| H6 | evidência insuficiente | "MAR e MNAR não foram distinguíveis acima do acaso neste protocolo" | Limitação central |
+| H3 | superior | "A configuração completa supera o modelo logístico mínimo em d [IC]", com a decomposição aprendiz × descritores ao lado | Sustenta a configuração; a parte dos descritores vem da decomposição e da ablação (RQ2) |
+| H3 | evidência insuficiente | "Não há evidência de que a configuração completa supere o modelo mínimo" | A contribuição passa a ser o protocolo e a formulação; recomenda-se o modelo mínimo; a RQ2 é discutida à luz disso |
+| H3 | inferior | "O modelo mínimo foi superior" | Idem, com mais força |
+| H5 | superior | "Fora do gerador de treino, a configuração completa generalizou melhor que o modelo mínimo", sempre com a perda fora do gerador ao lado | Responde à crítica de circularidade a favor dos descritores |
+| H5 | evidência insuficiente | "Fora do gerador de treino, não há evidência de diferença entre a configuração completa e o modelo mínimo" | A perda fora do gerador vira a limitação central, declarada no resumo |
+| H5 | inferior | "Fora do gerador de treino, o modelo mínimo generalizou melhor: a configuração completa é mais sensível à assinatura do gerador" | Idem; recomenda-se o modelo mínimo para uso fora do gerador |
+| H6 | superior | "Sob a classe de mecanismos injetada, a configuração completa separa MAR de MNAR melhor que o modelo mínimo (diferença de AUC [IC])" | Resposta principal da RQ2 sobre MAR × MNAR; não implica identificabilidade em geral |
+| H6 | evidência insuficiente | "Não há evidência de que os descritores completos separem MAR de MNAR melhor que o modelo mínimo" | A separação MAR × MNAR é reportada só pelo nível (AUC com IC) |
+| H6 | inferior | "O modelo mínimo separou MAR de MNAR melhor" | Os descritores não ajudam onde mais importa; declarado no resumo |
 | H4 | qualquer desfecho | Frase no nível correspondente da seção 8 | Responde a RQ4; se não rodar, a RQ4 fica sem resposta confirmatória |
 
 **"Praticamente relevante"** só quando |HL| ≥ δ. O estimando de nível nunca é chamado de "bom" ou "ruim" sem a comparação correspondente.
@@ -298,7 +309,9 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 
 **Secundária, estatísticas do MechDetect como descritores** (m = 1): configuração primária × o mesmo aprendiz só com o grupo G4 (`g4only_hgb`).
 
-**Secundária, painel oráculo por gerador** (m = 3, um teste por gerador, cada um com a sua CV): o nosso classificador com descritores-oráculo × o MechDetect como publicado (clean, com o Y completo), no simétrico, na mdatagen e no tab_err. É a comparação justa com o estado da arte, com a mesma informação dos dois lados; o tab_err é o gerador do artigo do MechDetect.
+**Secundária, painel oráculo por gerador** (m = 3, um teste por gerador, cada um com a sua CV): o nosso classificador com descritores-oráculo × o MechDetect como publicado (clean, com o Y completo), no simétrico, na mdatagen e no tab_err. É a comparação com o estado da arte sob a mesma informação privilegiada (o Y completo). Os dois lados não são idênticos: o nosso oráculo é supervisionado dentro do gerador, e o MechDetect é uma regra fixa. O tab_err é o gerador do artigo do MechDetect.
+
+**Secundária, geradores externos × MechDetect-O** (m = 1): nas instâncias da H5, a configuração primária treinada no principal × o MechDetect-O.
 
 **Secundária, mdatagen com a própria CV** (m = 2): configuração primária × logística simples e configuração primária × MechDetect-O, treinando e testando na mdatagen.
 
@@ -338,9 +351,9 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 | Componente | Situação |
 |---|---|
 | Injeção, descritores 34b, avaliador, baselines (MechDetect-O, oráculo, dirty, Little, PKLM, logística simples), relatório | Implementados e testados |
-| `stats.py` (família principal com Holm m = 6, TOST, teste de uma amostra, Hodges–Lehmann com bootstrap, rank-biserial, ROPE descritiva, decisão; H4 em família própria; estimando de nível com IC) | Implementado e testado (versão 2); congelado com a tag `prereg-v1` |
-| H5 (`cross-generator`) e H6 (`analyses.mar_mnar_auc`) | Implementados e testados; ensaio nas famílias de desenvolvimento |
-| L1 secundário, recall por mecanismo, L2, ablação da RQ2, painel oráculo por gerador, mdatagen, estatísticas do MechDetect como descritores, LOGO, transferência, CD, sensibilidade da massa na fronteira | Implementados e testados (`analyses.py`; `pipeline.run_secondary`, `run_ablation`, `run_logo`, `run_transfer`) |
+| `stats.py` (família principal com Holm m = 6, TOST, Hodges–Lehmann com bootstrap, rank-biserial, ROPE descritiva, decisão; H4 em família própria; estimando de nível com IC) | Implementado e testado (versão 2); congelado com a tag `prereg-v1` |
+| H5 (`cross-generator`, contra a logística simples treinada no principal) e H6 (`analyses.mar_mnar_auc`, AUC pareada contra a logística simples, falha como erro); decomposição descritiva da H3 | Implementados e testados; ensaio nas famílias de desenvolvimento |
+| L1 secundário, recall por mecanismo, L2, ablação da RQ2, painel oráculo por gerador, mdatagen, estatísticas do MechDetect como descritores, geradores externos × MechDetect-O, LOGO, transferência, CD, sensibilidade da massa na fronteira | Implementados e testados (`analyses.py`; `pipeline.run_secondary`, `run_ablation`, `run_logo`, `run_transfer`) |
 | RQ3 (passo 44) e estudo de caso (passo 45) | Implementados e testados (`noise.py`, `case_study.py`) |
 | Prevalência realista e NaN em Z (passo 40) | **A implementar** |
 | LLM (passos 42/43) | **A implementar.** O adendo LLM, com tag, vem antes de qualquer chamada confirmatória |
@@ -363,7 +376,7 @@ Toda comparação usa exatamente um destes níveis:
 
 **A tese pode afirmar:**
 - os níveis e as comparações acima, no protocolo descrito;
-- a distinguibilidade de MAR e MNAR sob a classe injetada, se a H6 passar;
+- o nível de separação de MAR e MNAR sob a classe injetada (AUC com IC) e, se a H6 passar, que os descritores completos separam melhor que o modelo mínimo;
 - a perda fora do gerador;
 - que o MechDetect sem acesso a Y não decide MNAR, por construção.
 
