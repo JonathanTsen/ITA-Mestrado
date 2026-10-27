@@ -4,14 +4,14 @@ O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/Mod
 
 - **Branch de trabalho:** `revisao-banca/fase-c`, criada a partir de `41e00a6`, com push no remoto e ainda **sem PR para a `main`** deste repositório.
 - **Pacote:** `src/missdetect/rb/`, isolado do código legado; testes em `tests/rb/`.
-- **Testes:** **197 passando** (`OMP_NUM_THREADS=1 uv run --frozen pytest -q`).
+- **Testes:** **203 passando** (`OMP_NUM_THREADS=1 uv run --frozen pytest -q`).
 
 ## Documentos deste diretório
 
 | Arquivo | Conteúdo |
 |---|---|
 | [`30-infra.md`](30-infra.md) | Módulos, layout de um run, ordem de execução da produção e mapa dos testes |
-| [`preregistro.md`](preregistro.md) | Pré-registro das análises confirmatórias. **Rascunho pronto para o orientador; a tag `prereg-v1` ainda não existe** |
+| [`preregistro.md`](preregistro.md) | Pré-registro das análises confirmatórias, **versão 2 (27/10/2026)**, revista criticamente antes de qualquer dado confirmatório. Rascunho para o orientador; a tag `prereg-v1` ainda não existe |
 
 ## Tags (congelamentos)
 

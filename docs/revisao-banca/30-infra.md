@@ -17,7 +17,7 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `splits.py`, `models.py`, `evaluate.py` | 35 | CV por família, direto/hierárquico, calibração interna, métricas |
 | `baselines/` | 36, 39 | MechDetect oficial (clean e dirty) e observed-only, Little, PKLM (R), logística simples |
 | `pipeline.py`, `report.py` | 37 | etapas de um run e relatório (tempos, inelegíveis, detectabilidade, atalhos, resumos separados observed-only × painel oráculo) |
-| `stats.py` | 38/46 | H1–H4: Wilcoxon-Pratt + Holm, Hodges–Lehmann com bootstrap, rank-biserial, ROPE (baycomp), decisão |
+| `stats.py` | 38/46 | Pré-registro v2: família principal H1, H2, H2e, H3, H5, H6 (Wilcoxon-Pratt, TOST, uma amostra, Holm m = 6), H4 em família própria, Hodges–Lehmann com bootstrap, rank-biserial, ROPE descritiva, decisão, estimando de nível |
 | `analyses.py` | 39/40/46 | L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade da massa na fronteira |
 | `baselines/oracle_descriptors.py` | 39 | descritores-oráculo (Y completo) do painel de informação privilegiada |
 | `noise.py` | 44 | RQ3: corrupção coerente por contexto só no treino, flags e mitigações do Confident Learning (pesos, poda), contrastes (Holm m = 4), curvas, qualidade das flags e sobreposição (ORA-14) |
@@ -39,8 +39,9 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `oracle_features.parquet` | descritores-oráculo, só do painel oráculo |
 | `baselines.parquet`, `pklm.parquet` | MechDetect-O, MechDetect oráculo (clean), MechDetect dirty, Little; PKLM (subconjunto) |
 | `eval-symmetric/`, `eval-all/`, `eval-<gerador>/` | `predictions.parquet`, `per_family.parquet`, `summary.csv`, `choices.json` |
-| `stats_confirmatory.csv` | H1–H4 (Holm m = 4) |
-| `secondary/` | L1 secundária, recall por mecanismo, L2, CD, sensibilidade da massa na fronteira |
+| `eval-cross/` | H5: primária treinada só no gerador principal, testada nos geradores externos; `cross_summary.csv` com a perda fora do gerador |
+| `stats_confirmatory.csv`, `stats_level.csv`, `stats_h6_auc_by_family.csv`, `stats_llm.csv` | Família principal (H1, H2, H2e, H3, H5, H6; Holm m = 6), estimando de nível com IC, AUC MAR × MNAR por família e a H4 (m = 1) |
+| `secondary/` | L1 secundária, recall por mecanismo, L2, CD, sensibilidade da massa na fronteira, painel oráculo por gerador (`oracle_panel_tests.csv`), mdatagen (`mdatagen_tests.csv`) e estatísticas do MechDetect como descritores (`g4_tests.csv`) |
 | `eval-ablation/`, `eval-logo/`, `transfer-<corpus>/` | RQ2, leave-one-generator-out e transferência sintético → real |
 | `noise/` | RQ3: `predictions.parquet` (teste limpo), `flags.parquet`, `per_family.parquet`, `rq3_tests.csv`, `degradation_curves.csv`, `flag_summary.csv`, `overlap_by_beta.csv`, `overlap_by_r2.csv`, `settings.csv` (taxa realizada), `degradation.png`; hashes dos rótulos em `run.noise.json` |
 | `final_model/` | `model.joblib` + `model.json` (SHA-256, colunas, faixa de k, famílias): configuração primária congelada para o estudo de caso |
@@ -61,7 +62,8 @@ uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <r
 uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators mdatagen
 uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators tab_err
-uv run --frozen python -m missdetect.rb.cli stats           --config $C --run <run>    # H1–H3 (+ H4 com --llm-per-family)
+uv run --frozen python -m missdetect.rb.cli cross-generator --config $C --run <run>    # H5: treino no principal, teste nos externos
+uv run --frozen python -m missdetect.rb.cli stats           --config $C --run <run>    # H1, H2, H2e, H3, H5, H6 (+ H4 com --llm-per-family)
 uv run --frozen python -m missdetect.rb.cli secondary       --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli ablation        --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli logo            --config $C --run <run>
