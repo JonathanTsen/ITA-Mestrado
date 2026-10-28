@@ -1,6 +1,6 @@
 # Revisão pós-banca de qualificação: experimentos (Fase C)
 
-O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/ModeloTesePPGPO`, na pasta `plano-revisao-banca/` da branch `main`. O estado consolidado está em `plano-revisao-banca/execucao/HANDOFF-2026-10-22.md`. Este diretório guarda só a documentação do **código** dos experimentos, para não manter duas cópias do plano.
+O **plano** da revisão vive no repositório da dissertação, `JonathanTsen/ModeloTesePPGPO`, na pasta `plano-revisao-banca/` da branch `main`. O estado consolidado está em `plano-revisao-banca/execucao/HANDOFF-2026-10-28.md` (tudo de 20/10 a 28/10, inclusive os experimentos e os próximos passos). Este diretório guarda só a documentação do **código** dos experimentos, para não manter duas cópias do plano.
 
 - **Branch de trabalho:** `revisao-banca/fase-c`, criada a partir de `41e00a6`, com push no remoto e ainda **sem PR para a `main`** deste repositório.
 - **Pacote:** `src/missdetect/rb/`, isolado do código legado; testes em `tests/rb/`.
