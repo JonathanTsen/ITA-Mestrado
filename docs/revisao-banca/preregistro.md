@@ -221,7 +221,7 @@ As 50 famílias efetivas, no formato família:representante:
 ### Família da H4 (m = 1, α = 0,05)
 
 - **H4 (RQ4):** o **LLM-A1** do provedor confirmatório e a configuração primária diferem, no painel de LLM.
-  - **Provedor confirmatório:** Google (Gemini). O OpenAI (GPT) roda como secundário descritivo.
+  - **Provedor:** só o Google (Gemini). O modelo confirmatório segue a regra do adendo (item abaixo), que em 29/10/2026 apontava para o `gemini-4-argon`. O `gemini-3.8-flash` roda como secundário descritivo, a pedido do autor. O OpenAI (GPT), secundário na versão `444d1d8`, saiu em 29/10/2026 por decisão do autor, que não tem chave de API. Nenhuma hipótese muda.
   - **Painel:**
     - 30 das 50 famílias efetivas, sorteadas com `child_rng(20261101, "llm_panel")`;
     - em cada família, os 6 contextos do gerador principal com r ∈ {0,1; 0,3; 0,5} × k ∈ {2, maior k disponível} e n = min(1000, nº de linhas);
@@ -230,7 +230,7 @@ As 50 famílias efetivas, no formato família:representante:
   - **Informação desigual, declarada:** o LLM vê no máximo 200 linhas sorteadas; a configuração primária vê a instância inteira. Na sensibilidade pré-registrada, a configuração primária é **retreinada** com subamostras de ≤ 200 linhas das instâncias de treino, nas mesmas partições, e aplicada à mesma subamostra que o LLM recebe (aplicar o modelo treinado com n ≥ 500 a 200 linhas seria extrapolação contra a primária).
   - **Memorização:** uma família em que o LLM reconhece a base sai da análise principal da H4 e entra numa sensibilidade. Famílias excluídas não são repostas; o N efetivo da H4 é reportado. O critério exato (quais sondas do `tabmemcheck`, o limiar, se a sonda usa a tabela crua ou a cega, e a pergunta "qual é o nome desta base?") é congelado no adendo LLM.
   - **Adendo LLM, com tag `prereg-v1-llm`, antes de qualquer chamada confirmatória.** Congela:
-    - IDs e datas dos modelos (o mais capaz, de uso geral, não-preview de cada provedor na data do adendo);
+    - IDs e datas dos modelos: o confirmatório é o mais capaz, de uso geral e não-preview do provedor na data do adendo; o secundário descritivo é o `gemini-3.8-flash`;
     - prompt e renderizador por hash (tabela cega: colunas `c0…ck`, transformação afim positiva por coluna, 3 algarismos significativos, ≤ 200 linhas sorteadas, linhas e colunas permutadas);
     - esquema JSON;
     - temperatura 0 ou o menor esforço de raciocínio;
@@ -339,7 +339,7 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 - calibração;
 - classificadores descritivos com Friedman + Nemenyi (diagrama CD): HGB, logreg, RF, SVM, KNN, MLP e NB;
 - transferência sintético → real (`synth-v2`);
-- LLM-A3 e o provedor secundário;
+- LLM-A3 e o modelo secundário (`gemini-3.8-flash`);
 - sensibilidade sem os contextos cujo Y completo tem massa ≥ 10% em 0 ou no seu mínimo: diferença pareada nas famílias que sobram nos dois conjuntos (IC por bootstrap), com a lista das famílias que saem por inteiro;
 - controle sintético: CV agrupada por tabela-base no `synth-v2`;
 - avaliação do L2: diagnóstica (macro-recall MAR × MNAR nas instâncias verdadeiramente não-MCAR) e operacional (nas verdadeiramente não-MCAR que o L1 roteou ao L2), com a fração de MCAR roteadas à parte; falha conta como erro;
