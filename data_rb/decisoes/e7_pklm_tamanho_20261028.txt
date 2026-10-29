@@ -1,0 +1,65 @@
+# E7 refeito na auditoria de 28/10/2026 (tamanho do PKLM sob MCAR gaussiano)
+# Script: scripts/revisao_banca/decisoes/d4_pklm_tamanho.py (sementes fixas: dados rng 1000+s; PKLM seed=7)
+# Parâmetros do registro de 21/10 (08-decisoes-tomadas.md): 48 tabelas, n = 1000, k = 4, 30% de ausência, num.proj = 100, nrep = 200
+# Código: ITA-Mestrado 22bf99a (árvore limpa); R 4.6.1, PKLMtest 1.0.1, ranger 0.18.0 (instalados em 21/10, sem mudança)
+#
+# Rodada 1 (uv run --frozen python scripts/revisao_banca/decisoes/d4_pklm_tamanho.py results_rb/_audit/e7-pklm 48 100 200):
+#   inicio 2026-10-29T02:41:52Z HEAD=22bf99a dirty=0
+#   num.proj=100 nrep=200: rejeição a 5% = 0.125 (6/48)
+#   fim 2026-10-29T02:56:54Z
+# Rodada 2 (run_pklm de novo nas mesmas 48 tabelas gravadas, mesma semente): 6/48 = 0,125 (as mesmas contagens da rodada 1)
+#
+# Conclusão: o valor de 21/10 (2/48 = 4,2%) não se reproduz. Com 6/48, IC95% (Clopper-Pearson) = [0,047; 0,253];
+# teste binomial unilateral contra 5%: p = 0,032. O excesso de rejeições do PKLM nesta configuração aparece também
+# em dados gaussianos com MCAR puro, então não dá para atribuí-lo aos dados reais.
+#
+# p-valores da rodada 2:
+sample_id,pklm_p,status
+inst000,1.000000,ok
+inst001,0.756219,ok
+inst002,0.243781,ok
+inst003,0.771144,ok
+inst004,0.422886,ok
+inst005,0.422886,ok
+inst006,0.980100,ok
+inst007,0.358209,ok
+inst008,0.995025,ok
+inst009,0.024876,ok
+inst010,1.000000,ok
+inst011,0.009950,ok
+inst012,0.009950,ok
+inst013,0.611940,ok
+inst014,0.139303,ok
+inst015,0.452736,ok
+inst016,0.905473,ok
+inst017,0.517413,ok
+inst018,1.000000,ok
+inst019,0.258706,ok
+inst020,0.781095,ok
+inst021,0.487562,ok
+inst022,0.014925,ok
+inst023,0.855721,ok
+inst024,0.059701,ok
+inst025,0.129353,ok
+inst026,0.253731,ok
+inst027,0.069652,ok
+inst028,0.776119,ok
+inst029,0.905473,ok
+inst030,0.323383,ok
+inst031,0.527363,ok
+inst032,0.656716,ok
+inst033,0.054726,ok
+inst034,0.004975,ok
+inst035,0.467662,ok
+inst036,0.616915,ok
+inst037,0.985075,ok
+inst038,0.258706,ok
+inst039,0.651741,ok
+inst040,0.651741,ok
+inst041,0.736318,ok
+inst042,0.049751,ok
+inst043,0.746269,ok
+inst044,0.955224,ok
+inst045,0.184080,ok
+inst046,0.985075,ok
+inst047,0.149254,ok

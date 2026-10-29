@@ -56,9 +56,12 @@
 ### 0.3 O que foi visto antes deste documento e o que mudou por causa disso
 
 **Nas famílias confirmatórias, só se viu:**
-- a elegibilidade calculada nas tabelas completas, sem nenhuma máscara;
-- as descrições e os nomes do OpenML;
+- a elegibilidade calculada nas tabelas completas, sem nenhuma máscara (inclui o R² de um HGB e a correlação de Spearman entre o alvo e as auxiliares, que definem os pares elegíveis);
+- a distribuição de valores das colunas elegíveis dos 69 representantes (massa em zero ou no mínimo), na varredura de zeros sentinela de 21/10 (`scripts/revisao_banca/decisoes/d11_zeros_sentinela.py`). Ela levou a não adotar uma regra automática; a única exclusão (Pima) é de desenvolvimento;
+- as descrições, os nomes e as contagens do OpenML (instâncias, atributos e ausências), usadas para conferir os CSV-fonte;
 - o agrupamento em famílias.
+
+Os dois itens do meio foram acrescentados na auditoria de 28/10, que encontrou a varredura de sentinelas fora desta lista.
 
 Nenhuma instância confirmatória foi gerada, nenhum modelo foi treinado com elas e nenhum escore foi calculado.
 
@@ -302,7 +305,7 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 - **Subconjunto do PKLM:** 8 contextos inteiros do gerador principal por família, 1.200 instâncias, escolhidos com `child_rng(20261101, "pklm_subset")` sobre os contextos ordenados por ID.
 - **Métricas:** sensibilidade, especificidade e acurácia balanceada (AB) por família. O teste usa a AB, com Wilcoxon-Pratt e Holm.
 - A comparação com o PKLM usa só o seu subconjunto.
-- A especificidade dos testes é reportada **como medida**: no piloto, o PKLM rejeitou 12,5% sob MCAR.
+- A especificidade dos testes é reportada **como medida**: no piloto, o PKLM rejeitou 12,5% sob MCAR. Na mesma configuração, em 48 tabelas gaussianas com MCAR puro, rejeitou 6/48 (12,5%; IC95% 4,7–25,3%), conforme o refeito de 28/10 em `data_rb/decisoes/e7_pklm_tamanho_20261028.txt`. O valor de 4,2% registrado em 21/10 não se reproduziu. Por isso o excesso de rejeições não é atribuído aos dados reais.
 - O teste 1 do MechDetect-O usa a AUC sobre `predict()`, por fidelidade ao código dos autores (passo 36).
 
 **Secundária, RQ2** (m = 4): para k = 1…4, configuração primária com todos os descritores × sem o grupo G_k. Escore por família, Wilcoxon-Pratt e Holm. O SHAP é só descritivo.
