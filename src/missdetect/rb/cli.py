@@ -24,6 +24,8 @@ Comandos:
                por gerador, mdatagen e estatísticas do MechDetect como descritores
     cross-generator  H5: primária treinada só no gerador principal, testada nos geradores externos; rodar antes do stats
     secondary-extra  análises das emendas de 29/10 (P6, P7, P8, P11, P12, P13, P15); depois do cross-generator
+    inject-ampute    P24: instâncias do ampute (Schouten et al. 2018) só para teste, com descritores; sem predição
+    cross-ampute     P24: modelos treinados no simétrico aplicados ao ampute; secundária m = 1 e mudança
 
 Execute com OMP_NUM_THREADS=1; os workers também limitam threads com `threadpoolctl`.
 """
@@ -39,7 +41,7 @@ from missdetect.rb.runs import confirmatory_guard, repo_root
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
-    "cross-generator", "stats-llm", "secondary-extra",
+    "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute",
 )  # fmt: skip
 NOT_YET = {
     "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
@@ -83,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
         "fit-final",
         "cross-generator",
         "secondary-extra",
+        "inject-ampute",
+        "cross-ampute",
     ):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
@@ -149,6 +153,10 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_cross_generator(args.run, config, n_jobs))
     elif args.command == "secondary-extra":
         print(pipeline.run_secondary_extra(args.run, config, args.nominal_list))
+    elif args.command == "inject-ampute":
+        print(pipeline.run_inject_ampute(args.run, config, n_jobs))
+    elif args.command == "cross-ampute":
+        print(pipeline.run_cross_ampute(args.run, config, n_jobs))
     elif args.command == "fit-final":
         print(pipeline.run_fit_final(args.run, config))
     elif args.command == "case-study":

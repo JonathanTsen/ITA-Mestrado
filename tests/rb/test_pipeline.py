@@ -301,6 +301,33 @@ def test_secondary_extra_writes_the_amendment_analyses(run, extended, tmp_path):
         pipeline.run_secondary_extra(run_dir, config, nominal_list=nominal)
 
 
+def test_ampute_is_a_test_only_external_generator(run, extended):
+    """P24 (29/10): instâncias do ampute em <run>/ampute/ (sem tocar o benchmark), com descritores, e a avaliação dos
+    modelos treinados só no simétrico, nas mesmas partições, com a secundária m = 1 e a mudança simétrico → ampute."""
+    run_dir, config = run
+    oracle_before = (run_dir / "oracle.parquet").read_bytes()
+    amp_dir = pipeline.run_inject_ampute(run_dir, config, n_jobs=2)
+    assert (run_dir / "oracle.parquet").read_bytes() == oracle_before
+    amp_oracle = pd.read_parquet(amp_dir / "oracle.parquet")
+    oracle = pd.read_parquet(run_dir / "oracle.parquet")
+    external = set(oracle.loc[oracle.generator != "symmetric", "context_id"])
+    assert set(amp_oracle.context_id) == external and (amp_oracle.generator == "ampute").all()
+    assert len(amp_oracle) == 3 * len(external) and not amp_oracle.deterministic.any()
+    features = pd.read_parquet(amp_dir / "features.parquet")
+    assert set(features.sample_id) == set(amp_oracle.sample_id) and (features.feature_status == "ok").all()
+    out = pipeline.run_cross_ampute(run_dir, config, n_jobs=2)
+    pred = pd.read_parquet(out / "predictions.parquet")
+    assert set(pred.method) == {"cross_direct_hgb", "cross_logit_simple"} and check_pairing(pred)
+    tests = pd.read_csv(out / "ampute_tests.csv")
+    assert list(tests.hypothesis) == ["P24_ampute"]
+    change = pd.read_csv(out / "ampute_change.csv")
+    assert change.quantity.iloc[0] == "change_ampute_minus_symmetric" and change.n_families.iloc[0] > 0
+    rates = pd.read_csv(out / "ampute_realized_rates.csv")
+    assert set(rates.mechanism) == {"MCAR", "MAR", "MNAR"}
+    with pytest.raises(FileExistsError):
+        pipeline.run_cross_ampute(run_dir, config, n_jobs=1)
+
+
 def test_transfer_predicts_every_real_instance(extended):
     run_dir, transfer_dir = extended
     pred = pd.read_parquet(transfer_dir / "predictions.parquet")

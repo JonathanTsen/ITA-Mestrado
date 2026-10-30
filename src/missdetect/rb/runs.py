@@ -63,7 +63,7 @@ def git_state(repo: Path) -> dict:
 # calculam predições. Na produção, o pipeline principal roda numa worktree fixada em `prereg-v1`.
 PREREG_TAG = "prereg-v1"
 LLM_ADDENDUM_TAG = "prereg-v1-llm"
-NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features"})
+NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features", "inject-ampute"})
 LLM_COMMANDS = frozenset({"llm", "stats-llm"})
 
 

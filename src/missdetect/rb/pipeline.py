@@ -18,6 +18,7 @@ from joblib import Parallel, delayed
 from matplotlib.figure import Figure
 from threadpoolctl import threadpool_limits
 
+from missdetect.rb import ampute as amp
 from missdetect.rb import case_study, noise
 from missdetect.rb import extra_analyses as extra
 from missdetect.rb import features as feat
@@ -52,12 +53,16 @@ from missdetect.rb.ids import child_rng, child_seed
 from missdetect.rb.models import CLASSES, DirectClassifier, HierarchicalClassifier
 from missdetect.rb.runs import (
     append_run_log,
+    instance_row,
     new_run_dir,
+    observed_path,
+    oracle_row,
     read_complete,
     read_observed,
     repo_root,
     sha256_path,
     write_json,
+    write_observed,
     write_parquet,
     write_tables_atomically,
 )
@@ -1068,3 +1073,126 @@ def _cross_summary(pred: pd.DataFrame, per_family: pd.DataFrame, ext: pd.DataFra
         rows.append({"quantity": "loss_ingen_minus_cross", "method": "cross_direct_hgb", "generator": "external",
                      "n_families": len(d), "value": hodges_lehmann(d), "ci_low": low, "ci_high": high})  # fmt: skip
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Gerador externo estocástico da literatura, só para teste (ampute; pré-registro §6, emenda P24)
+# ---------------------------------------------------------------------------------------------------------------------
+AMPUTE_DIR = "ampute"
+AMPUTE_METHODS = ("cross_direct_hgb", "cross_logit_simple")
+
+
+def _ampute_context(run_dir: Path, out_dir: Path, context: pd.Series, anchor_id: str) -> list[tuple[dict, dict]]:
+    """As três instâncias do ampute num contexto. Z e Y completo vêm do contexto já gerado (na ordem observada). Uma
+    instância já gravada por uma execução interrompida é reaproveitada (a máscara é determinística pela semente)."""
+    z = read_observed(run_dir, anchor_id).z
+    y_complete = read_complete(run_dir, str(context.context_id))
+    rows = []
+    for mechanism in amp.MECHANISMS:
+        instance, oracle, _ = amp.build_ampute_instance(context, z, y_complete, mechanism)
+        rel = observed_path(instance.sample_id)
+        if not (out_dir / rel).exists():
+            write_observed(out_dir, instance)
+        rows.append((instance_row(instance, oracle, rel), oracle_row(oracle)))
+    return rows
+
+
+def run_inject_ampute(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """P24: instâncias do ampute (Schouten, Lugtig e Vink, 2018) nos contextos dos geradores externos, só para teste,
+    em `<run>/ampute/`, com os descritores. Não calcula predição: pode rodar antes do adendo LLM (P21).
+
+    Retoma de onde parou: instâncias já gravadas são reaproveitadas, e os descritores usam o checkpoint do `features`."""
+    out_dir = run_dir / AMPUTE_DIR
+    if (out_dir / "features.parquet").exists():
+        raise FileExistsError(f"{out_dir / 'features.parquet'} já existe; não sobrescrevo.")
+    oracle = pd.read_parquet(run_dir / "oracle.parquet")
+    contexts = pd.read_parquet(run_dir / "contexts.parquet")
+    external = set(oracle.loc[oracle.generator != "symmetric", "context_id"])
+    if not external:
+        raise ValueError("o run não tem contextos de geradores externos")
+    anchors = oracle[
+        (oracle.generator == "symmetric") & (oracle.mechanism == "MCAR") & oracle.context_id.isin(external)
+    ]
+    anchor_of = dict(zip(anchors.context_id, anchors.sample_id, strict=True))
+    chosen = contexts[contexts.context_id.isin(external)].sort_values("context_id")
+    if not (out_dir / "instances.parquet").exists():
+        out_dir.mkdir(exist_ok=True)
+        for name in ("oracle.parquet", "contexts.parquet"):  # sobras de uma interrupção antes do marcador
+            (out_dir / name).unlink(missing_ok=True)
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(_ampute_context)(run_dir, out_dir, row, anchor_of[row.context_id]) for _, row in chosen.iterrows()
+        )
+        pairs = [pair for rows in results for pair in rows]
+        write_parquet(chosen, out_dir / "contexts.parquet")
+        write_parquet(pd.DataFrame([o for _, o in pairs]), out_dir / "oracle.parquet")
+        write_parquet(pd.DataFrame([i for i, _ in pairs]), out_dir / "instances.parquet")  # último: marcador
+    run_features(out_dir, config, n_jobs)
+    amp_oracle = pd.read_parquet(out_dir / "oracle.parquet")
+    append_run_log(
+        run_dir, config, "inject-ampute",
+        {"n_contexts": len(chosen), "n_instances": len(amp_oracle), "pyampute": "0.0.3",
+         "realized_rate_by_mechanism": amp_oracle.groupby("mechanism").realized_rate.mean().round(4).to_dict()},
+    )  # fmt: skip
+    return out_dir
+
+
+def run_cross_ampute(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
+    """P24: a configuração primária e a logística simples, treinadas só no gerador principal das famílias de treino de
+    cada fold (as mesmas partições da avaliação primária), aplicadas sem ajuste às instâncias do ampute das famílias de
+    teste. Grava a secundária (m = 1), a mudança simétrico → ampute e as taxas realizadas, em `eval-ampute/`."""
+    out_dir = run_dir / "eval-ampute"
+    if out_dir.exists():
+        raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    frame = load_eval_frame(run_dir)
+    sym = frame[frame.generator == "symmetric"].reset_index(drop=True)  # mesma ordem e partições do cross-generator
+    ext = load_eval_frame(run_dir / AMPUTE_DIR)
+    ev = config.evaluate
+    seed = child_seed(config.root_seed, "model")
+    cols, simple = feature_columns(sym), list(LOGIT_SIMPLE_FEATURES)
+    families = sym.family_id.reset_index(drop=True)
+
+    def task(method, repeat, fold, train, test):
+        te = np.flatnonzero(ext.family_id.isin(set(families.iloc[test])).to_numpy())
+        if len(te) == 0:
+            return pd.DataFrame()
+        use, learner = (cols, ev.learner) if method == "cross_direct_hgb" else (simple, "logreg")
+        status = "ok"
+        try:
+            with threadpool_limits(1):
+                model = DirectClassifier(learner, {}, seed)
+                model.fit(sym[use].to_numpy(float)[train], sym.label.to_numpy()[train], families.iloc[train])
+                proba = model.predict_proba(ext[use].to_numpy(float)[te])
+        except Exception as exc:  # falha conta como erro, nunca some
+            status = f"failed: {type(exc).__name__}: {exc}"
+            proba = np.full((len(te), N_CLASSES), 1 / N_CLASSES)
+        y_pred = proba.argmax(1) if status == "ok" else np.full(len(te), -1)
+        return pd.DataFrame({
+            "method": method, "repeat": repeat, "fold": fold, "sample_id": ext.sample_id.iloc[te].to_numpy(),
+            "family_id": ext.family_id.iloc[te].to_numpy(), "y_true": ext.label.to_numpy()[te], "y_pred": y_pred,
+            **{f"p_{c}": proba[:, k] for k, c in enumerate(CLASSES)}, "status": status,
+        })  # fmt: skip
+
+    tasks = [
+        (method, repeat, fold, train, test)
+        for repeat, fold, train, test in outer_splits(families, config.root_seed, ev.n_splits, ev.n_repeats)
+        for method in AMPUTE_METHODS
+    ]
+    pred = pd.concat(Parallel(n_jobs=n_jobs)(delayed(task)(*t) for t in tasks), ignore_index=True)
+    pred = mark_failures(pred, ext)
+    if not check_pairing(pred):
+        raise RuntimeError("pareamento 1:1 violado")
+    per_family = summarize_by_family(pred)[0]
+    tests = compare_family(per_family, {"P24_ampute": ("cross_direct_hgb", "cross_logit_simple")})
+    sym_family = pd.read_parquet(run_dir / "eval-symmetric" / "per_family.parquet")
+    amp_score = per_family[per_family.method == "cross_direct_hgb"].set_index("family_id").macro_recall
+    sym_score = sym_family[sym_family.method == PRIMARY].set_index("family_id").macro_recall
+    d = (amp_score - sym_score).dropna().to_numpy()
+    low, high = bootstrap_hl_ci(d) if len(d) else (np.nan, np.nan)
+    change = pd.DataFrame([{"quantity": "change_ampute_minus_symmetric", "method": PRIMARY, "n_families": len(d),
+                            "hodges_lehmann": hodges_lehmann(d) if len(d) else np.nan, "ci_low": low, "ci_high": high,
+                            "mean_ampute": amp_score.mean(), "mean_symmetric": sym_score.mean()}])  # fmt: skip
+    amp_oracle = pd.read_parquet(run_dir / AMPUTE_DIR / "oracle.parquet")
+    rates = amp_oracle.groupby("mechanism").realized_rate.agg(["mean", "min", "max", "count"]).reset_index()
+    _write_eval(out_dir, pred, {"ampute_tests": tests, "ampute_change": change, "ampute_realized_rates": rates})
+    append_run_log(run_dir, config, "cross-ampute", {"methods": list(AMPUTE_METHODS), "n_instances": len(ext)})
+    return out_dir
