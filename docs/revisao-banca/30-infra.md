@@ -17,7 +17,7 @@ Pacote `src/missdetect/rb/`, isolado do código legado. Nenhum módulo executa c
 | `splits.py`, `models.py`, `evaluate.py` | 35 | CV por família, direto/hierárquico, calibração interna, métricas |
 | `baselines/` | 36, 39 | MechDetect oficial (clean e dirty) e observed-only, Little, PKLM (R), logística simples |
 | `pipeline.py`, `report.py` | 37 | etapas de um run e relatório (tempos, inelegíveis, detectabilidade, atalhos, resumos separados observed-only × painel oráculo) |
-| `stats.py` | 38/46 | Pré-registro v2: família principal H1, H2, H2e, H3, H5, H6 (Wilcoxon-Pratt, TOST, uma amostra, Holm m = 6), H4 em família própria, Hodges–Lehmann com bootstrap, rank-biserial, ROPE descritiva, decisão, estimando de nível |
+| `stats.py` | 38/46 | Pré-registro v2: família principal H1, H2, H2e, H3, H5, H6 (Wilcoxon-Pratt, TOST, Holm m = 6), H4 em família própria, Hodges–Lehmann com bootstrap, rank-biserial, ROPE descritiva, decisão, estimando de nível |
 | `analyses.py` | 39/40/46 | L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade da massa na fronteira |
 | `baselines/oracle_descriptors.py` | 39 | descritores-oráculo (Y completo) do painel de informação privilegiada |
 | `noise.py` | 44 | RQ3: corrupção coerente por contexto só no treino, flags e mitigações do Confident Learning (pesos, poda), contrastes (Holm m = 4), curvas, qualidade das flags e sobreposição (ORA-14) |
@@ -77,6 +77,16 @@ uv run --frozen python -m missdetect.rb.cli evaluate        --config configs/rb/
 ```
 
 O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`). O piloto usou a mesma sequência com `configs/rb/pilot-dev.yaml`.
+
+**Ordem depois das emendas de 29/10 (pré-registro §0.4).** As etapas novas são implementadas antes da tag (plano 38c, na tese). Os nomes dos comandos novos são provisórios até lá.
+1. **Antes da produção:** checagem prévia que reextrai os CSV do MechDetect se faltarem. A trava do papel `confirm` exige a tag `prereg-v1` e a árvore limpa (P3).
+2. **Sem predição:** `inject`, `features`, `oracle-features` e a injeção do **ampute** (P24), só nos contextos dos externos e só para teste.
+3. **Adendo LLM:** a tag `prereg-v1-llm` sai **antes de qualquer `evaluate`** (P21). As sondas de memorização rodam e a lista de famílias excluídas é publicada também antes.
+4. **Depois do adendo:** `baselines`, os `evaluate`, o `cross-generator`, que passa a incluir o ampute e as decomposições da H5, e o `stats`.
+   - O `stats` agora tem saídas atômicas e p = 1 por hipótese que não puder rodar.
+   - Depois vêm `secondary` (com as secundárias novas P12, P13, P15 e P24), `ablation`, `logo`, `transfer`, `report`, `noise`, `fit-final` e `case-study`, este só com a NHANES em 10 subamostras de n = 2.000 (P19).
+5. **LLM oficial:** o Flash (autorizado) e o Argon (só com autorização do autor), em lote. A H4 sai na etapa **`stats-llm`**, separada, que não toca o `stats_confirmatory.csv`.
+6. **Segundo depósito:** os hashes das saídas vão ao Zenodo (P4).
 
 **Ensaio geral (22/10/2026):** a sequência completa acima, incluindo `report`, rodou sem erro com `configs/rb/rehearsal-dev.yaml` (inject-v1 nas 8 famílias de desenvolvimento; PKLM reduzido a 2 contextos por família) no commit `f3bb944`, com a árvore limpa. Run `results_rb/20261022-rehearsal-dev-b4ca243467d6`: 1.632 instâncias, nenhuma falha em nenhuma etapa, ≈ 52 min de relógio. Tempos por instância (núcleo): descritores 1,22 s; descritores-oráculo ≈ 0,6 s; MechDetect-O 3,98 s; oráculo 3,53 s; dirty 2,36 s; PKLM 57,1 s.
 

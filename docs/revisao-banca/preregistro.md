@@ -1,7 +1,7 @@
 # Pré-registro das análises confirmatórias (passo 38) — versão 2
 
-> **Situação: RASCUNHO v2 (27/10/2026) para ratificação do orientador (D11).**
-> - A tag `prereg-v1` só é criada depois da resposta do Prof. Vitor Curtis. Até lá, nenhuma instância das famílias confirmatórias é gerada.
+> **Situação: versão 2, aprovada pelo orientador (Prof. Vitor Curtis) em 29/10/2026 na versão `444d1d8`, com as emendas de 29/10/2026 listadas na seção 0.4, que voltam a ele antes da tag.**
+> - A tag `prereg-v1` só é criada depois da aprovação das emendas. Até lá, nenhuma instância das famílias confirmatórias é gerada.
 > - A versão 1 (21–22/10) foi revista criticamente antes de qualquer dado confirmatório. O que mudou e por quê está na seção 0.3.
 > - Toda mudança depois da tag vai para `desvios.md` (seção 9).
 
@@ -59,16 +59,23 @@
 - a elegibilidade calculada nas tabelas completas, sem nenhuma máscara (inclui o R² de um HGB e a correlação de Spearman entre o alvo e as auxiliares, que definem os pares elegíveis);
 - a distribuição de valores das colunas elegíveis dos 69 representantes (massa em zero ou no mínimo), na varredura de zeros sentinela de 21/10 (`scripts/revisao_banca/decisoes/d11_zeros_sentinela.py`). Ela levou a não adotar uma regra automática; a única exclusão (Pima) é de desenvolvimento;
 - as descrições, os nomes e as contagens do OpenML (instâncias, atributos e ausências), usadas para conferir os CSV-fonte;
-- o agrupamento em famílias.
+- o agrupamento em famílias;
+- a reexecução do código oficial do MechDetect (passo 36, 21/10/2026) em 12 tabelas pequenas. Sete delas são representantes de famílias confirmatórias efetivas: 1464, 1480, 40994, 44957, 44959, 44962 e 44970. A reexecução incluiu a injeção do tab_err pelo código dos autores e as AUCs e decisões do MechDetect, vistas só em agregado;
+- o cubo de resultados publicado pelos autores do MechDetect, com as 101 tabelas (E1).
 
-Os dois itens do meio foram acrescentados na auditoria de 28/10, que encontrou a varredura de sentinelas fora desta lista.
+Nenhum desses cálculos usou o gerador, os descritores ou os modelos deste documento. O segundo e o terceiro itens foram acrescentados na auditoria de 28/10, que encontrou a varredura de sentinelas fora desta lista. Os dois últimos foram acrescentados na verificação de defensabilidade de 29/10 (emenda P5).
 
-Nenhuma instância confirmatória foi gerada, nenhum modelo foi treinado com elas e nenhum escore foi calculado.
+Nenhuma instância confirmatória deste protocolo foi gerada, nenhum modelo deste documento foi treinado com elas e nenhum escore dos métodos deste documento foi calculado nelas.
 
 **Nas 8 famílias de desenvolvimento (e no corpus sintético), viram-se:**
 - os pilotos r1 (invalidado por um defeito de desempate) e r2;
 - a checagem da configuração congelada;
-- o ensaio geral de 22/10, com a cadeia completa, a RQ3 e o teste de fumaça do estudo de caso.
+- o ensaio geral de 22/10, com a cadeia completa, a RQ3 e o teste de fumaça do estudo de caso;
+- na verificação de defensabilidade de 29/10, recálculos sobre as predições do ensaio, que motivaram as emendas da seção 0.4:
+  - **MNAR por censura:** com β = ∞, o recall de MNAR da configuração primária foi 0,24 (0,11 na direção inferior), e 60% dessas instâncias foram classificadas como MAR (72% na direção inferior). Com β = 2, o recall de MNAR foi 0,68 (0,83 na direção inferior); com β = ∞, o recall de MAR foi 0,97;
+  - **H5:** os pares da mdatagen coincidem com o simétrico com β = ∞ (15 de 27 máscaras MAR e 15 de 27 MNAR idênticas, e as demais diferem só em empates no limiar). Cerca de 83% da diferença da H5 vem do recall de MCAR;
+  - **H6:** a vantagem foi de +0,064 no gerador principal (7 de 8 famílias) e de +0,010 fora dele (2 de 8); na concordância dentro do trio, foi de +0,032;
+  - **tamanho do PKLM:** 20 de 200 tabelas gaussianas com MCAR puro (E19).
 
 **Mudanças na versão 1 (21–22/10), motivadas pelo piloto:**
 - grade de β {1, 2, 4, 8, ∞};
@@ -94,6 +101,39 @@ Nenhuma instância confirmatória foi gerada, nenhum modelo foi treinado com ela
 Uma segunda revisão independente (27/10) trocou os comparadores da H5 e da H6 pelos descritos acima (antes eram o MechDetect-O e 0,5), passou a contar falhas como erro na H6 e completou a tabela de interpretação.
 
 Essas mudanças foram feitas vendo só resultados de desenvolvimento. Elas tornam a família confirmatória **mais difícil**: H3 e H5 têm desfecho em aberto no ensaio (a H5 é desfavorável ao método), e a H6 deixa de ser um teste contra o acaso. Só a H1 continua esperada por construção, e isso está declarado.
+
+### 0.4 Emendas depois da aprovação (29/10/2026)
+
+A versão `444d1d8` foi aprovada pelo orientador em 29/10/2026, com o pedido de verificar se o desenho é defensável. A verificação foi feita no mesmo dia: três revisões adversariais, uma no papel de cada membro da banca, com cada achado conferido no arquivo. Ela está registrada em `plano-revisao-banca/execucao/38b-defensabilidade.md`, no repositório da tese.
+
+As emendas abaixo vêm dessa verificação e das decisões do autor. **Nenhuma muda as hipóteses H1–H6, os comparadores ou os testes da família principal.** Mudam frases de leitura, descritivos, secundárias, as regras do LLM e as proteções. Todas foram feitas vendo só resultados de desenvolvimento e voltam ao orientador antes da tag.
+
+| ID | O quê | Onde |
+|---|---|---|
+| P1 | D5: só o Google. O confirmatório segue a regra do adendo, o `gemini-3.8-flash` é o secundário descritivo, e o OpenAI saiu | §4 |
+| P2 | Situação do documento e esta lista | Cabeçalho; §0.4 |
+| P3 | Definição do run pré-registrado e trava no código | §9 |
+| P4 | Segundo depósito com os hashes dos resultados e o arquivo da aprovação | §10 |
+| P5 | O §0.3 completo (reexecução do MechDetect e cubo dos autores) | §0.3 |
+| P6 | Recall por classe e AUC da H6 por β e direção; linha da censura determinística | §3; §5.2; §8 |
+| P7 | H6 restrita ao gerador principal, com a H6 fora do gerador e a concordância dentro do trio | §4; §5.2 |
+| P8 | Relação dos geradores externos com o simétrico; decomposições da H5 | §1; §4; §5.2; §8 |
+| P9 | Linha da combinação H3/H5/H6 e regra do resumo com os seis desfechos | §5.2; §8 |
+| P10 | δ como convenção, com o poder para \|d\| = δ; regras de leitura coerentes com o §8 | §5; §5.2 |
+| P11 | Sensibilidade à partição, por repetição | §5 |
+| P12 | Secundária dos erros que mudam a decisão do usuário. O experimento a jusante (passo 47) foi dispensado | §6; §8 |
+| P13 | L1 sem limiar (AUC) e linha do L1 × Little | §6; §5.2 |
+| P14 | Tamanho do PKLM pelo E19 | §6 |
+| P15 | Sensibilidade sem as bases com Y nominal | §6 |
+| P16 | As famílias são tabelas de benchmark, algumas de simulação | §8 |
+| P17 | Escopo do MAR e do MNAR; exploratória opcional com vários drivers e MNAR misto | §6; §8 |
+| P18 | Redação exata sobre as variantes da mdatagen | §1 |
+| P19 | Estudo de caso só com a NHANES | §6 |
+| P20 | Regras de geração do LLM (temperatura ignorada, raciocínio `medium`, uma resposta por instância) | §4 |
+| P21 | Adendo LLM antes do `evaluate`; memorização pela renderização cega | §4 |
+| P22 | Regra de custo do LLM | §4 |
+| P23 | Linhas da H4 na tabela de interpretação | §5.2 |
+| P24 | Secundária com um gerador externo estocástico: o ampute (Schouten, Lugtig e Vink, 2018) | §1; §6 |
 
 ## 1. Dados
 
@@ -148,12 +188,19 @@ As 50 famílias efetivas, no formato família:representante:
 - **Principal: simétrico.** Gumbel-top-k com pesos exp(β·s) sobre o posto, contagem exata de ausências, linhas na ordem da permutação aleatória; β = 0 é o MCAR.
 - **Por que o simétrico, e não a mdatagen, é o principal** (decisão D4):
   - ele controla β e o determinismo **do mesmo modo** no MAR e no MNAR;
-  - na mdatagen 0.2.0, o MAR tem variantes estocásticas (`rank`, `median`), mas o MNAR univariado é determinístico na prática: `uMNAR.run(deterministic=False)` também ordena pela própria coluna, e o aleatório só desempata. A única variante MNAR estocástica, `MBOV_randomness`, entrega taxa abaixo da pedida (déficit de 0,15 a 6,41 p.p.) e quebraria a regra dos trios com a mesma contagem;
+  - na mdatagen 0.2.0, o MAR tem variantes estocásticas (`rank`, `median`), mas o MNAR univariado é determinístico na prática: `uMNAR.run(deterministic=False)` também ordena pela própria coluna, e o aleatório só desempata. A única variante MNAR estocástica que se aplica só à coluna-alvo, `MBOV_randomness`, entrega taxa abaixo da pedida (déficit de 0,15 a 6,41 p.p.) e quebraria a regra dos trios com a mesma contagem. As demais variantes MNAR da mdatagen não servem aqui: o `MBOUV` distribui as ausências entre as colunas a partir de uma variável oculta; o `MBIR` torna não observada a auxiliar que comanda a ausência (MNAR latente, fora do escopo); e o `MBOV_median` é determinístico e não tem par MAR;
   - usar a mdatagen como principal deixaria MAR estocástico contra MNAR determinístico, e o determinismo viraria atalho ("determinístico ⇒ MNAR").
   - O plano de resposta à banca previa a mdatagen como principal. Esta mudança vai declarada no documento de resposta, e a mdatagen entra em duas análises testadas: na H5 (confirmatória) e numa secundária com a própria CV (seção 6).
 - **Externos**, nos contextos com n = min(1000, nº de linhas):
   - **mdatagen 0.2.0** em pares determinísticos: lower → `lowest`/`run_0`; upper → `highest`/`run_1`; both → `mix`/`run_0.5`; o MCAR usa `random`;
   - **tab_err 0.2.1:** ECAR/EAR/ENAR semeados, só na coluna-alvo.
+- **Relação dos externos com o principal** (verificada no ensaio de 22/10; emenda P8):
+  - os pares determinísticos da mdatagen selecionam as mesmas linhas que o gerador simétrico com β = ∞ na direção correspondente, a menos do desempate entre valores empatados no limiar;
+  - o MCAR externo tem a mesma lei do MCAR simétrico;
+  - só as janelas contíguas do tab_err em posição interior ficam fora do suporte do gerador principal.
+
+  Por isso, a H5 mede a generalização para mecanismos determinísticos sob o prior de β do treino, e não o efeito de um gerador independente.
+- **Externo estocástico, só para teste (secundária; emenda P24):** o procedimento de amputação de Schouten, Lugtig e Vink (2018), na implementação `pyampute` 0.0.3, nos mesmos contextos dos externos (seção 6).
 - **Excluído:** o MBOV da mdatagen, por déficit de taxa (0,15–0,23 p.p. com r = 0,1; 1,73–2,22 com 0,3; 4,42–6,41 com 0,5).
 - **Trios desiguais:** um trio (MCAR, MAR, MNAR) de um contexto e gerador é recusado se as contagens de ausências diferirem. Isso acontece na mdatagen `mix`/`run_0.5` com N ímpar; os trios recusados são reportados.
 
@@ -162,7 +209,7 @@ As 50 famílias efetivas, no formato família:representante:
 - Taxas de 10% a 50%; n entre 500 e 2.000; k entre 2 e 8; classes balanceadas.
 - MAR pelo posto de um único driver observado.
 - MNAR por auto-mascaramento: a ausência depende do próprio Y (inferior, superior ou nas duas caudas).
-- **Geradores externos:** só as variantes **determinísticas** (os pares da mdatagen e o tab_err). A H5 mede a generalização para elas, não para mecanismos externos estocásticos.
+- **Geradores externos:** só as variantes **determinísticas** (os pares da mdatagen e o tab_err). A H5 mede a generalização para elas, não para mecanismos externos estocásticos. Um gerador externo estocástico, o ampute, entra só numa secundária (seção 6).
 - **Fora do escopo:** o MNAR por variável latente (a ausência depende de uma coluna retirada da tabela). O rótulo dessa variante dependeria de um limiar estimado e deixaria de valer por construção; ela também não foi congelada em `freeze-v1`. Também ficam fora várias colunas incompletas ao mesmo tempo, Z com ausências e MCAR raro (este último aparece só na análise exploratória de prevalência, seção 6).
 
 **Separação observado × oráculo.** Os métodos recebem só `y` (com NaN) e `z`. IDs, caminhos e o oráculo nunca entram em descritores nem em prompts.
@@ -189,6 +236,7 @@ As 50 famílias efetivas, no formato família:representante:
 
 **Estimandos:**
 - **de nível:** a média, entre as 50 famílias efetivas, do escore por família da configuração primária no gerador principal, com IC95% por bootstrap de famílias. A referência de acaso (1/3) é descritiva. É reportado **sempre com a quebra por β** e por taxa, porque depende da grade do desenho. O mesmo vale para a configuração primária nos geradores externos (H5);
+- **por regime** (descritivo; emenda P6): o recall de cada classe e a AUC da H6 são reportados por β e, com β = ∞, por direção, com IC95% por bootstrap de famílias. É o que mostra se a censura determinística de Y (β = ∞) é reconhecida como MNAR;
 - **comparativo** (hipóteses de diferença): o **Hodges–Lehmann** das diferenças por família, isto é, a mediana das médias de Walsh. A diferença média ± dp é só descritiva;
 - **H6:** a AUC MAR × MNAR por família, da configuração primária e da logística simples. É a AUC de P(MNAR) / (P(MAR) + P(MNAR)) nas instâncias verdadeiramente não-MCAR (positivo = MNAR), média das 3 repetições. Uma falha conta como erro: recebe o pior escore para a sua classe verdadeira (MNAR → 0, MAR → 1). A AUC da configuração primária, com IC, entra no estimando de nível.
 
@@ -213,10 +261,18 @@ As 50 famílias efetivas, no formato família:representante:
   - Pergunta: o conjunto completo é mais (ou menos) robusto à troca de gerador do que o modelo mínimo?
   - Os modelos são os de cada fold da avaliação primária, aplicados sem ajuste. O escore por família junta as instâncias dos dois geradores externos.
   - Descritivos, sem teste: o nível da configuração primária com IC, a quebra por gerador e a **perda fora do gerador**. A perda é o HL de (configuração primária treinada nos próprios geradores externos − treinada no principal), nas mesmas instâncias.
+  - **Leitura (emenda P8):** os geradores externos são determinísticos, e os pares da mdatagen coincidem com o simétrico com β = ∞ a menos de empates (seção 1). Por isso, a H5 compara os modelos em mecanismos determinísticos sob o prior de β do treino e não isola o efeito de um gerador independente.
+  - **Descritivos novos (emenda P8),** por gerador externo e no conjunto:
+    - a **decomposição da diferença por classe** (recall de MCAR, MAR e MNAR; HL com IC), ao lado da mesma decomposição no gerador principal;
+    - o **efeito do gerador:** primária no gerador externo − primária no recorte β = ∞ do simétrico, nas mesmas famílias de teste;
+    - a **especialização:** primária treinada no próprio gerador externo − treinada no simétrico.
   - O MechDetect-O nas mesmas instâncias é uma secundária (seção 6).
 - **H6 — MAR × MNAR (substituto testável do "teto"; RQ2, "em particular MAR de MNAR"):** a AUC MAR × MNAR por família da configuração primária e a da logística simples diferem (pareado).
   - Na escala de AUC, δ = 0,02 também é a margem de relevância prática.
   - A AUC da configuração primária contra 0,5 é descritiva (estimando de nível).
+  - **O teste usa só o gerador principal** (`eval-symmetric`). **Descritivos novos (emenda P7),** sempre reportados com a H6:
+    - a **H6 fora do gerador:** a mesma diferença de AUC, com os modelos da H5, nas instâncias dos geradores externos;
+    - a **concordância dentro do trio:** a fração dos contextos em que a instância MNAR recebe P(MNAR) / (P(MAR) + P(MNAR)) maior que a instância MAR do mesmo contexto, com empate valendo 1/2. É calculada por família, nas duas configurações, com HL e IC. Ela separa a informação sobre o mecanismo da comparabilidade dos escores entre contextos, que a AUC agrupada mistura.
 
 ### Família da H4 (m = 1, α = 0,05)
 
@@ -228,16 +284,35 @@ As 50 famílias efetivas, no formato família:representante:
     - total: 540 instâncias.
   - **Escores:** o LLM tem o macro-recall por família nas 18 instâncias do painel. A configuração primária tem as predições da CV principal restritas às mesmas 18 instâncias (escore por repetição, média das 3).
   - **Informação desigual, declarada:** o LLM vê no máximo 200 linhas sorteadas; a configuração primária vê a instância inteira. Na sensibilidade pré-registrada, a configuração primária é **retreinada** com subamostras de ≤ 200 linhas das instâncias de treino, nas mesmas partições, e aplicada à mesma subamostra que o LLM recebe (aplicar o modelo treinado com n ≥ 500 a 200 linhas seria extrapolação contra a primária).
-  - **Memorização:** uma família em que o LLM reconhece a base sai da análise principal da H4 e entra numa sensibilidade. Famílias excluídas não são repostas; o N efetivo da H4 é reportado. O critério exato (quais sondas do `tabmemcheck`, o limiar, se a sonda usa a tabela crua ou a cega, e a pergunta "qual é o nome desta base?") é congelado no adendo LLM.
-  - **Adendo LLM, com tag `prereg-v1-llm`, antes de qualquer chamada confirmatória.** Congela:
-    - IDs e datas dos modelos: o confirmatório é o mais capaz, de uso geral e não-preview do provedor na data do adendo; o secundário descritivo é o `gemini-3.8-flash`;
-    - prompt e renderizador por hash (tabela cega: colunas `c0…ck`, transformação afim positiva por coluna, 3 algarismos significativos, ≤ 200 linhas sorteadas, linhas e colunas permutadas);
-    - esquema JSON;
-    - temperatura 0 ou o menor esforço de raciocínio;
-    - até 2 retentativas; saída inválida = falha = erro;
-    - o critério de memorização (item anterior).
+  - **Memorização (emenda P21):**
+    - uma família sai da análise principal da H4 se as sondas aplicadas à **renderização cega** do A1 reconhecerem a base. É a renderização que o LLM de fato recebe;
+    - o reconhecimento da tabela **crua**, com os nomes reais, é covariável. "LLM superior" só é afirmado se o sinal se mantiver nas famílias não reconhecidas na tabela crua;
+    - famílias excluídas não são repostas, e o N efetivo e o MDE simulado para esse N acompanham a H4;
+    - as sondas exatas (testes do `tabmemcheck` e a pergunta "qual é o nome desta base?"), o número de perguntas e os limiares são congelados no adendo LLM.
+  - **Adendo LLM, com tag `prereg-v1-llm`, antes do `evaluate` da produção (emenda P21).**
+    - Assim ele vem antes de qualquer escore confirmatório do classificador e de qualquer chamada confirmatória.
+    - As sondas rodam, e a lista das famílias excluídas é publicada com SHA-256, também antes do `evaluate`.
+    - Até lá, só rodam as etapas que não calculam predições: `inject`, `features` e `oracle-features`.
+    - O adendo congela:
+      - IDs e datas dos modelos: o confirmatório é o mais capaz, de uso geral e não-preview do provedor na data do adendo; o secundário descritivo é o `gemini-3.8-flash`;
+      - prompt e renderizador por hash. A tabela é cega: colunas `c0…ck`; uma transformação afim positiva por coluna que leva os valores observados a inteiros de 0 a 999 (no máximo 3 algarismos significativos; emenda P20); ≤ 200 linhas sorteadas; linhas e colunas permutadas;
+      - esquema JSON só com as três probabilidades;
+      - **geração (emenda P20):**
+        - os modelos Gemini 3.6+ e 4 ignoram temperatura, top_p e top_k e não aceitam semente. Nenhum desses parâmetros é enviado, e a saída é tratada como estocástica;
+        - o nível de raciocínio é `medium`, o padrão do provedor, igual em todas as chamadas, sem ferramentas: execução de código e busca ficam desligadas;
+        - vale a primeira resposta válida de cada instância, gravada crua num cache que nunca é apagado. O SHA-256 do cache entra no registro externo;
+        - cada chamada grava o alias, a data e hora, o `modelVersion` e o `responseId`;
+        - uma subamostra de 10% do painel (`child_rng(20261101, "llm_repeat")`) é consultada uma segunda vez, e a concordância (κ de Cohen e diferença de macro-recall) é descritiva;
+        - o A1 confirmatório roda numa janela contínua de até 72 h. Se a versão do modelo mudar, nada é refeito, e a mudança é reportada;
+        - o modo de lote do provedor pode ser usado, porque o modelo e a pergunta são os mesmos; isso é registrado;
+      - até 2 retentativas, só para saída inválida; saída inválida = falha = erro;
+      - o critério de memorização (item anterior).
     - Prompt e renderizador são desenvolvidos **só com famílias de desenvolvimento**; nenhum resultado das famílias confirmatórias informa o adendo.
   - **Poder:** com 18 instâncias por família, só o ruído binomial dá dp de ≈ 0,11 no escore de um método. O MDE fica entre ≈ 6 e 8 p.p. com N = 30; ele é recalculado por simulação no adendo. (A estimativa de 5,4 p.p. da v1 usava o dp do classificador e subestimava o MDE.)
+  - **Custo (emenda P22):**
+    - é projetado no piloto de desenvolvimento, no nível de raciocínio congelado, com o preço da data prevista;
+    - se 1,5 × a projeção passar de US$ 300, cortam-se, nesta ordem, o A3, o modelo secundário e o A2;
+    - o A1 roda primeiro, com as famílias em ordem sorteada (`child_rng(20261101, "llm_order")`). Se o orçamento acabar, a H4 usa as famílias completas, com o N e o MDE reportados.
   - **Se a H4 não rodar** (sem chaves ou corte de orçamento), a RQ4 fica sem resposta confirmatória, e isso é declarado. A família principal não muda.
 
 ## 5. Testes, estimativas e decisão
@@ -255,8 +330,12 @@ As 50 famílias efetivas, no formato família:representante:
 - **Por que δ = 0,02:**
   - numa família típica (135 instâncias, 45 por classe), cada instância vale 1/45 no recall da sua classe, ou 0,0074 no macro-recall. Então 0,02 equivale a ≈ 3 instâncias a mais acertadas;
   - é também a ordem do ruído de partição: no ensaio, a mediana do dp entre repetições foi 0,024 por repetição na configuração primária, o que dá ≈ 0,014 na média das 3 repetições que forma o escore.
-  - Diferenças menores que isso ficam no ruído da partição e não mudariam a escolha de um usuário.
+  - **Natureza do δ (emenda P10):**
+    - δ é uma convenção de resolução e de ruído do escore de uma família, não uma consequência a jusante demonstrada;
+    - com N = 50 e o dp do ensaio, o poder para |d| = δ é ≈ 0,4–0,7 na H3, ≈ 0,2–0,4 na H5 e ≈ 0,1–0,3 na H1, conforme a posição no Holm;
+    - por isso, "evidência insuficiente" nessas hipóteses não exclui diferenças da ordem de δ, e o IC95% do HL é sempre reportado ao lado.
 - **Dependência entre famílias:** o escore de cada família vem de modelos treinados nas outras famílias (Nadeau e Bengio, 2003). O pareamento atenua o efeito, mas os testes podem ser um pouco anticonservadores, e isso é declarado.
+- **Sensibilidade à partição (descritiva; emenda P11):** o HL e o p de Wilcoxon-Pratt de cada hipótese são calculados também em cada uma das 3 repetições, separadamente. A tese informa se o rótulo de decisão mudaria em alguma delas.
 
 ### 5.1 Poder
 
@@ -278,22 +357,30 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 | Hipótese | Desfecho | Frase na tese | Efeito na contribuição |
 |---|---|---|---|
 | H1 | superior | "Sem acesso aos valores removidos, a adaptação observed-only do MechDetect foi inferior à configuração primária" | Delimita a aplicabilidade do estado da arte; não é vitória sobre o MechDetect publicado |
-| H1 | evidência insuficiente ou inferior | "Mesmo a adaptação observed-only do MechDetect não foi superada" | Contribuição frágil, declarada no resumo |
-| H1, H3, H5, H6 | superior ou inferior "(efeito menor que δ)" | "A diferença foi significativa, mas menor que 2 p.p. (ou 0,02 de AUC)" | Não sustenta afirmação de vantagem prática: tratada como sem diferença relevante |
+| H1 | evidência insuficiente | "Mesmo a adaptação observed-only do MechDetect não foi superada" | Contribuição frágil, declarada no resumo |
+| H1 | inferior | "A adaptação observed-only do MechDetect foi superior à configuração primária" | Idem, com mais força |
+| H1, H2, H3, H5, H6 | superior ou inferior "(efeito menor que δ)" | "A diferença foi significativa, com estimativa menor que 2 p.p. (ou 0,02 de AUC) (IC [a, b])". "Sem relevância prática" só se o IC inteiro ficar dentro de ±δ; senão, "relevância prática indeterminada" | Não sustenta afirmação de vantagem prática |
 | H2 / H2e | equivalentes (H2 não significativa) | "Decompor em L1 e L2 não muda o desempenho (±2 p.p.)" | Responde a RQ1 com um nulo informativo; a configuração direta fica como recomendação |
 | H2 / H2e | H2 significativa **e** equivalentes | "Há diferença, mas menor que 2 p.p.: na prática, equivalentes" | Igual à linha anterior |
 | H2 | superior ou inferior, sem equivalência | "O hierárquico foi superior (ou inferior) em d [IC]" | Responde a RQ1 diretamente |
 | H2 / H2e | nenhum dos dois | "Os dados não permitem afirmar diferença nem equivalência" | RQ1 sem resposta conclusiva |
 | H3 | superior | "A configuração completa supera o modelo logístico mínimo em d [IC]", com a decomposição aprendiz × descritores ao lado | Sustenta a configuração; a parte dos descritores vem da decomposição e da ablação (RQ2) |
-| H3 | evidência insuficiente | "Não há evidência de que a configuração completa supere o modelo mínimo" | A contribuição passa a ser o protocolo e a formulação; recomenda-se o modelo mínimo; a RQ2 é discutida à luz disso |
+| H3 | evidência insuficiente | "Não há evidência de que a configuração completa supere o modelo mínimo", com o limite superior do IC95% do HL como o maior ganho da configuração completa compatível com os dados | A contribuição passa a ser o protocolo e a formulação. Por parcimônia, o modelo mínimo é preferível enquanto não houver evidência de ganho, o que não demonstra equivalência. A RQ2 é discutida à luz disso |
 | H3 | inferior | "O modelo mínimo foi superior" | Idem, com mais força |
-| H5 | superior | "Fora do gerador de treino, a configuração completa generalizou melhor que o modelo mínimo", sempre com a perda fora do gerador ao lado | Responde à crítica de circularidade a favor dos descritores |
-| H5 | evidência insuficiente | "Fora do gerador de treino, não há evidência de diferença entre a configuração completa e o modelo mínimo" | A perda fora do gerador vira a limitação central, declarada no resumo |
-| H5 | inferior | "Fora do gerador de treino, o modelo mínimo generalizou melhor: a configuração completa é mais sensível à assinatura do gerador" | Idem; recomenda-se o modelo mínimo para uso fora do gerador |
-| H6 | superior | "Sob a classe de mecanismos injetada, a configuração completa separa MAR de MNAR melhor que o modelo mínimo (diferença de AUC [IC])" | Resposta principal da RQ2 sobre MAR × MNAR; não implica identificabilidade em geral |
+| H5 | superior | "Nas instâncias dos geradores externos, todas determinísticas, a configuração completa treinada no simétrico foi superior ao modelo mínimo", sempre com a perda fora do gerador, a decomposição por classe e o efeito do gerador ao lado | Responde em parte à crítica de circularidade; a resposta com um gerador estocástico independente vem da secundária do ampute |
+| H5 | evidência insuficiente | "Nas instâncias dos geradores externos, todas determinísticas, não há evidência de diferença entre a configuração completa e o modelo mínimo" | A perda fora do gerador, com a decomposição efeito do gerador × especialização, vira a limitação central, declarada no resumo |
+| H5 | inferior | "Nas instâncias dos geradores externos, todas determinísticas, o modelo mínimo treinado no simétrico foi superior" | Idem; recomenda-se o modelo mínimo para mecanismos determinísticos fora do gerador de treino |
+| H5 (leitura) | qualquer desfecho com diferença | Só se diz que "a configuração completa é mais (ou menos) sensível à assinatura do gerador" se o IC do efeito do gerador excluir 0 **e** a diferença vier do recall de MAR ou de MNAR. Se vier do recall de MCAR, a frase é: "a diferença fora do gerador repete a diferença no reconhecimento do MCAR já observada no gerador principal" | Evita atribuir ao gerador o que é do MCAR (emenda P8) |
+| H6 | superior | "No gerador principal (simétrico), sob MAR por uma única auxiliar e MNAR por auto-mascaramento, a configuração completa ordena MAR e MNAR melhor que o modelo mínimo (diferença de AUC [IC])", sempre com a H6 fora do gerador e a concordância dentro do trio ao lado. Se o IC da concordância incluir 0, acrescenta-se que a vantagem vem da comparabilidade dos escores entre contextos | Resposta principal da RQ2 sobre MAR × MNAR. Não implica identificabilidade em geral nem vale para outros geradores sem a H6 fora do gerador |
 | H6 | evidência insuficiente | "Não há evidência de que os descritores completos separem MAR de MNAR melhor que o modelo mínimo" | A separação MAR × MNAR é reportada só pelo nível (AUC com IC) |
 | H6 | inferior | "O modelo mínimo separou MAR de MNAR melhor" | Os descritores não ajudam onde mais importa; declarado no resumo |
-| H4 | qualquer desfecho | Frase no nível correspondente da seção 8 | Responde a RQ4; se não rodar, a RQ4 fica sem resposta confirmatória |
+| H3, H5, H6 combinadas | H3 sem superioridade, H5 inferior ou insuficiente, H6 superior | "No gerador principal, o conjunto completo ordena MAR e MNAR melhor que o modelo mínimo. Não há evidência de que classifique melhor, e, nos geradores externos, o modelo mínimo foi superior (ou: não há evidência de diferença)" | A contribuição é o protocolo e a delimitação; a recomendação de uso segue a H5, porque nenhum dado real vem do gerador simétrico (emenda P9) |
+| Recall de MNAR por regime (descritivo) | com β = ∞, abaixo de 1/3 | "Quando a ausência é uma censura determinística de Y, o método a classifica como MAR em x% das instâncias" | Limitação declarada no resumo (emenda P6) |
+| L1 × Little (secundária) | inferior | "No ponto de operação pré-registrado, o teste de Little detectou o afastamento do MCAR melhor que o L1 aprendido", com a AUC sem limiar ao lado | A contribuição do classificador fica nas três classes e no L2 (emenda P13) |
+| H4 | primária superior | "O classificador supervisionado, treinado no mesmo gerador, foi superior ao &lt;modelo, alias, data, nível de raciocínio&gt; sem treino, com tabelas cegas de até 200 linhas", sempre com a sensibilidade de 200 linhas ao lado | Esperado em boa parte por construção, como a H1 (emenda P23) |
+| H4 | LLM superior | "O &lt;modelo&gt; foi superior à configuração primária", só se as sensibilidades de 200 linhas e de memorização tiverem o mesmo sinal; senão, "resultado sensível à informação disponível ou à memorização" | Resposta da RQ4 |
+| H4 | evidência insuficiente | "Não há evidência de diferença entre o &lt;modelo&gt; e a configuração primária", com o MDE do N efetivo | RQ4 sem resposta conclusiva |
+| H4 | não rodou | "A RQ4 fica sem resposta confirmatória" | Declarado |
 
 **"Praticamente relevante"** só quando |HL| ≥ δ. O estimando de nível nunca é chamado de "bom" ou "ruim" sem a comparação correspondente.
 
@@ -305,7 +392,11 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 - **Subconjunto do PKLM:** 8 contextos inteiros do gerador principal por família, 1.200 instâncias, escolhidos com `child_rng(20261101, "pklm_subset")` sobre os contextos ordenados por ID.
 - **Métricas:** sensibilidade, especificidade e acurácia balanceada (AB) por família. O teste usa a AB, com Wilcoxon-Pratt e Holm.
 - A comparação com o PKLM usa só o seu subconjunto.
-- A especificidade dos testes é reportada **como medida**: no piloto, o PKLM rejeitou 12,5% sob MCAR. Na mesma configuração, em 48 tabelas gaussianas com MCAR puro, rejeitou 6/48 (12,5%; IC95% 4,7–25,3%), conforme o refeito de 28/10 em `data_rb/decisoes/e7_pklm_tamanho_20261028.txt`. O valor de 4,2% registrado em 21/10 não se reproduziu. Por isso o excesso de rejeições não é atribuído aos dados reais.
+- A especificidade dos testes é reportada **como medida** (emenda P14):
+  - no piloto, o PKLM rejeitou 12,5% sob MCAR;
+  - no E19 (29/10/2026), na configuração congelada (100 projeções, 200 repetições), ele rejeitou 20 de 200 tabelas gaussianas com MCAR puro: 10,0%, com IC95% (Clopper–Pearson) de 6,2–15,0% (`data_rb/decisoes/e19_pklm_tamanho_200_20261029.txt`);
+  - as 48 primeiras tabelas repetem o refeito de 28/10 (6/48), e os 4,2% registrados em 21/10 não se reproduziram. Por isso, o excesso de rejeições não é atribuído aos dados reais.
+  - A comparação L1 × PKLM vale para essa configuração, de tamanho empírico ≈ 10%: uma rejeição do PKLM não é lida como evidência ao nível de 5%.
 - O teste 1 do MechDetect-O usa a AUC sobre `predict()`, por fidelidade ao código dos autores (passo 36).
 
 **Secundária, RQ2** (m = 4): para k = 1…4, configuração primária com todos os descritores × sem o grupo G_k. Escore por família, Wilcoxon-Pratt e Holm. O SHAP é só descritivo.
@@ -323,7 +414,36 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 - **Escore:** macro-recall no teste limpo, por família.
 - As curvas com as taxas {0; 0,1; 0,2; 0,4} são descritivas.
 
-**Secundária, RQ4-A2** (m = 1): pipeline + descritores do LLM × pipeline, no painel.
+**Secundária, RQ4-A2** (m = 1): pipeline + descritores do LLM × pipeline, no painel. O A2 é avaliado por CV de famílias dentro do painel, nos dois braços (emenda P23).
+
+**Secundária, erros que mudam a decisão do usuário** (m = 2, Holm próprio; emenda P12):
+- por família, no gerador principal, compara a configuração primária com a logística simples em duas taxas:
+  - (i) a taxa de **falso MCAR**: instâncias MAR ou MNAR classificadas como MCAR;
+  - (ii) a taxa **MNAR → MAR**: instâncias MNAR classificadas como MAR;
+- usa Wilcoxon-Pratt e HL, como na seção 5;
+- as mesmas taxas são descritas, sem teste, para o L1, o teste de Little, o PKLM e o teste 1 do MechDetect-O;
+- os dois erros são reportados separados, sem pesos de custo. São os erros que mudam o tratamento: com o falso MCAR, quem usa o método apagaria linhas; com MNAR → MAR, imputaria achando que o viés foi resolvido;
+- o experimento a jusante (passo 47 do plano) foi dispensado.
+
+**Secundária, gerador externo estocástico: o ampute** (m = 1; emenda P24):
+- **Procedimento:** o de amputação de Schouten, Lugtig e Vink (2018), *Generating missing values for simulation purposes: a multivariate amputation procedure* (J. Stat. Comput. Simul., DOI 10.1080/00949655.2018.1491577), na implementação `pyampute` 0.0.3.
+- **Configuração:**
+  - só na coluna-alvo, nos contextos com n = min(1000, nº de linhas);
+  - direção lower → `sigmoid-left`, upper → `sigmoid-right`, both → `sigmoid-tail`;
+  - `prop` = taxa;
+  - MAR com peso só no driver, MNAR com peso só em Y, e o MCAR com o mecanismo `MCAR`;
+  - semente derivada do contexto.
+- **Teste:** a configuração primária e a logística simples, treinadas só no gerador principal (os modelos de cada fold da H5), são aplicadas sem ajuste às instâncias do ampute das famílias de teste. Wilcoxon-Pratt sobre o macro-recall por família.
+- **Descritivo:** a **mudança** de desempenho da configuração primária entre o simétrico e o ampute, nas mesmas famílias (HL com IC). Ela responde se o desempenho muda muito com um gerador estocástico e independente.
+- **Exceção declarada à regra dos trios:** o ampute sorteia linha a linha, então as contagens de ausências variam entre os mecanismos de um contexto. Este gerador só é usado no teste, a diferença de contagem é aleatória e não sistemática, e as taxas realizadas são reportadas.
+
+**Sensibilidade, Y nominal** (descritiva; emenda P15):
+- H1–H6 são recalculadas sem as bases cujo Y é um código guardado como número. A lista é fechada:
+  - a família 4135 inteira (Y = `ROLE_*`);
+  - as bases da 42493 com Y = `Flight`;
+  - a base da 40701 com Y = `phone_number`;
+- reporta-se a diferença pareada nas famílias que sobram, com IC;
+- a análise principal não muda.
 
 **Exploratórias:**
 - por mecanismo: recall por classe, com Wilcoxon-Holm dentro dessa família;
@@ -343,11 +463,18 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 - sensibilidade sem os contextos cujo Y completo tem massa ≥ 10% em 0 ou no seu mínimo: diferença pareada nas famílias que sobram nos dois conjuntos (IC por bootstrap), com a lista das famílias que saem por inteiro;
 - controle sintético: CV agrupada por tabela-base no `synth-v2`;
 - avaliação do L2: diagnóstica (macro-recall MAR × MNAR nas instâncias verdadeiramente não-MCAR) e operacional (nas verdadeiramente não-MCAR que o L1 roteou ao L2), com a fração de MCAR roteadas à parte; falha conta como erro;
-- regime "dirty" do MechDetect, reportado como degenerado.
+- regime "dirty" do MechDetect, reportado como degenerado;
+- **L1 sem limiar** (emenda P13): AUC por família de P(não-MCAR) do L1 e de 1 − p do teste de Little, do PKLM (no seu subconjunto) e do teste 1 do MechDetect-O, nas mesmas instâncias, com HL da diferença e IC, sem p. Compara a discriminação sem depender do ponto de operação nem do tamanho empírico do PKLM;
+- **(opcional) MAR com vários drivers e MNAR misto, só no teste** (emenda P17): MAR pelo posto de uma combinação de 2 ou 3 auxiliares e MNAR pelo posto de Y + Z_d, com os mesmos β, direção e contagem. Aplica-se o modelo de cada fold sem retreino. Se não for feita, a omissão é declarada.
 
 **Auditoria de atalhos nas famílias confirmatórias:** se o classificador só-nuisance passar de 0,40 de macro-recall, isso é reportado como alerta, ao lado das hipóteses, sem mudar a análise confirmatória.
 
-**Estudo de caso (D3):** dados com ausência natural, **sem** acurácia nem concordância como métrica de acerto.
+**Estudo de caso (D3; emenda P19, decidida em 29/10):**
+- **O que entra:** só casos cujo mecanismo é documentado pela fonte, isto é, a NHANES (cádmio, mercúrio, cotinina). A ausência ali é a censura no limite de detecção, marcada pela fonte: MNAR determinístico inferior.
+- **Como:** em 10 subamostras de n = 2.000, com sementes fixas, dentro da faixa de treino.
+- **Sem** acurácia nem concordância como métrica de acerto.
+- **Leitura declarada:** no ensaio, esse regime foi classificado como MAR (seção 0.3).
+- **O que sai:** as hipóteses atribuídas pelo autor. O Mroz aparece só como exemplo conceitual, sem probabilidades do modelo.
 
 ## 7. Situação da implementação
 
@@ -359,7 +486,8 @@ Os dp das diferenças por família vêm do ensaio geral com a grade final (8 fam
 | L1 secundário, recall por mecanismo, L2, ablação da RQ2, painel oráculo por gerador, mdatagen, estatísticas do MechDetect como descritores, geradores externos × MechDetect-O, LOGO, transferência, CD, sensibilidade da massa na fronteira | Implementados e testados (`analyses.py`; `pipeline.run_secondary`, `run_ablation`, `run_logo`, `run_transfer`) |
 | RQ3 (passo 44) e estudo de caso (passo 45) | Implementados e testados (`noise.py`, `case_study.py`) |
 | Prevalência realista e NaN em Z (passo 40) | **A implementar** |
-| LLM (passos 42/43) | **A implementar.** O adendo LLM, com tag, vem antes de qualquer chamada confirmatória |
+| LLM (passos 42/43) | **A implementar.** O adendo LLM, com tag, vem antes do `evaluate` da produção (P21) |
+| Emendas de 29/10: análises novas (P6, P7, P8, P11, P12, P13, P15), ampute (P24), `stats` com p = 1 por hipótese e saídas atômicas, etapa `stats-llm` separada, trava do papel `confirm` (P3), estudo de caso só com a NHANES (P19) | **A implementar antes da tag**, com testes e uma re-execução de conferência do ensaio, que deve repetir os números existentes |
 
 Implementar um componente da tabela acima **não** é desvio. Mudar a especificação é, e vai para `desvios.md`.
 
@@ -376,11 +504,12 @@ Toda comparação usa exatamente um destes níveis:
 - Nenhum resultado secundário ou exploratório aparece no resumo, nas conclusões ou no título sem o rótulo correspondente.
 - O estimando de nível aparece sempre com a quebra por β.
 - O alerta da auditoria de atalhos, se houver, aparece junto das hipóteses.
+- **O resumo e as conclusões trazem os seis desfechos da família principal**, na ordem H1–H6, com o rótulo da tabela de decisão. O nível aparece ao lado do nível da logística simples e do recall por classe (emenda P9).
 
 **A tese pode afirmar:**
 - os níveis e as comparações acima, no protocolo descrito;
-- o nível de separação de MAR e MNAR sob a classe injetada (AUC com IC) e, se a H6 passar, que os descritores completos separam melhor que o modelo mínimo;
-- a perda fora do gerador;
+- o nível de separação de MAR e MNAR no gerador principal (AUC com IC) e, se a H6 passar, que a configuração completa ordena MAR e MNAR melhor que o modelo mínimo no gerador principal, com a H6 fora do gerador e a concordância dentro do trio ao lado (emenda P7);
+- a perda fora do gerador, com a decomposição efeito do gerador × especialização (emenda P8), e a mudança simétrico → ampute (emenda P24);
 - que o MechDetect sem acesso a Y não decide MNAR, por construção.
 
 **A tese não pode afirmar:**
@@ -388,12 +517,18 @@ Toda comparação usa exatamente um destes níveis:
 - uma acurácia "na prática";
 - que "supera o MechDetect" sem qualificar o regime de informação;
 - que generaliza para MNAR por variável latente, MAR com vários drivers, várias colunas incompletas ou Z com ausências;
-- qualquer "teto".
+- qualquer "teto";
+- que separa MAR de MNAR quando a ausência depende de várias auxiliares, de Y e de uma auxiliar ao mesmo tempo (MNAR misto) ou de uma função dos valores que não seja o posto de uma única coluna (emenda P17);
+- que detecta MNAR por censura, isto é, por corte determinístico, sem reportar o recall com β = ∞ (emenda P6);
+- que generaliza para outros geradores ou que é robusto à troca de gerador. Nos geradores externos, a frase é a da tabela 5.2 (emenda P8);
+- que a classificação melhora a análise final, porque o experimento a jusante foi dispensado (emenda P12);
+- que os resultados representam tabelas reais em geral. As famílias são tabelas de benchmark do OpenML, completas, algumas de simulação (emenda P16).
 
 ## 9. Desvios e proteções
 
 - **Desvios:** qualquer mudança de especificação depois da tag `prereg-v1` entra em `docs/revisao-banca/desvios.md` (data, o quê, por quê, impacto esperado) e gera um **novo** run, sem apagar o anterior. Resultados de runs com desvio são reportados como tal.
 - **Manchete:** o run pré-registrado é sempre o resultado principal. Um run com desvio só o acompanha.
+- **Run pré-registrado (emenda P3):** é o primeiro run de produção iniciado no commit da tag `prereg-v1`, com a árvore limpa. Outro run com a mesma configuração é reportado e nunca o substitui. As etapas com papel `confirm` recusam rodar fora da tag ou com a árvore suja.
 - **Invalidação:** um run só pode ser invalidado por erro de implementação contra o texto deste documento. Mesmo assim, os números dele são reportados, junto com o erro e a correção, como aconteceu com o piloto r1.
 - **Ordem:** a ordem das etapas da produção está em `docs/revisao-banca/30-infra.md`. A etapa `cross-generator` vem antes do `stats`.
 
@@ -403,5 +538,8 @@ A tag no git sozinha não basta, porque uma tag pode ser apagada e recriada. Por
 1. **Tag anotada `prereg-v1`** no commit que contém este documento e o código da análise, com push para o repositório público `JonathanTsen/ITA-Mestrado`.
 2. **Registro de terceiros:** um release do GitHub dessa tag arquivado no Zenodo, que gera um DOI com data, ou um registro no OSF com este documento.
 3. **E-mail ao orientador:** com o SHA do commit e o SHA-256 de `preregistro.md` e de `stats.py`, para que a data de recebimento sirva de anterioridade independente.
+4. **Segundo depósito (emenda P4):** ao fim do `stats`, os SHA-256 de `stats_confirmatory.csv`, `stats_level.csv`, `oracle.parquet` e dos `run*.json` do run pré-registrado são publicados num segundo depósito no Zenodo, ligado ao primeiro. O mesmo vale para o `stats-llm` da H4.
+
+A aprovação do orientador (29/10/2026) e a aprovação das emendas são arquivadas com data em `plano-revisao-banca/execucao/08-reuniao-orientador.md`, no repositório da tese.
 
 Os hashes e o link do registro entram em `plano-revisao-banca/execucao/38-preregistro.md`, no repositório da tese.
