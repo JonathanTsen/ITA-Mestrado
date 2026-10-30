@@ -135,6 +135,8 @@ As emendas abaixo vêm dessa verificação e das decisões do autor. **Nenhuma m
 | P23 | Linhas da H4 na tabela de interpretação | §5.2 |
 | P24 | Secundária com um gerador externo estocástico: o ampute (Schouten, Lugtig e Vink, 2018) | §1; §6 |
 
+**Proposta adicional de 30/10, encaminhada a pedido do autor e pendente do orientador:** H7, efeito do conjunto de informações (valores originais e contexto com faixas típicas aproximadas) em 30 bases inventadas novas, comparado à tabela cega. O desenho está no [adendo LLM, §10](adendo-llm.md#10-proposta-h7-efeito-do-contexto-em-bases-inventadas-30102026-encaminhamento-autorizado-pelo-autor-pendente-do-vitor-não-vale-como-registro). É uma família própria com um contraste, sem alteração de H1–H6. Os 16 domínios exploratórios já vistos não serão usados como confirmatórios. A proposta ainda não está lacrada, e não autoriza execução confirmatória.
+
 ## 1. Dados
 
 **Fontes.** As 101 tabelas OpenML avaliadas pelo MechDetect, a partir dos CSV distribuídos com o código dos autores (`calgo-lab/MechDetect@43c0f00`).

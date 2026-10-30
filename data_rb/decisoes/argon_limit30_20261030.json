@@ -1,0 +1,20 @@
+{
+  "model": "gemini-4-argon",
+  "arm": "A1",
+  "mode": "batch",
+  "limit": 30,
+  "n_questions": 30,
+  "n_valid": 30,
+  "n_calls": 30,
+  "n_invalid_attempts": 0,
+  "cost_usd": 0.212231,
+  "mean_prompt_tokens": 4345.366666666667,
+  "mean_thoughts_tokens": 498.3,
+  "max_thoughts_tokens": 2398,
+  "mean_output_tokens": 47.5,
+  "model_versions": [
+    "gemini-4-argon"
+  ],
+  "authorization": "Autor solicitou PLEASE IMPLEMENT THIS PLAN nesta conversa em 2026-10-30: executar apenas o teste Argon de 30 perguntas A1 de desenvolvimento em lote, medium; nao autoriza producao. Registrado 20261030T190959Z.",
+  "at": "2026-10-30T19:13:23+00:00"
+}

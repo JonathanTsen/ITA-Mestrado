@@ -3,8 +3,8 @@
 > **Situação: rascunho, sem valor de registro.**
 >
 > **O que falta antes da tag:**
-> 1. As decisões do autor marcadas com **[AUTOR]**.
-> 2. O teste do Argon (≈ 30 chamadas), que **só roda com a autorização do autor**.
+> 1. A revisão final dos critérios e nomes das sondas marcados com **[AUTOR]**. Em 30/10, o autor pediu a implementação do plano: manter `medium`, manter A3 sujeito ao orçamento, propor H7 com 30 bases ao Vitor e executar somente o teste Argon de 30 perguntas de desenvolvimento.
+> 2. Teste Argon concluído em 30/10, autorizado pelo pedido de implementação: 30/30 válidas, US$ 0,212231 (§8). A produção ainda exige autorização própria.
 > 3. Reconferir, na data do adendo, qual é o modelo confirmatório pela regra do §4.
 > 4. Que o pré-registro principal tenha a tag `prereg-v1`.
 >
@@ -28,7 +28,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 |---|---|---|
 | A1, classificador direto cego | `d6c047c5…cbc08` (`render.A1_SYSTEM`) | tabela CSV cega: colunas `c0…ck`; inteiros de 0 a 999 por coluna (afim positiva sobre os valores observados das linhas mostradas, seguida de arredondamento); ≤ 200 linhas sorteadas; linhas e colunas permutadas; `NA` na ausência (`render.render_a1`, versão 1) |
 | A2, extrator de descritores | `6968989f…b032d1` (`render.A2_SYSTEM`) | os 28 descritores 34b em JSON com chaves ordenadas, 4 algarismos significativos e `null` no indefinido (`render.render_a2`) |
-| A3, semântico (exploratório) | `render.A3_SYSTEM` (hash no commit da tag) | a **mesma tabela do A1** (mesmas linhas, permutação e escala) com os **nomes reais** das colunas, precedida de uma descrição neutra da base (`render.render_a3`). **[AUTOR: manter ou cortar já (P22)]** |
+| A3, semântico (exploratório) | `render.A3_SYSTEM` (hash no commit da tag) | a **mesma tabela do A1** (mesmas linhas, permutação e escala) com os **nomes reais** das colunas, precedida de uma descrição neutra da base (`render.render_a3`). Mantido pelo plano solicitado em 30/10; primeiro corte se necessário pela P22. |
 
 - **Semente da renderização:** `child_seed(20261101, "llm_render", contexto)`, a mesma para os três mecanismos do contexto.
 - **Teste byte a byte** (`tests/rb/test_llm_render.py`): mudar o rótulo, o `sample_id`, os nomes das colunas ou os valores ausentes de Y, ou aplicar uma transformação afim positiva aos dados, não muda o prompt.
@@ -48,7 +48,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 - **Parâmetros:**
   - nenhum parâmetro de amostragem é enviado: temperatura, top_p, top_k e semente são ignorados pelos modelos 3.6+ e 4;
   - sem ferramentas;
-  - raciocínio **`medium`** **[AUTOR: confirmar; o piloto mediu ≈ 7,9 mil tokens de raciocínio por chamada no A1]**;
+  - raciocínio **`medium`**, mantido pelo plano solicitado pelo autor em 30/10; o piloto Flash mediu ≈ 7,9 mil tokens de raciocínio por chamada no A1;
   - teto de saída de 32.768 tokens (o máximo observado no piloto foi 26.304).
 - **Resposta válida:** um objeto JSON com exatamente as chaves MCAR, MAR e MNAR, números finitos em [0, 1] cuja soma difere de 1 em no máximo 0,05, depois normalizados.
   - Até 2 retentativas, só para saída inválida. Erros transitórios (429, 5xx, rede) são repetidos e não contam como tentativa.
@@ -91,7 +91,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
   - a resposta contém o nome do OpenML (normalizado) **ou** um apelido de uma lista fechada (`data_rb/llm_dataset_aliases.csv`, com o motivo de cada apelido), montada **antes** de rodar as sondas confirmatórias;
   - os casos não cobertos pela lista são adjudicados pelo autor, cego aos resultados da H4, e registrados.
 
-  **[AUTOR: aprovar a regra e a lista.]** No piloto, sem a lista, a conferência deixou passar "Breast Cancer Wisconsin" para o `BNG(breast-w)` e "ipums-la-99" para o `kdd_ipums_la_97-small`. Com a lista de rascunho, a tabela crua foi reconhecida em 7 de 8 famílias, e a renderização cega em 0 de 8.
+  **[AUTOR: aprovar a regra e a lista.]** A proposta completa está em [sondas-revisao-20261030.md](sondas-revisao-20261030.md), com 93 nomes cobrindo os 69 representantes, sem ativação no código. No piloto, sem a lista, a conferência deixou passar "Breast Cancer Wisconsin" para o `BNG(breast-w)` e "ipums-la-99" para o `kdd_ipums_la_97-small`. Com a lista de rascunho, a tabela crua foi reconhecida em 7 de 8 famílias, e a renderização cega em 0 de 8.
 - **Exclusão:**
   - uma família reconhecida na renderização cega sai da análise principal da H4, sem reposição;
   - o reconhecimento da tabela crua é covariável: a H4 restrita às famílias não reconhecidas na crua é reportada à parte (`stats_llm_covariate.csv`);
@@ -131,6 +131,19 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 
 ## 8. Orçamento (emenda P22)
 
+### Atualização de 30/10 após o teste autorizado (prevalece sobre a projeção histórica abaixo)
+
+- Teste A1 Argon em lote, `medium`, 30 perguntas distintas de desenvolvimento: 30 respostas válidas, 0 retentativas; custo calculado pelos tokens de **US$ 0,212231**, não uma conferência de fatura. Entrada média 4.345,37 tokens, raciocínio médio 498,3 (máximo 2.398), saída final média 47,5. Modelo informado: `gemini-4-argon`. Resultado em `data_rb/decisoes/argon_limit30_20261030.json`; execução no código `f9c230c`, árvore limpa ao início.
+- Preços e disponibilidade reconferidos em 30/10: `models.list` e [preços oficiais](https://ai.google.dev/gemini-api/docs/pricing). Argon em lote: US$ 1/5 por milhão de tokens de entrada/saída até 30/11; Flash: US$ 0,375/1,875 até 31/12. A saída inclui raciocínio.
+- **Gasto acumulado global:** US$ 43,35953825, incluindo os dois experimentos de contexto e este teste.
+- **Projeção conservadora com H7 e A3:** preservar os US$ 91 anteriores e acrescentar US$ 60 da H7 = US$ 151 futuros; com margem de 1,5× e gasto passado, **US$ 269,86**, dentro do teto global de US$ 300.
+- Se extrapolado o A1 medido para 594 chamadas, esse braço do Argon custa US$ 4,20, e o total global com margem cai para US$ 237,16. Esse cenário é informativo: o painel pequeno não mede A2, A3, sondas ou H7. Mantém-se a projeção conservadora para planejar.
+- **Em dezembro, a projeção conservadora com H7 sobe para US$ 446,86, incluindo gasto anterior e margem: não cabe no teto.** Aplicar P22 antes de resultados; não aumentar o teto automaticamente.
+- A trava foi corrigida para somar todas as configurações sob `results_rb/_llm_cache`, e não apenas a configuração corrente; testes de regressão em modo síncrono e lote verificam o bloqueio antes de geração. Executar os lotes pagos sequencialmente: não há reserva de custo de jobs em andamento. Conservar todos os cadernos sob a mesma raiz.
+- Revalidar a projeção com o corpus e os prompts finais antes da produção. Cálculos e premissas em `data_rb/decisoes/orcamento_llm_com_h7_20261030.json`.
+
+### Projeção histórica anterior ao teste (não inclui H7 nem gasto passado)
+
 - **Teste do Argon** (`llm --limit 30`, em lote, nas famílias de desenvolvimento; **só com a autorização do autor**): mede o raciocínio real do Argon antes desta projeção ser fechada.
 - **Projeção** com os tokens do piloto, em lote; o Argon com o mesmo raciocínio do Flash **[a medir no teste do Argon]**:
   - Argon ≈ US$ 68 (A1 26, A2 3, A3 27, sondas 12);
@@ -150,7 +163,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 
 Nenhuma chamada ao Argon roda sem a autorização explícita do autor, pedida antes de cada execução (regra de 29/10/2026; trava no código).
 
-## 10. PROPOSTA H7, efeito do contexto em bases inventadas (30/10/2026; **pendente do autor e do Vitor**; não vale até ser aprovada)
+## 10. PROPOSTA H7, efeito do contexto em bases inventadas (30/10/2026; **encaminhamento autorizado pelo autor; pendente do Vitor**; não vale como registro)
 
 **De onde vem:** o experimento exploratório do autor (`scripts/revisao_banca/llm/contexto_sintetico.py`; relatório no plano da tese, `execucao/38d-piloto-llm.md`), feito em 16 bases inventadas de desenvolvimento.
 - A IA com contexto detalhado (faixas típicas aproximadas em ±25%) e valores originais (S7) acertou 0,622, contra 0,510 da tabela cega (S0): +11,1 p.p., em 12 de 16 bases, McNemar p < 0,0001.
@@ -158,8 +171,9 @@ Nenhuma chamada ao Argon roda sem a autorização explícita do autor, pedida an
 
 **Desenho proposto:**
 - **Hipótese:** em bases inventadas com documentação, o macro-recall por base do LLM com contexto e valores originais (S7) difere do da tabela cega (S0). Família própria, α = 0,05, fora do Holm de H1–H6.
-  - Opcional: H7b, S7 × configuração primária nas mesmas instâncias, com a assimetria de 200 × n linhas declarada.
-- **Dados:** 24 a 30 domínios inventados **novos**, escritos e gerados antes de qualquer rodada confirmatória, com o mesmo gerador, o mesmo molde de contexto e a mesma regra das faixas aproximadas (±25%, semente fixa). Usa o apagamento do benchmark no desenho do painel: 18 instâncias por base, 6 de cada tipo.
+  - A proposta encaminhada tem um único contraste confirmatório, S7 × S0; não acrescenta H7b. Uma eventual comparação com o classificador permanece descritiva, com a diferença de informação declarada.
+- **Dados:** 30 domínios inventados **novos**, sem reutilizar os 16 de desenvolvimento, com 1.000 linhas e 8 colunas cada. As definições, dados, contexto e sementes serão congelados antes de qualquer chamada confirmatória, seguindo o gerador, o molde de contexto e a regra das faixas aproximadas do exploratório (±25%, semente fixa). Usa o apagamento do benchmark no desenho do painel: 18 instâncias por base, 6 de cada tipo. O aceite de escopo do Vitor precede a preparação final e o lacre desse corpus.
+- **Informação:** S0 e S7 veem as mesmas até 200 linhas e as mesmas colunas; S0 anonimiza e escala, S7 recebe os valores originais e documentação com faixas aproximadas. A documentação é idêntica entre os três mecanismos e não menciona ausências. O contraste testa esse conjunto de informações, não o efeito isolado da descrição textual.
 - **Congelado neste adendo:**
   - os prompts S0 e S7 por hash;
   - o molde do contexto e a regra das faixas;
@@ -174,6 +188,8 @@ Nenhuma chamada ao Argon roda sem a autorização explícita do autor, pedida an
   | 24 | 86% | 98% |
   | 30 | 92% | ≈ 100% |
 - **Custo:** 30 bases × 18 × 2 braços = 1.080 chamadas, ≈ US$ 50 no Argon e ≈ US$ 10 no Flash, em lote. O Argon só com a autorização do autor.
+- **Interpretação:** usar o teste bilateral por base; reportar HL, intervalo, sinal e recalls por classe. Ausência de diferença significativa significa evidência insuficiente, não equivalência. Não generalizar para bases reais nem atribuir causalmente o ganho apenas ao texto. Os p-valores por instância do exploratório não substituem a análise confirmatória por base.
+- **Execução:** esta autorização de encaminhamento não autoriza chamadas H7 nem a produção Argon. O custo H7 entra na projeção global e no teto P22; não se atribui um novo teto de US$ 300 a cada experimento.
 - **Limites a declarar:**
   - as bases inventadas são mais simples que as reais;
   - a imperfeição das faixas é simulada;
