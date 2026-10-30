@@ -7,7 +7,17 @@ import pandas as pd
 import pytest
 
 from missdetect.rb.bench import load_sentinel_exclusions
-from missdetect.rb.case_study import auxiliary_columns, build_case, mask_predictability, parse_registry
+from missdetect.rb.case_study import (
+    N_SUBSAMPLES,
+    SUBSAMPLE_N,
+    auxiliary_columns,
+    build_case,
+    mask_predictability,
+    mask_predictability_hgb,
+    parse_registry,
+    subsample_instance,
+)
+from missdetect.rb.inject import ObservedInstance
 
 
 def _table(n: int = 200, seed: int = 0) -> pd.DataFrame:
@@ -165,3 +175,48 @@ def test_versioned_registry_follows_the_d4_sentinel_rule():
             assert col in excluded, (spec["case_id"], col)
         if spec["target"] in cols:
             assert spec["missing_rule"] == "zero_impossible", spec["case_id"]
+
+
+def test_hgb_mask_predictability_catches_a_nonlinear_encoding():
+    """C5 (a-L1 da auditoria): uma codificação não linear da máscara em Z escapa da logística, mas não do HGB."""
+    rng = np.random.default_rng(0)
+    m = rng.random(600) < 0.3
+    z = pd.DataFrame({"a": rng.normal(size=600), "b": rng.normal(size=600)})
+    leaky = z.assign(c=np.where(m, np.sign(z.a), 0.0))  # |c| separa a máscara; c, linearmente, não
+    assert mask_predictability(leaky, m) < 0.8
+    assert mask_predictability_hgb(leaky, m) > 0.95
+    assert mask_predictability_hgb(z, m) < 0.65
+
+
+def test_build_case_reports_both_mask_diagnostics():
+    _, meta = build_case(_table(), _spec())
+    assert 0.0 <= meta["mask_auc_from_z_hgb"] <= 1.0
+
+
+def test_subsample_keeps_rows_together_and_is_reproducible():
+    """D3 (29/10): a NHANES entra em 10 subamostras de n = 2.000, dentro da faixa de treino, com sementes fixas."""
+    assert (SUBSAMPLE_N, N_SUBSAMPLES) == (2000, 10)
+    rng = np.random.default_rng(0)
+    y = rng.normal(size=5000)
+    y[rng.random(5000) < 0.2] = np.nan
+    z = pd.DataFrame({"row": np.arange(5000.0), "b": rng.normal(size=5000)})
+    instance = ObservedInstance("caso", y, z)
+    a, b = subsample_instance(instance, 2000, seed=7), subsample_instance(instance, 2000, seed=7)
+    assert len(a.y) == 2000 and a.z.shape == (2000, 2)
+    np.testing.assert_array_equal(a.z.row, b.z.row)
+    rows = a.z.row.to_numpy().astype(int)  # a linha i de Y continua com a linha i de Z
+    np.testing.assert_array_equal(np.isnan(a.y), np.isnan(y[rows]))
+    assert len(set(rows)) == 2000
+    assert subsample_instance(instance, 2000, seed=8).z.row.tolist() != a.z.row.tolist()
+    assert subsample_instance(ObservedInstance("p", y[:300], z.iloc[:300]), 2000, seed=1).z.shape[0] == 300
+
+
+def test_versioned_registry_keeps_only_cases_documented_by_the_source():
+    """D3 (decisão do autor, 29/10): só a NHANES, cujo mecanismo (limite de detecção) é documentado pela fonte."""
+    root = Path(__file__).resolve().parents[2] / "data_rb"
+    specs = parse_registry(root / "case_study_sources.csv")
+    included = [s["case_id"] for s in specs if s["include"]]
+    assert sorted(included) == ["nhanes_cadmium", "nhanes_cotinine", "nhanes_mercury"]
+    for spec in specs:
+        if spec["case_id"].startswith(("hepatitis", "mroz", "pima")):
+            assert not spec["include"] and "D3" in spec["exclusion_reason"], spec["case_id"]

@@ -13,14 +13,20 @@ Auxiliares Z: as colunas listadas em `z_include`, ou, sem lista, **todas** as co
 binárias (binárias viram 0/1 pela ordem das categorias), menos o alvo, os identificadores, as constantes e `z_exclude`.
 Colunas que codificam a máscara ou o próprio Y (indicadores de medição, Y em outra unidade, outro analito censurado no
 mesmo limite de detecção, colunas sentinela da D4, somas que contêm Y) vão para `z_exclude` com o motivo na evidência.
-Como diagnóstico, `mask_auc_from_z` mede o quanto Z prevê a máscara (AUC de CV de uma logística); acima de 0,99, Z
-praticamente determina a máscara, e o caso é marcado.
+Como diagnóstico, `mask_auc_from_z` mede o quanto Z prevê a máscara (AUC de CV de uma logística), e
+`mask_auc_from_z_hgb` mede o mesmo com um HGB, que pega codificações não lineares (C5, a-L1 da auditoria); acima de
+0,99 em qualquer um dos dois, Z praticamente determina a máscara, e o caso é marcado.
+
+Decisão D3 do autor (29/10/2026; pré-registro §6, P19): só entram casos cujo mecanismo é documentado pela fonte (a
+NHANES, censura no limite de detecção). Um caso com mais de `SUBSAMPLE_N` linhas é avaliado em `N_SUBSAMPLES`
+subamostras de `SUBSAMPLE_N` linhas, com sementes fixas, para ficar dentro da faixa de n do treino.
 """
 
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
@@ -36,6 +42,8 @@ REGISTRY_COLUMNS = (
 )  # fmt: skip
 MIN_OBSERVED = 10
 MASK_DETERMINED_AUC = 0.99
+SUBSAMPLE_N = 2000  # D3 (29/10): dentro da faixa de n do treino (500–2.000)
+N_SUBSAMPLES = 10
 
 
 def _split(value: str) -> list[str]:
@@ -95,6 +103,27 @@ def mask_predictability(z: pd.DataFrame, m: np.ndarray) -> float:
     return float(roc_auc_score(m, proba))
 
 
+def mask_predictability_hgb(z: pd.DataFrame, m: np.ndarray) -> float:
+    """Como `mask_predictability`, com um HGB (pega codificações não lineares da máscara em Z; C5, a-L1)."""
+    m = np.asarray(m, dtype=int)
+    folds = int(min(5, m.sum(), (1 - m).sum()))
+    if folds < 2:
+        return float("nan")
+    model = HistGradientBoostingClassifier(random_state=0)
+    cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=0)
+    proba = cross_val_predict(model, z.to_numpy(float), m, cv=cv, method="predict_proba")[:, 1]
+    return float(roc_auc_score(m, proba))
+
+
+def subsample_instance(instance: ObservedInstance, n: int, seed: int) -> ObservedInstance:
+    """Subamostra de `n` linhas (sem reposição, linhas inteiras), reprodutível pela semente; sem efeito se a instância
+    já tem até `n` linhas (D3, 29/10)."""
+    if len(instance.y) <= n:
+        return instance
+    rows = np.sort(np.random.default_rng(seed).choice(len(instance.y), size=n, replace=False))
+    return ObservedInstance(instance.sample_id, instance.y[rows], instance.z.iloc[rows].reset_index(drop=True))
+
+
 def build_case(table: pd.DataFrame, spec: dict) -> tuple[ObservedInstance, dict]:
     """Instância observada de um caso: Y com as ausências da fonte (e só as da regra documentada) e as auxiliares."""
     rule, target = spec["missing_rule"], spec["target"]
@@ -137,5 +166,6 @@ def build_case(table: pd.DataFrame, spec: dict) -> tuple[ObservedInstance, dict]
         "case_id": spec["case_id"], "n": len(y), "k": len(cols), "z_columns": ";".join(cols),
         "n_missing_natural": int(natural.sum()), "n_missing_rule": int((hit & ~natural).sum()),
         "n_rows_dropped": n_dropped, "missing_rate": float(m.mean()), "mask_auc_from_z": mask_predictability(z, m),
+        "mask_auc_from_z_hgb": mask_predictability_hgb(z, m),
     }  # fmt: skip
     return ObservedInstance(spec["case_id"], y, z), meta

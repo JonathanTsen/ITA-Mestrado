@@ -894,7 +894,8 @@ def run_fit_final(run_dir: Path, config: RunConfig) -> Path:
         "model_sha256": sha256_path(out_dir / "model.joblib"), "source_run": run_dir.name, "learner": learner,
         "feature_schema": feat.FEATURE_SCHEMA_VERSION, "feature_columns": cols, "generator": "symmetric",
         "n_instances": len(frame), "families": sorted(int(f) for f in frame.family_id.unique()),
-        "k_range": [int(frame.k.min()), int(frame.k.max())], "choices": model.choices_,
+        "k_range": [int(frame.k.min()), int(frame.k.max())], "n_range": [int(frame.n.min()), int(frame.n.max())],
+        "rate_range": [float(frame.rate.min()), float(frame.rate.max())], "choices": model.choices_,
     }  # fmt: skip
     write_json(out_dir / "model.json", meta)
     append_run_log(run_dir, config, "fit-final", {k: meta[k] for k in ("model_sha256", "n_instances", "families")})
@@ -915,46 +916,82 @@ def load_final(model_dir: Path) -> tuple[DirectClassifier, dict]:
     return payload["model"], meta
 
 
-def _case_row(spec: dict, tables_dir: Path, model, meta: dict, expected_sha: dict[str, str]) -> dict:
+def _in_range(value: float, bounds: list | None) -> bool | None:
+    """Dentro da faixa do treino? None quando o modelo é anterior ao registro dessa faixa (C5, 29/10)."""
+    return None if bounds is None else bool(bounds[0] <= value <= bounds[1])
+
+
+def _case_prediction(instance, model, meta: dict) -> dict:
+    with threadpool_limits(1):
+        descriptors = feat.compute(instance)
+        proba = model.predict_proba(np.array([[descriptors[c] for c in meta["feature_columns"]]], dtype=float))[0]
+    try:
+        little_p = little.run(instance)["little_p"]
+    except ValueError:
+        little_p = np.nan
+    n, k, rate = len(instance.y), instance.z.shape[1], float(np.isnan(instance.y).mean())
+    return {
+        "n": n, "k": k, "missing_rate": rate, **{f"p_{c}": float(proba[i]) for i, c in enumerate(CLASSES)},
+        "most_probable": CLASSES[int(np.argmax(proba))], "little_p": little_p,
+        "n_in_training_range": _in_range(n, meta.get("n_range")), "k_in_training_range": _in_range(k, meta["k_range"]),
+        "rate_in_training_range": _in_range(rate, meta.get("rate_range")),
+    }  # fmt: skip
+
+
+def _case_rows(spec: dict, tables_dir: Path, model, meta: dict, expected_sha: dict[str, str], seed: int) -> list[dict]:
+    """Uma linha por caso, ou uma por subamostra se o caso tem mais de `SUBSAMPLE_N` linhas (D3, 29/10)."""
     row = {k: spec[k] for k in ("case_id", "source", "target", "missing_rule", "hypothesis", "evidence", "citation")}
     try:
         path = tables_dir / f"{spec['source']}.csv"
         row["table_sha256"] = sha256_path(path)
         if expected_sha and row["table_sha256"] != expected_sha.get(spec["source"]):
             raise ValueError("o sha256 da tabela não confere com o manifesto")
-        table = pd.read_csv(path)
-        instance, info = case_study.build_case(table, spec)
-        with threadpool_limits(1):
-            descriptors = feat.compute(instance)
-            proba = model.predict_proba(np.array([[descriptors[c] for c in meta["feature_columns"]]], dtype=float))[0]
-        try:
-            little_p = little.run(instance)["little_p"]
-        except ValueError:
-            little_p = np.nan
-        low, high = meta["k_range"]
-        row |= info | {f"p_{c}": float(proba[i]) for i, c in enumerate(CLASSES)}
-        row |= {"most_probable": CLASSES[int(np.argmax(proba))], "k_in_training_range": low <= info["k"] <= high,
-                "z_determines_mask": info["mask_auc_from_z"] >= case_study.MASK_DETERMINED_AUC,
-                "little_p": little_p, "status": "ok"}  # fmt: skip
+        instance, info = case_study.build_case(pd.read_csv(path), spec)
+        row |= info | {"n_case": info["n"], "missing_rate_case": info["missing_rate"]}
+        row["z_determines_mask"] = (
+            max(info["mask_auc_from_z"], info["mask_auc_from_z_hgb"]) >= case_study.MASK_DETERMINED_AUC
+        )
+        if len(instance.y) <= case_study.SUBSAMPLE_N:
+            return [row | _case_prediction(instance, model, meta) | {"subsample": "full", "status": "ok"}]
+        rows = []
+        for r in range(case_study.N_SUBSAMPLES):
+            sub = case_study.subsample_instance(instance, case_study.SUBSAMPLE_N, child_seed(seed, spec["case_id"], r))
+            rows.append(row | _case_prediction(sub, model, meta) | {"subsample": str(r), "status": "ok"})
+        return rows
     except Exception as exc:  # o caso fica registrado com o motivo da falha, nunca some
-        row |= {"status": f"failed: {type(exc).__name__}: {exc}"}
-    return row
+        return [row | {"subsample": "full", "status": f"failed: {type(exc).__name__}: {exc}"}]
+
+
+def _case_summary(cases: pd.DataFrame) -> pd.DataFrame:
+    """Por caso: média, mínimo e máximo das probabilidades entre as subamostras (sem nenhuma métrica de acerto)."""
+    ok = cases[cases.status == "ok"]
+    rows = []
+    for case_id, g in ok.groupby("case_id", sort=False):
+        row = {"case_id": case_id, "n_subsamples": len(g), "n_case": g.n_case.iloc[0]}
+        for c in CLASSES:
+            row |= {f"p_{c}_mean": g[f"p_{c}"].mean(), f"p_{c}_min": g[f"p_{c}"].min(), f"p_{c}_max": g[f"p_{c}"].max()}
+        row["most_probable_counts"] = g.most_probable.value_counts().to_dict()
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def run_case_study(
     model_dir: Path, registry: Path, tables_dir: Path, config: RunConfig, n_jobs: int, manifest: Path | None = None
 ) -> Path:
     """Aplica o modelo congelado, sem ajuste, aos casos do registro: P(MCAR), P(MAR) e P(MNAR) por coluna, ao lado da
-    hipótese documentada na literatura. Nenhuma métrica de acerto é calculada (VIT-07). Com `manifest`, cada tabela
-    só é usada se o seu SHA-256 conferir com o registrado na obtenção."""
+    hipótese documentada na fonte. Nenhuma métrica de acerto é calculada (VIT-07). Com `manifest`, cada tabela só é
+    usada se o seu SHA-256 conferir com o registrado na obtenção. Casos com mais de 2.000 linhas entram em 10
+    subamostras de 2.000 (D3, 29/10), e as faixas de n, k e taxa do treino são sinalizadas (C5)."""
     model, meta = load_final(model_dir)
     specs = case_study.parse_registry(registry)
     expected = {} if manifest is None else dict(pd.read_csv(manifest)[["source", "table_sha256"]].to_numpy())
     run_dir = new_run_dir(config)
     included = [s for s in specs if s["include"]]
-    rows = Parallel(n_jobs=n_jobs)(delayed(_case_row)(s, tables_dir, model, meta, expected) for s in included)
-    cases = pd.DataFrame(rows).assign(model_sha256=meta["model_sha256"])
+    seed = child_seed(config.root_seed, "case_subsample")
+    results = Parallel(n_jobs=n_jobs)(delayed(_case_rows)(s, tables_dir, model, meta, expected, seed) for s in included)
+    cases = pd.DataFrame([r for rows in results for r in rows]).assign(model_sha256=meta["model_sha256"])
     cases.to_csv(run_dir / "case_predictions.csv", index=False)
+    _case_summary(cases).to_csv(run_dir / "case_summary.csv", index=False)
     excluded = pd.DataFrame(
         [{"case_id": s["case_id"], "exclusion_reason": s["exclusion_reason"]} for s in specs if not s["include"]],
         columns=["case_id", "exclusion_reason"],

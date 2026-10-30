@@ -392,6 +392,7 @@ def test_final_model_is_frozen_with_its_hash(final_model):
     meta = json.loads((model_dir / "model.json").read_text())
     assert meta["model_sha256"] == pipeline.sha256_path(model_dir / "model.joblib")
     assert meta["generator"] == "symmetric"
+    assert meta["n_range"] == [500, 500] and len(meta["rate_range"]) == 2  # C5: faixas do treino (a-M1)
     instances = pd.read_parquet(run_dir / "oracle.parquet")
     assert meta["n_instances"] == int((instances.generator == "symmetric").sum())
     model, loaded = pipeline.load_final(model_dir)
@@ -439,6 +440,34 @@ def test_case_study_reports_probabilities_and_never_accuracy(final_model, tmp_pa
     assert list(excluded.case_id) == ["toy_out"]
     log = json.loads((out / "run.case-study.json").read_text())
     assert log["model_sha256"] == json.loads((model_dir / "model.json").read_text())["model_sha256"]
+
+
+def test_case_study_subsamples_large_cases_and_flags_ranges(final_model, tmp_path):
+    """D3 e C5 (29/10): um caso maior que 2.000 linhas entra em 10 subamostras de 2.000; o resumo junta as
+    subamostras; as faixas de n, taxa e k do treino são sinalizadas."""
+    _, model_dir, _ = final_model
+    rng = np.random.default_rng(3)
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    z = rng.normal(size=(4500, 3))
+    y = z[:, 0] + rng.normal(size=4500)
+    y[y < -0.8] = np.nan
+    pd.DataFrame({"a": z[:, 0], "b": z[:, 1], "c": z[:, 2], "y": y}).to_csv(tables / "big.csv", index=False)
+    base = {"source": "big", "target": "y", "missing_rule": "natural", "z_include": "", "z_exclude": "",
+            "hypothesis": "MNAR", "evidence": "construção", "citation": "-", "include": "True", "exclusion_reason": ""}  # fmt: skip
+    registry = tmp_path / "registry.csv"
+    pd.DataFrame([base | {"case_id": "big_y"}]).to_csv(registry, index=False)
+    config = parse_config({"name": "case-study", "root_seed": 4, "output_root": str(tmp_path / "results")})
+    out = pipeline.run_case_study(model_dir, registry, tables, config, n_jobs=1)
+    cases = pd.read_csv(out / "case_predictions.csv")
+    assert sorted(cases.subsample.astype(str)) == sorted(str(r) for r in range(10))
+    assert (cases.n == 2000).all() and (cases.status == "ok").all()
+    for flag in ("n_in_training_range", "rate_in_training_range", "k_in_training_range"):
+        assert flag in cases.columns
+    assert not cases.n_in_training_range.any()  # o treino do run pequeno só tem n = 500
+    summary = pd.read_csv(out / "case_summary.csv").set_index("case_id")
+    assert summary.loc["big_y", "n_subsamples"] == 10
+    assert summary.loc["big_y", ["p_MCAR_mean", "p_MAR_mean", "p_MNAR_mean"]].sum() == pytest.approx(1.0)
 
 
 def test_final_model_columns_and_schema_are_protected(final_model, tmp_path, monkeypatch):
