@@ -1,7 +1,8 @@
 """Poder de uma hipótese confirmatória sobre o contexto (30/10/2026; exploratório, nas 16 bases inventadas de
 desenvolvimento). Diferença por base do macro-recall entre dois braços (por exemplo S7 − S0); dp entre bases; poder do
 Wilcoxon-Pratt bilateral (α = 0,05) por simulação normal, para N bases confirmatórias.
-Uso: .venv/bin/python poder.py <saída do conjunto 1> <saída do conjunto 2> <braço A> <braço B>
+Uso: uv run --frozen python scripts/revisao_banca/llm/contexto_poder.py <saída do conjunto 1> <saída do conjunto 2>
+     <braço A> <braço B>
 """
 
 import sys
