@@ -5,6 +5,7 @@ import sys
 
 import pytest
 
+from missdetect.rb import cli
 from missdetect.rb.cli import COMMANDS, main
 
 
@@ -53,3 +54,20 @@ def test_case_study_commands_are_listed_and_require_their_inputs(capsys):
     assert exc.value.code == 2
     err = capsys.readouterr().err
     assert "--model" in err and "--registry" in err and "--tables" in err
+
+
+def test_confirmatory_configs_go_through_the_guard(monkeypatch):
+    """C3: com papel `confirm` (inject-v1), a CLI chama a trava antes de qualquer etapa; com `dev`, não."""
+    calls = []
+
+    def guard(repo, command):
+        calls.append(command)
+        raise RuntimeError("trava")
+
+    monkeypatch.setattr(cli, "confirmatory_guard", guard)
+    monkeypatch.setattr(cli.pipeline, "run_inject", lambda config, n_jobs: "rodou")
+    with pytest.raises(RuntimeError, match="trava"):
+        main(["inject", "--config", "configs/rb/inject-v1.yaml"])
+    assert calls == ["inject"]
+    assert main(["inject", "--config", "configs/rb/rehearsal-dev.yaml"]) == 0
+    assert calls == ["inject"]

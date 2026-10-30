@@ -58,6 +58,35 @@ def git_state(repo: Path) -> dict:
     }
 
 
+# Trava das etapas confirmatórias (pré-registro §9, emenda P3; ordem do LLM, P21). O pipeline principal roda no commit
+# da tag do pré-registro; as etapas do LLM, no commit da tag do adendo. Antes do adendo, só rodam as etapas que não
+# calculam predições. Na produção, o pipeline principal roda numa worktree fixada em `prereg-v1`.
+PREREG_TAG = "prereg-v1"
+LLM_ADDENDUM_TAG = "prereg-v1-llm"
+NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features"})
+LLM_COMMANDS = frozenset({"llm", "stats-llm"})
+
+
+def confirmatory_guard(repo: Path, command: str) -> None:
+    """Recusa uma etapa com papel `confirm` fora do commit da tag certa, com a árvore suja ou antes do adendo LLM."""
+    tag = LLM_ADDENDUM_TAG if command in LLM_COMMANDS else PREREG_TAG
+    tagged = _git(repo, "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}^{{commit}}")
+    if not tagged:
+        raise RuntimeError(f"{command}: a tag {tag} não existe; as etapas confirmatórias só rodam depois dela")
+    head = _git(repo, "rev-parse", "HEAD")
+    if head != tagged:
+        raise RuntimeError(f"{command}: HEAD ({head[:7]}) não é o commit da tag {tag} ({tagged[:7]})")
+    if _git(repo, "status", "--porcelain", "--untracked-files=no"):
+        raise RuntimeError(
+            f"{command}: árvore suja; faça commit ou descarte as mudanças antes de uma etapa confirmatória"
+        )
+    addendum = _git(repo, "rev-parse", "--verify", "--quiet", f"refs/tags/{LLM_ADDENDUM_TAG}^{{commit}}")
+    if command not in NO_PREDICTION_COMMANDS | LLM_COMMANDS and not addendum:
+        raise RuntimeError(
+            f"{command}: calcula predições, então só roda depois da tag {LLM_ADDENDUM_TAG} (pré-registro §4, P21)"
+        )
+
+
 def sha256_path(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as fh:

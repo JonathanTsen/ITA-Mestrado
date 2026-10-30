@@ -33,6 +33,7 @@ from pathlib import Path
 
 from missdetect.rb import pipeline, report, sources
 from missdetect.rb.config import load_config
+from missdetect.rb.runs import confirmatory_guard, repo_root
 
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
@@ -112,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in NOT_YET:
         raise SystemExit(f"{args.command}: {NOT_YET[args.command]}")
     config = load_config(args.config)
+    if "confirm" in config.sources.roles:  # pré-registro §9 (P3) e §4 (P21)
+        confirmatory_guard(repo_root(), args.command)
     n_jobs = getattr(args, "n_jobs", None) or config.features.n_jobs
     if args.command == "inject":
         print(pipeline.run_inject(config, n_jobs))

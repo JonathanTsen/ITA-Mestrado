@@ -1,6 +1,7 @@
 """Testes do passo 30: diretório de run sem sobrescrita, run.json e separação física observado × oráculo."""
 
 import json
+import subprocess
 from datetime import UTC, datetime
 
 import numpy as np
@@ -10,7 +11,10 @@ import pytest
 from missdetect.rb.config import parse_config
 from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.runs import (
+    LLM_ADDENDUM_TAG,
+    PREREG_TAG,
     append_run_log,
+    confirmatory_guard,
     new_run_dir,
     observed_path,
     read_observed,
@@ -89,3 +93,58 @@ def test_leftovers_of_an_interrupted_rename_are_redone(tmp_path):
     write_tables_atomically(tmp_path, {"x.csv": pd.DataFrame({"a": [1]}), "marker.csv": pd.DataFrame({"a": [2]})})
     assert pd.read_csv(tmp_path / "x.csv").a.tolist() == [1]
     assert pd.read_csv(tmp_path / "marker.csv").a.tolist() == [2]
+
+
+def _git(repo, *args):
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], check=True,
+                   capture_output=True)  # fmt: skip
+
+
+def _repo(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "a.txt").write_text("1", encoding="utf-8")
+    _git(repo, "add", "a.txt")
+    _git(repo, "commit", "-q", "-m", "c1")
+    return repo
+
+
+def test_confirmatory_steps_need_the_prereg_tag_on_a_clean_head(tmp_path):
+    """C3 (pré-registro §9, P3): as etapas `confirm` só rodam no commit da tag, com a árvore limpa."""
+    repo = _repo(tmp_path)
+    with pytest.raises(RuntimeError, match="não existe"):
+        confirmatory_guard(repo, "inject")
+    _git(repo, "tag", PREREG_TAG)
+    confirmatory_guard(repo, "inject")
+    (repo / "a.txt").write_text("2", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="árvore suja"):
+        confirmatory_guard(repo, "features")
+    _git(repo, "commit", "-q", "-am", "c2")
+    with pytest.raises(RuntimeError, match="não é o commit da tag"):
+        confirmatory_guard(repo, "inject")
+
+
+def test_prediction_steps_wait_for_the_llm_addendum(tmp_path):
+    """P21: antes da tag do adendo LLM, só rodam as etapas sem predição (inject, features, oracle-features)."""
+    repo = _repo(tmp_path)
+    _git(repo, "tag", PREREG_TAG)
+    for command in ("inject", "features", "oracle-features"):
+        confirmatory_guard(repo, command)
+    for command in ("baselines", "evaluate", "cross-generator", "stats", "secondary"):
+        with pytest.raises(RuntimeError, match=LLM_ADDENDUM_TAG):
+            confirmatory_guard(repo, command)
+    _git(repo, "tag", LLM_ADDENDUM_TAG)
+    confirmatory_guard(repo, "evaluate")
+
+
+def test_llm_steps_run_on_the_addendum_commit(tmp_path):
+    repo = _repo(tmp_path)
+    _git(repo, "tag", PREREG_TAG)
+    (repo / "b.txt").write_text("llm", encoding="utf-8")
+    _git(repo, "add", "b.txt")
+    _git(repo, "commit", "-q", "-m", "adendo")
+    _git(repo, "tag", LLM_ADDENDUM_TAG)
+    confirmatory_guard(repo, "stats-llm")
+    with pytest.raises(RuntimeError, match="não é o commit da tag"):
+        confirmatory_guard(repo, "evaluate")  # o pipeline principal roda no commit do prereg-v1
