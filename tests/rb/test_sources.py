@@ -1,6 +1,7 @@
 """Testes do passo 31: filtros, famílias (automáticas e manuais), representantes e papéis."""
 
 import os
+import tarfile
 from pathlib import Path
 
 import numpy as np
@@ -12,8 +13,10 @@ from missdetect.rb.sources import (
     assign_families,
     build_from_local,
     candidate_pairs,
+    ensure_source_csvs,
     id_like,
     profile_table,
+    sha256_file,
 )
 
 CSV_DIR = Path(os.environ.get("MECHDETECT_CSV_DIR", "/tmp/rb_mechdetect_run/mech-detect-datasets"))
@@ -67,3 +70,24 @@ def test_local_benchmark_counts_and_roles():
     used = table[table.representative]
     assert used.family_id.is_unique and (used.role == "dev").sum() == 8
     assert set(table.loc[~table.representative, "role"]) == {"not_used"}
+
+
+def test_ensure_source_csvs_reextracts_and_checks_hashes(tmp_path):
+    """Retomada (plano 38c): o /tmp some quando o Mac reinicia; os CSV-fonte são reextraídos do arquivo dos autores
+    e conferidos pelo SHA-256 registrado antes de qualquer etapa."""
+    src = tmp_path / "src" / "mech-detect-datasets"
+    src.mkdir(parents=True)
+    (src / "1.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    (src / "2.csv").write_text("a,b\n3,4\n", encoding="utf-8")
+    tarball = tmp_path / "datasets.tar.gz"
+    with tarfile.open(tarball, "w:gz") as tar:
+        tar.add(src, arcname="mech-detect-datasets")
+    sources = pd.DataFrame(
+        {"openml_id": [1, 2], "sha256_raw": [sha256_file(src / "1.csv"), sha256_file(src / "2.csv")]}
+    )
+    csv_dir = tmp_path / "run" / "mech-detect-datasets"
+    assert ensure_source_csvs(csv_dir, tarball, sources) == 2  # extraiu e conferiu
+    assert ensure_source_csvs(csv_dir, tarball, sources) == 0  # já estava lá
+    (csv_dir / "2.csv").write_text("adulterado", encoding="utf-8")
+    with pytest.raises(ValueError, match="SHA-256"):
+        ensure_source_csvs(csv_dir, tarball, sources)

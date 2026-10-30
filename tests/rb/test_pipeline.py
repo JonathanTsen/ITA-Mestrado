@@ -328,6 +328,27 @@ def test_ampute_is_a_test_only_external_generator(run, extended):
         pipeline.run_cross_ampute(run_dir, config, n_jobs=1)
 
 
+def test_cross_generator_needs_the_baselines(tmp_path):
+    """C5 (b-L1 da auditoria): sem baselines.parquet, o MechDetect-O viraria "sempre MCAR" sem aviso; a etapa para."""
+    config = parse_config({"name": "x", "root_seed": 1, "output_root": str(tmp_path)})
+    with pytest.raises(FileNotFoundError, match="baselines"):
+        pipeline.run_cross_generator(tmp_path, config, n_jobs=1)
+
+
+def test_models_only_see_the_frozen_descriptors(run, extended):
+    """C5 (recomendação 3 da auditoria): o que entra nos modelos são exatamente os 28 descritores do schema congelado
+    (34b); IDs, metadados, oráculo e baselines nunca entram (o sample_id é hash de uma especificação com o mecanismo)."""
+    run_dir, _ = run
+    frame = pipeline.load_eval_frame(run_dir)
+    schema = Path(__file__).resolve().parents[2] / "configs" / "rb" / "feature_schema_34b.json"
+    frozen = [f["name"] for f in json.loads(schema.read_text(encoding="utf-8"))["features"]]
+    cols = pipeline.feature_columns(frame)
+    assert sorted(cols) == sorted(frozen) and len(cols) == 28
+    leaks = {"sample_id", "context_id", "family_id", "base_id", "mechanism", "generator", "variant", "deterministic",
+             "label", "meta_n", "meta_k", "little_p", "mdo_p_shuffled", "orc_auc_mask_from_y"}  # fmt: skip
+    assert not leaks & set(cols)
+
+
 def test_transfer_predicts_every_real_instance(extended):
     run_dir, transfer_dir = extended
     pred = pd.read_parquet(transfer_dir / "predictions.parquet")

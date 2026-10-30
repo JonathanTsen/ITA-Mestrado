@@ -27,6 +27,7 @@ Uso:
 import argparse
 import hashlib
 import re
+import tarfile
 from dataclasses import asdict, dataclass
 from itertools import combinations
 from pathlib import Path
@@ -77,6 +78,25 @@ def sha256_file(path: Path) -> str:
         for block in iter(lambda: fh.read(1 << 20), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def ensure_source_csvs(csv_dir: Path, tarball: Path, sources: pd.DataFrame) -> int:
+    """Garante os CSV-fonte em `csv_dir` (retomada, plano 38c): se faltar algum, reextrai o arquivo dos autores do
+    MechDetect (`tarball`, que contém a pasta `csv_dir.name`) no diretório pai, com o filtro seguro do `tarfile`.
+    Depois confere o SHA-256 de cada CSV contra `sources.sha256_raw`. Devolve quantos arquivos foram extraídos."""
+    expected = {f"{int(i)}.csv": h for i, h in zip(sources.openml_id, sources.sha256_raw, strict=True)}
+    missing = [name for name in expected if not (csv_dir / name).exists()]
+    extracted = 0
+    if missing:
+        csv_dir.parent.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(tarball, "r:gz") as tar:
+            members = [m for m in tar.getmembers() if Path(m.name).parts[:1] == (csv_dir.name,)]
+            tar.extractall(csv_dir.parent, members=members, filter="data")
+        extracted = len(missing)
+    bad = [name for name, h in expected.items() if not (csv_dir / name).exists() or sha256_file(csv_dir / name) != h]
+    if bad:
+        raise ValueError(f"CSV-fonte ausentes ou com SHA-256 diferente do registrado: {bad[:5]}")
+    return extracted
 
 
 def normalize_name(name: str) -> str:

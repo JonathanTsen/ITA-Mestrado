@@ -78,15 +78,28 @@ uv run --frozen python -m missdetect.rb.cli evaluate        --config configs/rb/
 
 O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`). O piloto usou a mesma sequência com `configs/rb/pilot-dev.yaml`.
 
-**Ordem depois das emendas de 29/10 (pré-registro §0.4).** As etapas novas são implementadas antes da tag (plano 38c, na tese). Os nomes dos comandos novos são provisórios até lá.
-1. **Antes da produção:** checagem prévia que reextrai os CSV do MechDetect se faltarem. A trava do papel `confirm` exige a tag `prereg-v1` e a árvore limpa (P3).
-2. **Sem predição:** `inject`, `features`, `oracle-features` e a injeção do **ampute** (P24), só nos contextos dos externos e só para teste.
-3. **Adendo LLM:** a tag `prereg-v1-llm` sai **antes de qualquer `evaluate`** (P21). As sondas de memorização rodam e a lista de famílias excluídas é publicada também antes.
-4. **Depois do adendo:** `baselines`, os `evaluate`, o `cross-generator`, que passa a incluir o ampute e as decomposições da H5, e o `stats`.
-   - O `stats` agora tem saídas atômicas e p = 1 por hipótese que não puder rodar.
-   - Depois vêm `secondary` (com as secundárias novas P12, P13, P15 e P24), `ablation`, `logo`, `transfer`, `report`, `noise`, `fit-final` e `case-study`, este só com a NHANES em 10 subamostras de n = 2.000 (P19).
-5. **LLM oficial:** o Flash (autorizado) e o Argon (só com autorização do autor), em lote. A H4 sai na etapa **`stats-llm`**, separada, que não toca o `stats_confirmatory.csv`.
-6. **Segundo depósito:** os hashes das saídas vão ao Zenodo (P4).
+**Ordem depois das emendas de 29/10 (pré-registro §0.4; implementada em 29/10).**
+- Antes de tudo, rode `uv run --frozen python -I scripts/revisao_banca/checagem_previa.py`. Ela reextrai os CSV-fonte se o `/tmp` tiver sido apagado e mostra o HEAD, as tags e os processos em andamento.
+- Com papel `confirm` (`inject-v1.yaml`), a CLI só roda no commit da tag `prereg-v1`, com a árvore limpa (P3). As etapas que calculam predições também esperam a tag `prereg-v1-llm` (P21).
+- Na produção, o pipeline principal roda numa worktree fixada na tag, por exemplo `git worktree add ../ITA-Mestrado-prod prereg-v1`. O código do LLM continua no ramo.
+
+```bash
+# 1. Sem predição (antes do adendo LLM):
+inject; features; oracle-features
+inject-ampute   --config $C --run <run>   # P24: instâncias do ampute em <run>/ampute/, com descritores
+# 2. Tag prereg-v1-llm (adendo LLM), com as sondas de memorização publicadas
+# 3. Com predição:
+baselines; evaluate --generators symmetric; evaluate; evaluate --generators mdatagen; evaluate --generators tab_err
+cross-generator --config $C --run <run>   # H5 (exige baselines.parquet)
+cross-ampute    --config $C --run <run>   # P24: secundária m = 1 e mudança simétrico → ampute
+stats           --config $C --run <run>   # H1, H2, H2e, H3, H5, H6; saídas gravadas juntas; p = 1 por hipótese sem dados
+secondary; secondary-extra --config $C --run <run>   # P6, P7, P8, P11, P12, P13, P15 (lista de Y nominal em data_rb/nominal_targets.csv)
+ablation; logo; transfer ...; report; noise; fit-final
+case-study ...   # só a NHANES (registro), 10 subamostras de n = 2.000; faixas de n, k e taxa sinalizadas
+# 4. LLM oficial (Flash autorizado; Argon só com autorização do autor), em lote; depois:
+stats-llm       --config $C --run <run> --llm-per-family <painel>   # H4, sem tocar o stats_confirmatory.csv
+# 5. Segundo depósito no Zenodo com os SHA-256 das saídas (P4)
+```
 
 **Ensaio geral (22/10/2026):** a sequência completa acima, incluindo `report`, rodou sem erro com `configs/rb/rehearsal-dev.yaml` (inject-v1 nas 8 famílias de desenvolvimento; PKLM reduzido a 2 contextos por família) no commit `f3bb944`, com a árvore limpa. Run `results_rb/20261022-rehearsal-dev-b4ca243467d6`: 1.632 instâncias, nenhuma falha em nenhuma etapa, ≈ 52 min de relógio. Tempos por instância (núcleo): descritores 1,22 s; descritores-oráculo ≈ 0,6 s; MechDetect-O 3,98 s; oráculo 3,53 s; dirty 2,36 s; PKLM 57,1 s.
 

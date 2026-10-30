@@ -1017,13 +1017,17 @@ def run_cross_generator(run_dir: Path, config: RunConfig, n_jobs: int) -> Path:
     """H5: a configuração primária treinada só no gerador principal, nas mesmas partições da avaliação primária, aplicada
     sem ajuste às instâncias dos geradores externos (mdatagen e tab_err) das famílias de teste.
 
-    Métodos, todos nas mesmas instâncias: `cross_direct_hgb` (a H5), `mechdetect_obs` (o comparador da H5),
+    Métodos, todos nas mesmas instâncias: `cross_direct_hgb` (a H5), `mechdetect_obs` (a secundária EXT_mdo),
     `cross_logit_simple` (a logística simples, também treinada no principal) e `ingen_direct_hgb` (a configuração
     primária treinada nos próprios geradores externos das famílias de treino, referência para a perda fora do gerador,
     descritiva)."""
     out_dir = run_dir / "eval-cross"
     if out_dir.exists():
         raise FileExistsError(f"{out_dir} já existe; não sobrescrevo.")
+    if not (run_dir / "baselines.parquet").exists():  # C5 (b-L1): sem ele, o MechDetect-O viraria "sempre MCAR"
+        raise FileNotFoundError(
+            f"{run_dir / 'baselines.parquet'} não existe: rode `baselines` antes do `cross-generator`"
+        )
     frame = load_eval_frame(run_dir)
     sym = frame[frame.generator == "symmetric"].reset_index(drop=True)
     ext = frame[frame.generator != "symmetric"].reset_index(drop=True)
