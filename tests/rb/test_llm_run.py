@@ -12,6 +12,7 @@ from google.genai import types
 from missdetect.rb.config import parse_config
 from missdetect.rb.ids import child_seed
 from missdetect.rb.inject import ObservedInstance
+from missdetect.rb.llm.budget import BudgetExceeded
 from missdetect.rb.llm.cache import ResponseCache
 from missdetect.rb.llm.client import PAID, AuthorizationRequired
 from missdetect.rb.llm.probes import feature_chance, name_matches
@@ -126,6 +127,22 @@ def test_panel_is_the_registered_selection_plus_ten_percent(run):
     assert len(main) == 2 * 3 * 3 and set(main.rate) == {0.1, 0.3, 0.5} and set(main.n) == {1000}
     assert (panel.replicate == 1).sum() == 2  # round(0,1 × 18)
     assert panel.replicate.is_monotonic_increasing  # a repetição vem depois do painel inteiro
+
+
+@pytest.mark.parametrize("mode", ["sync", "batch"])
+def test_budget_includes_paid_attempts_from_other_configs_before_generation(run, mode):
+    run_dir, config = run
+    other = ResponseCache(cache_root(run_dir, config).parent / "contexto-anterior")
+    key = other.register({"model": FLASH, "arm": "S7", "user": "pergunta anterior"})
+    other.store(key, 0, {"usage": {"thoughts_token_count": 80_000_000}, "mode": "sync", "tier": "paid",
+                         "requested_at": "2026-10-30T10:00:00+00:00", "valid": False})  # fmt: skip
+    fake = Fake(_mcar_always)
+    with pytest.raises(BudgetExceeded, match="P22"):
+        run_llm(run_dir, config, model=FLASH, arm="A1", mode=mode, backend=fake)
+    assert not fake.generated
+    assert not any(cache_root(run_dir, config).rglob("attempt-*.json"))
+    gate = json.loads((run_dir / "llm" / FLASH / "_work/A1/budget.jsonl").read_text().splitlines()[-1])
+    assert gate["spent_usd"] == pytest.approx(300.0)
 
 
 def test_llm_step_writes_predictions_h4_table_and_never_pays_twice(run):

@@ -6,7 +6,8 @@ Fluxo, por modelo e braço:
 2. **Perguntas** (`render`): A1 = tabela cega; A2 = os 28 descritores. Cada pergunta é gravada no caderno de respostas
    (`<diretório dos runs>/_llm_cache/<nome da config>/`), compartilhado entre runs da mesma config: a mesma pergunta nunca é
    paga duas vezes.
-3. **Orçamento** (`budget`, P22): gasto do caderno + 1,5 × projeção ≤ US$ 300, antes de qualquer chamada.
+3. **Orçamento** (`budget`, P22): gasto de todas as configurações no `_llm_cache` + 1,5 × projeção ≤ US$ 300,
+   antes de qualquer geração. Pilotos e contexto compartilham o teto da produção.
 4. **Chamadas** (`client`): síncronas ou em lote, na ordem sorteada das famílias; a repetição vem por último.
 5. **Saídas** em `<run>/llm/<modelo>/<braço>/`, criadas de uma vez (diretório temporário renomeado no fim):
    - `predictions.parquet`: a resposta válida de cada instância, ou falha (probabilidades uniformes, classe −1).
@@ -241,12 +242,14 @@ def budget_gate(
     mean_out = budget.observed_output_tokens(root, model, arm) or budget.DEFAULT_OUTPUT_TOKENS
     when = today or datetime.now(UTC).date()
     projected = budget.projection_usd(model, when, counts, mean_out, batch=mode == "batch")
-    spent = budget.spent_usd(root)
+    spending_root = root.parent  # teto único: inclui desenvolvimento, contexto e produção
+    spent = budget.spent_usd(spending_root)
     check = {
         "at": datetime.now(UTC).isoformat(timespec="seconds"), "model": model, "arm": arm, "mode": mode,
         "n_pending": len(counts), "mean_input_tokens": float(np.mean(counts)) if counts else 0.0,
         "mean_output_tokens_assumed": mean_out, "projected_usd": projected, "spent_usd": spent,
         "margin": budget.MARGIN, "cap_usd": budget.CAP_USD, "prices": budget.PRICES[model],
+        "spending_root": str(spending_root),
     }  # fmt: skip
     path = work / "budget.jsonl"
     with path.open("a", encoding="utf-8") as handle:
