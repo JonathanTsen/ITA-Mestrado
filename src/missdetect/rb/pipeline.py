@@ -68,6 +68,7 @@ from missdetect.rb.runs import (
 )
 from missdetect.rb.splits import outer_splits
 from missdetect.rb.stats import (
+    H4,
     PRIMARY,
     bootstrap_hl_ci,
     compare_family,
@@ -75,6 +76,7 @@ from missdetect.rb.stats import (
     hodges_lehmann,
     level_estimate,
     llm_hypothesis,
+    llm_sensitivity_row,
     paired_differences,
 )
 from missdetect.rb.synth import design as synth_design
@@ -470,13 +472,35 @@ def run_stats(run_dir: Path, config: RunConfig) -> Path:
     return out
 
 
-def run_stats_llm(run_dir: Path, config: RunConfig, llm_per_family: Path) -> Path:
+def run_stats_llm(run_dir: Path, config: RunConfig, llm_per_family: Path, probes: Path | None = None) -> Path:
     """H4 (LLM-A1 × configuração primária, no painel de LLM; família própria, m = 1), numa etapa separada (C1).
 
-    Roda depois do painel de LLM sem tocar a saída confirmatória principal (`stats_confirmatory.csv`)."""
-    result = llm_hypothesis(pd.read_parquet(llm_per_family))
-    write_tables_atomically(run_dir, {"stats_llm.csv": result})
-    extra = {"llm_per_family": str(llm_per_family), "llm_per_family_sha256": sha256_path(llm_per_family)}
+    Roda depois do painel de LLM sem tocar a saída confirmatória principal (`stats_confirmatory.csv`).
+    Memorização (P21), com o `results.csv` das sondas: as famílias reconhecidas na renderização cega saem da H4 (sem
+    reposição); o reconhecimento da tabela crua é covariável, e a H4 restrita às famílias não reconhecidas na crua é
+    reportada à parte, descritiva (`stats_llm_covariate.csv`). Num run confirmatório, as sondas são obrigatórias."""
+    if probes is None and "confirm" in config.sources.roles:
+        raise ValueError("stats-llm confirmatório precisa das sondas de memorização (--probes; pré-registro §4, P21)")
+    per_family = pd.read_parquet(llm_per_family)
+    excluded: list[int] = []
+    raw_recognized: list[int] = []
+    tables: dict[str, pd.DataFrame] = {}
+    if probes is not None:
+        results = pd.read_csv(probes)
+        excluded = sorted(results.loc[(results.table == "blind") & results.recognized, "family_id"].astype(int))
+        raw_recognized = sorted(results.loc[(results.table == "raw") & results.recognized, "family_id"].astype(int))
+        per_family = per_family[~per_family.family_id.isin(excluded)]
+        unrecognized = per_family[~per_family.family_id.isin(raw_recognized)]
+        tables["stats_llm_covariate.csv"] = pd.DataFrame(
+            [llm_sensitivity_row(unrecognized, H4[0], H4[1]) | {"hypothesis": "H4-não-reconhecidas-na-crua"}]
+        )
+    tables["stats_llm.csv"] = llm_hypothesis(per_family)
+    write_tables_atomically(run_dir, tables)
+    extra = {
+        "llm_per_family": str(llm_per_family), "llm_per_family_sha256": sha256_path(llm_per_family),
+        "probes": str(probes) if probes else None, "probes_sha256": sha256_path(probes) if probes else None,
+        "excluded_families_blind": excluded, "recognized_families_raw": raw_recognized,
+    }  # fmt: skip
     append_run_log(run_dir, config, "stats-llm", extra)
     return run_dir / "stats_llm.csv"
 

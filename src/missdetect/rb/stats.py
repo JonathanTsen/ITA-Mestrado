@@ -295,6 +295,11 @@ def llm_hypothesis(per_family_llm: pd.DataFrame | None) -> pd.DataFrame:
     return _adjust([_hypothesis_row(per_family_llm, "H4", H4[0], H4[1], "macro_recall", "wilcoxon")])
 
 
+def llm_sensitivity_row(per_family: pd.DataFrame, llm_method: str, comparator: str) -> dict:
+    """Sensibilidade de 200 linhas da H4 (descritiva, sem Holm): LLM × primária retreinada com 200 linhas."""
+    return _hypothesis_row(per_family, "H4-200", llm_method, comparator, "macro_recall", "wilcoxon")
+
+
 def level_estimate(per_family: pd.DataFrame, method: str = PRIMARY, metric: str = "macro_recall") -> dict:
     """Estimando de nível: média entre famílias do escore por família, com IC95% por bootstrap de famílias.
 

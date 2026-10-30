@@ -1854,6 +1854,7 @@ source = { editable = "." }
 dependencies = [
     { name = "baycomp" },
     { name = "cleanlab" },
+    { name = "google-genai" },
     { name = "imbalanced-learn" },
     { name = "joblib" },
     { name = "matplotlib" },
@@ -1919,6 +1920,7 @@ requires-dist = [
     { name = "baycomp", specifier = ">=1.0.3" },
     { name = "catboost", marker = "extra == 'boosting'", specifier = ">=1.2" },
     { name = "cleanlab", specifier = ">=2.6" },
+    { name = "google-genai", specifier = "==1.74.0" },
     { name = "imbalanced-learn", specifier = ">=0.12" },
     { name = "joblib", specifier = ">=1.5.3" },
     { name = "langchain", marker = "extra == 'llm'", specifier = ">=0.1" },

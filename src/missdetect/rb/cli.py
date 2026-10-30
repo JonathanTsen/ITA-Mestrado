@@ -10,7 +10,12 @@ Comandos:
     baselines  MechDetect-O, MechDetect oráculo (clean e dirty), Little e PKLM de um run
     evaluate   avaliador único (CV por família) sobre os descritores e baselines de um run
     report     relatório do piloto (tempos, inelegíveis, detectabilidade, atalhos, sd_Δ, MDE)
-    llm        passos 42/43 (a implementar; precisa das chaves de API e da tag prereg-v1-llm)
+    llm        passos 42/43: painel de LLM de um run (A1 ou A2), síncrono ou em lote, com caderno de respostas;
+               o gemini-4-argon só roda com --authorization (regra do autor); --budget-only só projeta o custo
+    llm-probes sondas de memorização (P21) nas famílias do painel: tabela crua (covariável) e renderização cega do A1
+               (critério de exclusão da H4); mesmas opções do llm
+    llm-sensitivity  H4 com 200 linhas: primária retreinada nas subamostras que o LLM vê (mesmas partições); descritiva
+    llm-a2-ablation  secundária RQ4-A2 (P23): primária + escores do LLM-A2 × primária, CV de famílias dentro do painel
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
     case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
@@ -36,16 +41,17 @@ from pathlib import Path
 
 from missdetect.rb import pipeline, report, sources
 from missdetect.rb.config import load_config
+from missdetect.rb.llm.run import ARMS, MODES, build_panel, run_llm, run_probes
+from missdetect.rb.llm.sensitivity import run_a2_ablation, run_llm_sensitivity
 from missdetect.rb.runs import confirmatory_guard, repo_root
 
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
-    "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute",
+    "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute", "llm-probes",
+    "llm-sensitivity", "llm-a2-ablation",
 )  # fmt: skip
-NOT_YET = {
-    "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
-}
+NOT_YET: dict[str, str] = {}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -71,10 +77,35 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("stats", help="testes confirmatórios H1, H2, H2e, H3, H5, H6 de um run avaliado")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/ e eval-cross/)")
+    for name in ("llm", "llm-probes"):
+        p = sub.add_parser(name, help="painel de LLM de um run (passos 42/43; H4)" if name == "llm" else
+                           "sondas de memorização nas famílias do painel (P21)")  # fmt: skip
+        p.add_argument("--config", type=Path, required=True)
+        p.add_argument("--run", type=Path, required=True, help="diretório do run")
+        p.add_argument("--model", required=True, help="alias do modelo (ex.: gemini-3.8-flash)")
+        if name == "llm":
+            p.add_argument("--arm", choices=sorted(ARMS), default="A1")
+        p.add_argument("--mode", choices=MODES, default="batch", help="batch (−50%%, plano pago) ou sync")
+        p.add_argument("--authorization", default=None, help="autorização do autor (obrigatória para modelos ≠ Flash)")
+        p.add_argument("--env-file", type=Path, default=None, help="arquivo .env com as chaves (padrão: raiz do repo)")
+        p.add_argument("--max-workers", type=int, default=4, help="chamadas síncronas em paralelo")
+        p.add_argument("--budget-only", action="store_true", help="só conta tokens e projeta o custo, sem gerar")
+    p = sub.add_parser("llm-sensitivity", help="H4 com 200 linhas (primária retreinada; descritiva)")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--run", type=Path, required=True, help="diretório do run")
+    p.add_argument("--llm-predictions", type=Path, default=None, help="predictions.parquet do LLM-A1, para comparar")
+    p.add_argument("--n-jobs", type=int, default=None)
+    p = sub.add_parser("llm-a2-ablation", help="secundária RQ4-A2: primária + escores do LLM-A2 no painel (P23)")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--run", type=Path, required=True, help="diretório do run")
+    p.add_argument("--a2-predictions", type=Path, required=True, help="predictions.parquet do LLM-A2")
     p = sub.add_parser("stats-llm", help="H4: LLM-A1 × configuração primária no painel de LLM (etapa separada)")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
     p.add_argument("--llm-per-family", type=Path, required=True, help="per_family.parquet do painel de LLM (H4)")
+    p.add_argument(
+        "--probes", type=Path, default=None, help="results.csv das sondas (P21; obrigatório no confirmatório)"
+    )
     for name in (
         "oracle-features",
         "ablation",
@@ -163,8 +194,26 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_case_study(args.model, args.registry, args.tables, config, n_jobs, args.manifest))
     elif args.command == "stats":
         print(pipeline.run_stats(args.run, config))
+    elif args.command == "llm":
+        out = run_llm(
+            args.run, config, model=args.model, arm=args.arm, mode=args.mode, authorization=args.authorization,
+            env_file=args.env_file, max_workers=args.max_workers, budget_only=args.budget_only,
+        )  # fmt: skip
+        print(out)
+    elif args.command == "llm-probes":
+        out = run_probes(
+            args.run, config, model=args.model, mode=args.mode, authorization=args.authorization,
+            env_file=args.env_file, max_workers=args.max_workers, budget_only=args.budget_only,
+        )  # fmt: skip
+        print(out)
+    elif args.command == "llm-sensitivity":
+        panel = build_panel(args.run, config)
+        panel_ids = panel.loc[panel.replicate == 0, "sample_id"].tolist()
+        print(run_llm_sensitivity(args.run, config, n_jobs, panel_ids, args.llm_predictions))
+    elif args.command == "llm-a2-ablation":
+        print(run_a2_ablation(args.run, config, args.a2_predictions))
     elif args.command == "stats-llm":
-        print(pipeline.run_stats_llm(args.run, config, args.llm_per_family))
+        print(pipeline.run_stats_llm(args.run, config, args.llm_per_family, args.probes))
     return 0
 
 

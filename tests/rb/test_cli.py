@@ -1,4 +1,4 @@
-"""Testes do passo 30: a CLI lista todos os comandos e os não implementados falham com mensagem explícita."""
+"""Testes do passo 30: a CLI lista todos os comandos e exige as entradas de cada um."""
 
 import subprocess
 import sys
@@ -7,6 +7,7 @@ import pytest
 
 from missdetect.rb import cli
 from missdetect.rb.cli import COMMANDS, main
+from missdetect.rb.llm.client import AuthorizationRequired
 
 
 def test_help_lists_all_commands():
@@ -21,10 +22,15 @@ def test_help_lists_all_commands():
     assert set(COMMANDS) >= {"sources", "inject", "features", "evaluate", "baselines", "llm", "noise", "stats"}
 
 
-@pytest.mark.parametrize("command", ["llm"])
-def test_pending_commands_fail_explicitly(command):
-    with pytest.raises(SystemExit, match=r"não implementado|D5"):
-        main([command])
+def test_llm_requires_a_model_and_refuses_argon_without_authorization(capsys):
+    """B5 (30/10): a etapa `llm` existe; o Argon só roda com a autorização do autor, antes de qualquer chamada."""
+    with pytest.raises(SystemExit) as exc:
+        main(["llm", "--config", "configs/rb/rehearsal-dev.yaml", "--run", "x"])
+    assert exc.value.code == 2 and "--model" in capsys.readouterr().err
+    args = ["llm", "--config", "configs/rb/rehearsal-dev.yaml", "--run", "x", "--model", "gemini-4-argon"]
+    with pytest.raises(AuthorizationRequired):
+        main([*args, "--budget-only"])
+    assert cli.NOT_YET == {}
 
 
 def test_noise_is_implemented_and_requires_a_run(capsys):

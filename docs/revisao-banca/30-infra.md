@@ -63,7 +63,7 @@ uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <r
 uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators mdatagen
 uv run --frozen python -m missdetect.rb.cli evaluate        --config $C --run <run> --generators tab_err
 uv run --frozen python -m missdetect.rb.cli cross-generator --config $C --run <run>    # H5: treino no principal, teste nos externos
-uv run --frozen python -m missdetect.rb.cli stats           --config $C --run <run>    # H1, H2, H2e, H3, H5, H6 (+ H4 com --llm-per-family)
+uv run --frozen python -m missdetect.rb.cli stats           --config $C --run <run>    # H1, H2, H2e, H3, H5, H6 (a H4 é o stats-llm)
 uv run --frozen python -m missdetect.rb.cli secondary       --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli ablation        --config $C --run <run>
 uv run --frozen python -m missdetect.rb.cli logo            --config $C --run <run>
@@ -87,7 +87,10 @@ O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--ski
 # 1. Sem predição (antes do adendo LLM):
 inject; features; oracle-features
 inject-ampute   --config $C --run <run>   # P24: instâncias do ampute em <run>/ampute/, com descritores
-# 2. Tag prereg-v1-llm (adendo LLM), com as sondas de memorização publicadas
+# 2. Tag prereg-v1-llm (adendo LLM; rascunho em docs/revisao-banca/adendo-llm.md). Sondas (P21), em lote, e lista
+#    de exclusão publicada com SHA-256 antes do evaluate:
+llm-probes      --config $C --run <run> --model <confirmatório> --mode batch --authorization "<texto do autor>"
+llm-probes      --config $C --run <run> --model gemini-3.8-flash --mode batch
 # 3. Com predição:
 baselines; evaluate --generators symmetric; evaluate; evaluate --generators mdatagen; evaluate --generators tab_err
 cross-generator --config $C --run <run>   # H5 (exige baselines.parquet)
@@ -96,10 +99,19 @@ stats           --config $C --run <run>   # H1, H2, H2e, H3, H5, H6; saídas gra
 secondary; secondary-extra --config $C --run <run>   # P6, P7, P8, P11, P12, P13, P15 (lista de Y nominal em data_rb/nominal_targets.csv)
 ablation; logo; transfer ...; report; noise; fit-final
 case-study ...   # só a NHANES (registro), 10 subamostras de n = 2.000; faixas de n, k e taxa sinalizadas
-# 4. LLM oficial (Flash autorizado; Argon só com autorização do autor), em lote; depois:
-stats-llm       --config $C --run <run> --llm-per-family <painel>   # H4, sem tocar o stats_confirmatory.csv
+# 4. LLM oficial, em lote (Flash autorizado; Argon só com --authorization do autor, pedida antes de cada execução).
+#    A trava do orçamento (P22) roda antes de cada etapa; --budget-only só projeta. O A1 confirmatório vem primeiro.
+llm             --config $C --run <run> --model <confirmatório> --arm A1 --mode batch --authorization "<texto>"
+llm             --config $C --run <run> --model gemini-3.8-flash --arm A1 --mode batch
+llm             --config $C --run <run> --model <modelo> --arm A2 --mode batch [--authorization ...]
+llm-sensitivity --config $C --run <run> --llm-predictions <run>/llm/<confirmatório>/A1/predictions.parquet
+llm-a2-ablation --config $C --run <run> --a2-predictions <run>/llm/<confirmatório>/A2/predictions.parquet
+stats-llm       --config $C --run <run> --llm-per-family <run>/llm/<confirmatório>/A1/per_family.parquet \
+                --probes <run>/llm/<confirmatório>/probes/results.csv   # H4 sem as famílias reconhecidas na cega
 # 5. Segundo depósito no Zenodo com os SHA-256 das saídas (P4)
 ```
+
+**Piloto de LLM (30/10/2026; só desenvolvimento):** `llm` A1 síncrono e A2 em lote, `llm-probes`, `stats-llm --probes` e `llm-a2-ablation` rodaram no run de re-execução do ensaio (`results_rb/20261030-rehearsal-dev-b4ca243467d6`) com o `gemini-3.8-flash` (≈ US$ 6,30). Relatório no plano da tese (`execucao/38d-piloto-llm.md`).
 
 **Ensaio geral (22/10/2026):** a sequência completa acima, incluindo `report`, rodou sem erro com `configs/rb/rehearsal-dev.yaml` (inject-v1 nas 8 famílias de desenvolvimento; PKLM reduzido a 2 contextos por família) no commit `f3bb944`, com a árvore limpa. Run `results_rb/20261022-rehearsal-dev-b4ca243467d6`: 1.632 instâncias, nenhuma falha em nenhuma etapa, ≈ 52 min de relógio. Tempos por instância (núcleo): descritores 1,22 s; descritores-oráculo ≈ 0,6 s; MechDetect-O 3,98 s; oráculo 3,53 s; dirty 2,36 s; PKLM 57,1 s.
 

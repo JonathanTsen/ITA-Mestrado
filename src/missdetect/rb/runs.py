@@ -64,7 +64,7 @@ def git_state(repo: Path) -> dict:
 PREREG_TAG = "prereg-v1"
 LLM_ADDENDUM_TAG = "prereg-v1-llm"
 NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features", "inject-ampute"})
-LLM_COMMANDS = frozenset({"llm", "stats-llm"})
+LLM_COMMANDS = frozenset({"llm", "llm-probes", "stats-llm"})
 
 
 def confirmatory_guard(repo: Path, command: str) -> None:
