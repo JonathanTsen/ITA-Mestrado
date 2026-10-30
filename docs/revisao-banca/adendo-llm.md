@@ -28,10 +28,16 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 |---|---|---|
 | A1, classificador direto cego | `d6c047c5…cbc08` (`render.A1_SYSTEM`) | tabela CSV cega: colunas `c0…ck`; inteiros de 0 a 999 por coluna (afim positiva sobre os valores observados das linhas mostradas, seguida de arredondamento); ≤ 200 linhas sorteadas; linhas e colunas permutadas; `NA` na ausência (`render.render_a1`, versão 1) |
 | A2, extrator de descritores | `6968989f…b032d1` (`render.A2_SYSTEM`) | os 28 descritores 34b em JSON com chaves ordenadas, 4 algarismos significativos e `null` no indefinido (`render.render_a2`) |
-| A3, semântico (exploratório) | **[AUTOR: implementar ou cortar já (P22)]** | — |
+| A3, semântico (exploratório) | `render.A3_SYSTEM` (hash no commit da tag) | a **mesma tabela do A1** (mesmas linhas, permutação e escala) com os **nomes reais** das colunas, precedida de uma descrição neutra da base (`render.render_a3`). **[AUTOR: manter ou cortar já (P22)]** |
 
 - **Semente da renderização:** `child_seed(20261101, "llm_render", contexto)`, a mesma para os três mecanismos do contexto.
 - **Teste byte a byte** (`tests/rb/test_llm_render.py`): mudar o rótulo, o `sample_id`, os nomes das colunas ou os valores ausentes de Y, ou aplicar uma transformação afim positiva aos dados, não muda o prompt.
+- **Descrição neutra do A3** (`render.neutral_description`), a partir do texto cru congelado em `data_rb/openml_descriptions_20261030.csv` (101 tabelas, SHA-256 por descrição):
+  - a descrição do OpenML é dividida em seções;
+  - as de identificação saem inteiras (autoria, fonte, citação, título, uso anterior, artigos, dono, datas, licença, contagens e valores ausentes);
+  - nas demais, saem as frases com termos de ausência, proveniência ou referências e o nome distintivo da base;
+  - até 600 caracteres, igual para os três mecanismos;
+  - as regras foram fixadas olhando só as 8 tabelas de desenvolvimento.
 - **Perguntas idênticas:** quando duas instâncias têm os mesmos dados observados (a máscara MAR igual à MNAR acontece em ≈ 1% dos contextos simétricos do ensaio, sempre em Y com massa na fronteira), as perguntas são idênticas e recebem **a mesma resposta**. A contagem é reportada.
 
 ## 3. Esquema e geração (emenda P20)
@@ -75,17 +81,17 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 - **Reconhecida** se, em qualquer teste:
   - cabeçalho ≥ 50 caracteres literais;
   - ou linhas ≥ 2 de 10;
-  - ou atributo ≥ 3 de 10;
+  - ou atributo ≥ 3 de 10 **e** acima do chute do valor mais frequente (binomial, p < 0,05);
   - ou nome correto.
 
   **[AUTOR: aprovar os limiares]**
 
-  No piloto, o atributo marcou a pc3 com 4 de 10. Sugestão: exigir também mais acertos do que o chute do valor mais frequente.
+  No piloto, a pc3 teve 4 de 10 valores exatos de um atributo cuja moda ocupa 3,1% da tabela (p ≈ 0): é memorização, não acaso.
 - **Nome correto:**
-  - a resposta contém o nome do OpenML (normalizado) **ou** um apelido de uma lista fechada, montada **antes** de rodar as sondas confirmatórias;
+  - a resposta contém o nome do OpenML (normalizado) **ou** um apelido de uma lista fechada (`data_rb/llm_dataset_aliases.csv`, com o motivo de cada apelido), montada **antes** de rodar as sondas confirmatórias;
   - os casos não cobertos pela lista são adjudicados pelo autor, cego aos resultados da H4, e registrados.
 
-  **[AUTOR: aprovar a regra.]** No piloto, a conferência automática deixou passar "Breast Cancer Wisconsin" para o `BNG(breast-w)` e "ipums-la-99" para o `kdd_ipums_la_97-small`.
+  **[AUTOR: aprovar a regra e a lista.]** No piloto, sem a lista, a conferência deixou passar "Breast Cancer Wisconsin" para o `BNG(breast-w)` e "ipums-la-99" para o `kdd_ipums_la_97-small`. Com a lista de rascunho, a tabela crua foi reconhecida em 7 de 8 famílias, e a renderização cega em 0 de 8.
 - **Exclusão:**
   - uma família reconhecida na renderização cega sai da análise principal da H4, sem reposição;
   - o reconhecimento da tabela crua é covariável: a H4 restrita às famílias não reconhecidas na crua é reportada à parte (`stats_llm_covariate.csv`);
@@ -101,6 +107,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
   - a primária é retreinada com as subamostras de ≤ 200 linhas, nas mesmas partições;
   - ela é aplicada às mesmas linhas que o A1 mostra;
   - comparação descritiva.
+  - No piloto, a primária caiu de 0,618 para 0,519 com 200 linhas, e a diferença para o LLM-A1 passou de −0,125 para −0,014 (p = 0,57). Por isso a frase da H4 na tese sempre traz a sensibilidade ao lado.
 - **Secundária RQ4-A2** (m = 1; P23; `llm-a2-ablation`): a primária com os 28 descritores × a mesma com os 28 mais as 3 probabilidades do A2, numa CV de famílias dentro do painel.
 - **Descritivos:**
   - o LLM-A2 sozinho (classe de maior escore);
@@ -124,6 +131,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 
 ## 8. Orçamento (emenda P22)
 
+- **Teste do Argon** (`llm --limit 30`, em lote, nas famílias de desenvolvimento; **só com a autorização do autor**): mede o raciocínio real do Argon antes desta projeção ser fechada.
 - **Projeção** com os tokens do piloto, em lote; o Argon com o mesmo raciocínio do Flash **[a medir no teste do Argon]**:
   - Argon ≈ US$ 68 (A1 26, A2 3, A3 27, sondas 12);
   - Flash ≈ US$ 23;
