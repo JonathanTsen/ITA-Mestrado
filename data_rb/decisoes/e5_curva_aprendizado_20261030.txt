@@ -1,0 +1,20 @@
+# E5 — curva de aprendizado da D7 (logreg × HGB conforme o tamanho do treino), re-execução R1 do plano 38c
+# Data: 30/10/2026, 02:19 UTC. Código: ITA-Mestrado@5ea340f (árvore limpa). Corpus: data_rb/synth/20261021-synth-v1-be5730da3d49
+# Comando: OMP_NUM_THREADS=1 uv run --frozen python scripts/revisao_banca/decisoes/d7_curva_aprendizado.py data_rb/synth/20261021-synth-v1-be5730da3d49
+# Log: results_rb/_logs/e5-curva-aprendizado-20261030T021922Z.log
+# Valores registrados antes (08-decisoes-tomadas, D7): 650 → logreg 0,721 × HGB 0,717; 1.700 → 0,734 × 0,737;
+# 4.300 → 0,737 × 0,759, com o HGB à frente em 10 de 10 folds.
+# Resultado: REPRODUZIDO exatamente (logreg_wins = 0 de 10 com o treino inteiro). A D7 se sustenta.
+              n_train  macro_recall     sd  macro_recall_sym  log_loss
+frac learner                                                          
+0.15 hgb        648.0         0.717  0.010             0.632     0.666
+     logreg     648.0         0.721  0.018             0.633     0.631
+0.40 hgb       1728.0         0.737  0.011             0.656     0.620
+     logreg    1728.0         0.734  0.012             0.652     0.609
+1.00 hgb       4320.0         0.759  0.011             0.681     0.578
+     logreg    4320.0         0.737  0.012             0.655     0.604
+      logreg_minus_hgb  logreg_wins
+frac                               
+0.15          0.003889            6
+0.40         -0.003241            5
+1.00         -0.022222            0
