@@ -4,7 +4,7 @@ Fluxo, por modelo e braço:
 1. **Painel** (`panel`): as instâncias do gerador principal nos 6 contextos de cada família do painel, mais a
    subamostra de 10% perguntada uma segunda vez.
 2. **Perguntas** (`render`): A1 = tabela cega; A2 = os 28 descritores. Cada pergunta é gravada no caderno de respostas
-   (`<output_root>/_llm_cache/<nome da config>/`), compartilhado entre runs da mesma config: a mesma pergunta nunca é
+   (`<diretório dos runs>/_llm_cache/<nome da config>/`), compartilhado entre runs da mesma config: a mesma pergunta nunca é
    paga duas vezes.
 3. **Orçamento** (`budget`, P22): gasto do caderno + 1,5 × projeção ≤ US$ 300, antes de qualquer chamada.
 4. **Chamadas** (`client`): síncronas ou em lote, na ordem sorteada das famílias; a repetição vem por último.
@@ -58,8 +58,9 @@ MAX_OUTPUT_TOKENS = 32_768  # teto de segurança generoso; o adendo fixa o valor
 MODES = ("sync", "batch")
 
 
-def cache_root(config: RunConfig) -> Path:
-    return Path(config.output_root) / "_llm_cache" / config.name
+def cache_root(run_dir: Path, config: RunConfig) -> Path:
+    """Ao lado dos runs (`<diretório dos runs>/_llm_cache/<config>`), qualquer que seja o diretório de trabalho."""
+    return Path(run_dir).resolve().parent / "_llm_cache" / config.name
 
 
 def method_name(arm: str) -> str:
@@ -89,7 +90,7 @@ def _descriptor_frame(run_dir: Path) -> pd.DataFrame:
 def register_requests(run_dir: Path, config: RunConfig, panel: pd.DataFrame, model: str, arm: str) -> pd.DataFrame:
     """Renderiza e grava cada pergunta no caderno; devolve o painel com a chave de cada pergunta."""
     system, schema = ARMS[arm]
-    cache = ResponseCache(cache_root(config))
+    cache = ResponseCache(cache_root(run_dir, config))
     descriptors = _descriptor_frame(run_dir) if arm == "A2" else None
     keys = []
     for row in panel.itertuples():
@@ -208,7 +209,7 @@ def run_llm(
     work = run_dir / "llm" / model / "_work" / arm
     work.mkdir(parents=True, exist_ok=True)
     panel = register_requests(run_dir, config, build_panel(run_dir, config), model, arm)
-    cache = ResponseCache(cache_root(config))
+    cache = ResponseCache(cache_root(run_dir, config))
     if backend is None:
         backend = GeminiBackend(load_api_keys(env_file or repo_root() / ".env"))
     runner = Runner(
@@ -217,14 +218,14 @@ def run_llm(
     )  # fmt: skip
     pending = runner.pending(panel.key)
     counter = budget.TokenCounter(
-        backend, cache_root(config) / "token_counts.json", PAID if PAID in backend.tiers() else FREE
+        backend, cache_root(run_dir, config) / "token_counts.json", PAID if PAID in backend.tiers() else FREE
     )
     system = ARMS[arm][0]
     counts = [counter.count(k, system + "\n\n" + cache.request(k)["user"]) for k in dict.fromkeys(pending)]
-    mean_out = budget.observed_output_tokens(cache_root(config), model, arm) or budget.DEFAULT_OUTPUT_TOKENS
+    mean_out = budget.observed_output_tokens(cache_root(run_dir, config), model, arm) or budget.DEFAULT_OUTPUT_TOKENS
     when = today or datetime.now(UTC).date()
     projected = budget.projection_usd(model, when, counts, mean_out, batch=mode == "batch")
-    spent = budget.spent_usd(cache_root(config))
+    spent = budget.spent_usd(cache_root(run_dir, config))
     check = {
         "at": datetime.now(UTC).isoformat(timespec="seconds"), "model": model, "arm": arm, "mode": mode,
         "n_pending": len(counts), "mean_input_tokens": float(np.mean(counts)) if counts else 0.0,

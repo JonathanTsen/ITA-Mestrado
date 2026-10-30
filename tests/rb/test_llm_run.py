@@ -160,7 +160,7 @@ def test_budget_only_makes_no_generation_call_and_argon_needs_authorization(run)
     with pytest.raises(AuthorizationRequired):
         run_llm(run_dir, config, model="gemini-4-argon", arm="A1", mode="batch", backend=fake, budget_only=True)
     assert fake.generated == [] and set(fake.counted) == {FLASH}
-    assert not any((cache_root(config)).rglob("attempt-*.json"))
+    assert not any(cache_root(run_dir, config).rglob("attempt-*.json"))
 
 
 def test_a2_prompt_is_only_the_descriptors(run):
@@ -169,5 +169,5 @@ def test_a2_prompt_is_only_the_descriptors(run):
     run_llm(run_dir, config, model=FLASH, arm="A2", mode="sync", backend=fake, sleep=lambda s: None)
     users = {r["user"] for r in fake.generated}
     assert all(set(json.loads(u)) == set(DESCRIPTORS) for u in users)
-    cache = ResponseCache(cache_root(config))
+    cache = ResponseCache(cache_root(run_dir, config))
     assert cache.digest()
