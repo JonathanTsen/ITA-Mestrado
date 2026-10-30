@@ -98,6 +98,7 @@ cross-ampute    --config $C --run <run>   # P24: secundária m = 1 e mudança si
 stats           --config $C --run <run>   # H1, H2, H2e, H3, H5, H6; saídas gravadas juntas; p = 1 por hipótese sem dados
 secondary; secondary-extra --config $C --run <run>   # P6, P7, P8, P11, P12, P13, P15 (lista de Y nominal em data_rb/nominal_targets.csv)
 robustness      --config $C --run <run>   # passo 40 (exploratória): prior-shift e L1 com MCAR raro
+robustness-znan --config $C --run <run>   # passo 40, item 6: NaN MCAR em Z (5% e 10%) em 20% dos contextos
 ablation; logo; transfer ...; report; noise; fit-final
 case-study ...   # só a NHANES (registro), 10 subamostras de n = 2.000; faixas de n, k e taxa sinalizadas
 # 4. LLM oficial, em lote (Flash autorizado; Argon só com --authorization do autor, pedida antes de cada execução).
