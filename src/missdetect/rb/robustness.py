@@ -11,19 +11,33 @@
 - `rare_mcar`: o L1 quando o MCAR é raro. Recall do MCAR e especificidade (não-MCAR chamado de não-MCAR) vêm do teste
   balanceado; a precisão do MCAR sob a prevalência π é π·rec / (π·rec + (1 − π)·(1 − esp)).
 
+**Ausência também nas auxiliares** (item 6 do passo 40; ORA-17): `run_z_nan`, um ensaio limitado com NaN MCAR em Z
+(ver a função).
+
 Nenhum p-valor: tudo aqui é descritivo, e nenhuma frase de "limite" ou "teto" (passo 40, aceite).
 """
 
+import os
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
+from threadpoolctl import threadpool_limits
 
+from missdetect.rb import features as feat
+from missdetect.rb.baselines.logit_simple import LOGIT_SIMPLE_FEATURES
 from missdetect.rb.config import RunConfig
-from missdetect.rb.models import CLASSES
-from missdetect.rb.runs import append_run_log, write_tables_atomically
-from missdetect.rb.stats import PRIMARY, bootstrap_mean_ci
+from missdetect.rb.evaluate import summarize_by_family
+from missdetect.rb.ids import child_rng, child_seed
+from missdetect.rb.inject import ObservedInstance
+from missdetect.rb.models import CLASSES, DirectClassifier
+from missdetect.rb.pipeline import feature_columns, load_eval_frame
+from missdetect.rb.runs import append_run_log, read_observed, write_tables_atomically
+from missdetect.rb.splits import outer_splits
+from missdetect.rb.stats import PRIMARY, bootstrap_hl_ci, bootstrap_mean_ci, hodges_lehmann
 
 TRAIN_PRIOR = (1 / 3, 1 / 3, 1 / 3)
 SCENARIOS: dict[str, tuple[float, float, float]] = {
@@ -126,4 +140,110 @@ def run_robustness(run_dir: Path, config: RunConfig) -> Path:
     }
     write_tables_atomically(out_dir, tables)
     append_run_log(Path(run_dir), config, "robustness", {"methods": list(methods), "outputs": list(tables)})
+    return out_dir
+
+
+# --- Item 6 do passo 40: ausência também nas auxiliares (ORA-17) ----------------------------------------------------
+
+ZNAN_RATES = (0.05, 0.10)
+ZNAN_CONTEXT_FRACTION = 0.2
+ZNAN_METHODS = ("direct_hgb", "logit_simple")
+
+
+def inject_z_nan(instance: ObservedInstance, rate: float, seed: int) -> ObservedInstance:
+    """Apaga, MCAR, cada célula de Z com probabilidade `rate` (Y fica como está)."""
+    holes = np.random.default_rng(seed).random(instance.z.shape) < rate
+    return ObservedInstance(instance.sample_id, instance.y, instance.z.mask(holes))
+
+
+def _znan_features(run_dir: Path, sample_id: str, context_id: str, rate: float, root_seed: int) -> dict:
+    """Descritores da instância com NaN em Z; a semente depende só do contexto e da taxa (os três mecanismos de um
+    contexto recebem os mesmos buracos)."""
+    seed = child_seed(root_seed, "znan", context_id, rate)
+    try:
+        with threadpool_limits(1):
+            row = {**feat.compute(inject_z_nan(read_observed(run_dir, sample_id), rate, seed)), "feature_status": "ok"}
+    except Exception as exc:  # falha conta como erro, nunca some
+        row = {"sample_id": sample_id, "feature_status": f"failed: {exc!r}"}
+    return {**row, "znan_rate": rate}
+
+
+def run_z_nan(
+    run_dir: Path, config: RunConfig, n_jobs: int, rates: tuple[float, ...] = ZNAN_RATES,
+    fraction: float = ZNAN_CONTEXT_FRACTION,
+) -> Path:  # fmt: skip
+    """Ensaio limitado com NaN MCAR em Z (passo 40, item 6; exploratório).
+
+    Uma amostra de contextos do gerador principal (`child_rng(raiz, "znan_contexts")`) recebe 5% e 10% de NaN em Z; os
+    descritores são recalculados (desvios de NaN em `features.py`). A configuração primária e a logística simples,
+    treinadas com Z completo nas famílias de treino de cada fold (as mesmas partições), são aplicadas sem ajuste às
+    instâncias com NaN das famílias de teste. A comparação é com as mesmas instâncias sem NaN (predições do
+    `eval-symmetric`), por família: HL da mudança com IC95% por bootstrap, sem p-valor."""
+    run_dir = Path(run_dir)
+    out_dir = run_dir / "robustness-znan"
+    if out_dir.exists():
+        return out_dir
+    frame = load_eval_frame(run_dir)
+    sym = frame[frame.generator == "symmetric"].reset_index(drop=True)
+    contexts = np.array(sorted(sym.context_id.unique()))
+    size = max(1, round(fraction * len(contexts)))
+    chosen = set(child_rng(config.root_seed, "znan_contexts").choice(contexts, size=size, replace=False))
+    sample = sym[sym.context_id.isin(chosen)]
+    rows = Parallel(n_jobs=n_jobs)(
+        delayed(_znan_features)(run_dir, r.sample_id, r.context_id, rate, config.root_seed)
+        for rate in rates for r in sample.itertuples()
+    )  # fmt: skip
+    znan = pd.DataFrame(rows).merge(sample[["sample_id", "family_id", "label"]], on="sample_id")
+    ev = config.evaluate
+    seed = child_seed(config.root_seed, "model")
+    cols, simple = feature_columns(sym), list(LOGIT_SIMPLE_FEATURES)
+    families = sym.family_id.reset_index(drop=True)
+    preds = []
+    for repeat, fold, train, test in outer_splits(families, config.root_seed, ev.n_splits, ev.n_repeats):
+        test_families = set(families.iloc[test])
+        target = znan[znan.family_id.isin(test_families)]
+        if target.empty:
+            continue
+        for method in ZNAN_METHODS:
+            use, learner = (cols, ev.learner) if method == PRIMARY else (simple, "logreg")
+            with threadpool_limits(1):
+                model = DirectClassifier(learner, {}, seed)
+                model.fit(sym[use].to_numpy(float)[train], sym.label.to_numpy()[train], families.iloc[train])
+                proba = model.predict_proba(target[use].to_numpy(float))
+            failed = ~target.feature_status.eq("ok").to_numpy()
+            proba[failed] = 1 / 3
+            y_pred = np.where(failed, -1, proba.argmax(1))
+            preds.append(pd.DataFrame({
+                "method": [f"{method}_znan{round(100 * r)}" for r in target.znan_rate], "repeat": repeat,
+                "fold": fold, "sample_id": target.sample_id.to_numpy(), "family_id": target.family_id.to_numpy(),
+                "y_true": target.label.to_numpy(), "y_pred": y_pred,
+                **{f"p_{c}": proba[:, k] for k, c in enumerate(CLASSES)},
+            }))  # fmt: skip
+    pred = pd.concat(preds, ignore_index=True)
+    clean = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    clean = clean[clean.method.isin(ZNAN_METHODS) & clean.sample_id.isin(set(sample.sample_id))]
+    per_family, _ = summarize_by_family(pd.concat([pred, clean[pred.columns]], ignore_index=True))
+    wide = per_family.pivot(index="family_id", columns="method", values="macro_recall")
+    change = []
+    for method in ZNAN_METHODS:
+        for rate in rates:
+            label = f"{method}_znan{round(100 * rate)}"
+            pair = wide[[label, method]].dropna()
+            d = (pair[label] - pair[method]).to_numpy()
+            low, high = bootstrap_hl_ci(d) if len(d) > 1 else (np.nan, np.nan)
+            change.append({"method": method, "znan_rate": rate, "n_families": len(d),
+                           "macro_recall_clean": float(pair[method].mean()), "macro_recall_znan": float(pair[label].mean()),
+                           "hodges_lehmann": hodges_lehmann(d) if len(d) else np.nan, "ci_low": low, "ci_high": high})  # fmt: skip
+    for stale in run_dir.glob(".tmp-robustness-znan-*"):
+        shutil.rmtree(stale)
+    tmp = run_dir / f".tmp-robustness-znan-{os.getpid()}"
+    tmp.mkdir()
+    znan.to_parquet(tmp / "features.parquet", index=False)
+    pred.to_parquet(tmp / "predictions.parquet", index=False)
+    per_family.to_parquet(tmp / "per_family.parquet", index=False)
+    pd.DataFrame(change).to_csv(tmp / "change.csv", index=False)
+    tmp.rename(out_dir)
+    append_run_log(run_dir, config, "robustness-znan", {"rates": list(rates), "fraction": fraction,
+                                                         "n_contexts": len(chosen), "n_instances": len(sample),
+                                                         "n_feature_failures": int((znan.feature_status != "ok").sum())})  # fmt: skip
     return out_dir

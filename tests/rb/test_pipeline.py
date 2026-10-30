@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from missdetect.rb import pipeline
+from missdetect.rb import pipeline, robustness
 from missdetect.rb.bench import generate_family, load_sentinel_exclusions
 from missdetect.rb.config import parse_config
 from missdetect.rb.evaluate import check_pairing
@@ -584,3 +584,17 @@ def test_cross_generator_uses_primary_partitions_and_tests_only_external_generat
         assert fams <= primary_folds[(repeat, fold)]  # mesmas famílias de teste da avaliação primária
     summary = pd.read_csv(run_dir / "eval-cross" / "cross_summary.csv")
     assert "loss_ingen_minus_cross" in set(summary.quantity)
+
+
+def test_z_nan_trial_applies_clean_models_to_nan_auxiliaries(run, extended):
+    """Passo 40, item 6: NaN MCAR em Z; modelos treinados com Z completo, aplicados sem ajuste às famílias de teste."""
+    run_dir, config = run
+    out = robustness.run_z_nan(run_dir, config, n_jobs=2, fraction=1.0)
+    feats = pd.read_parquet(out / "features.parquet")
+    assert (feats.feature_status == "ok").all() and set(feats.znan_rate) == {0.05, 0.10}
+    change = pd.read_csv(out / "change.csv")
+    assert set(change.method) == {"direct_hgb", "logit_simple"} and (change.n_families > 0).all()
+    pred = pd.read_parquet(out / "predictions.parquet")
+    n_sym = int((pd.read_parquet(run_dir / "oracle.parquet").generator == "symmetric").sum())
+    assert len(pred) == n_sym * 2 * 2 * config.evaluate.n_repeats  # 2 taxas × 2 métodos × repetições
+    assert robustness.run_z_nan(run_dir, config, n_jobs=2, fraction=1.0) == out  # já feito

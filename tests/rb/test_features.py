@@ -119,3 +119,20 @@ def test_crossfit_prediction_does_not_reveal_mask_under_mcar():
         clf = HistGradientBoostingClassifier(random_state=0)
         aucs.append(cross_val_score(clf, X, mask, cv=5, scoring="roc_auc").mean())
     assert np.mean(aucs) < 0.58
+
+
+def test_descriptors_tolerate_nan_in_the_auxiliaries_and_complete_z_is_untouched():
+    """Passo 40, item 6: com NaN em Z, os descritores ainda saem (HGB nativo, pares completos, imputação só na
+    logística); com Z completo, o caminho é o original."""
+    rng = np.random.default_rng(3)
+    z = pd.DataFrame(rng.normal(size=(400, 3)), columns=["a", "b", "c"])
+    y = z.a.to_numpy() + rng.normal(size=400)
+    y[np.argsort(z.b.to_numpy())[:120]] = np.nan
+    clean = compute(ObservedInstance("s", y, z))
+    holes = z.mask(rng.random(z.shape) < 0.08)
+    with_nan = compute(ObservedInstance("s", y, holes))
+    names = [k for k in clean if k.startswith("g")]
+    assert all(np.isfinite(with_nan[k]) for k in names if np.isfinite(clean[k]))
+    assert abs(with_nan["g2_cv_auc_boosting"] - clean["g2_cv_auc_boosting"]) < 0.1
+    again = compute(ObservedInstance("s", y, z.copy()))
+    assert all(again[k] == clean[k] or (np.isnan(again[k]) and np.isnan(clean[k])) for k in names)

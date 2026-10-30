@@ -18,6 +18,8 @@ Comandos:
     llm-a2-ablation  secundária RQ4-A2 (P23): primária + escores do LLM-A2 × primária, CV de famílias dentro do painel
     robustness passo 40 (exploratória): prior-shift (acurácia sob prevalências realistas, correção de Saerens) e L1 com
                MCAR raro, a partir das predições do eval-symmetric
+    robustness-znan  passo 40, item 6 (exploratória): NaN MCAR em Z (5% e 10%) numa amostra de contextos; modelos
+               treinados com Z completo aplicados sem ajuste; mudança contra as mesmas instâncias sem NaN
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
     case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
@@ -51,7 +53,7 @@ COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
     "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute", "llm-probes",
-    "llm-sensitivity", "llm-a2-ablation", "robustness",
+    "llm-sensitivity", "llm-a2-ablation", "robustness", "robustness-znan",
 )  # fmt: skip
 NOT_YET: dict[str, str] = {}
 
@@ -123,6 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
         "inject-ampute",
         "cross-ampute",
         "robustness",
+        "robustness-znan",
     ):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
@@ -217,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
         print(run_llm_sensitivity(args.run, config, n_jobs, panel_ids, args.llm_predictions))
     elif args.command == "robustness":
         print(robustness.run_robustness(args.run, config))
+    elif args.command == "robustness-znan":
+        print(robustness.run_z_nan(args.run, config, n_jobs))
     elif args.command == "llm-a2-ablation":
         print(run_a2_ablation(args.run, config, args.a2_predictions))
     elif args.command == "stats-llm":

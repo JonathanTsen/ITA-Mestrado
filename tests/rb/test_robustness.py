@@ -5,9 +5,11 @@ import pandas as pd
 import pytest
 
 from missdetect.rb.config import parse_config
+from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.robustness import (
     SCENARIOS,
     expected_accuracy,
+    inject_z_nan,
     prior_shift,
     rare_mcar,
     run_robustness,
@@ -80,3 +82,15 @@ def test_run_robustness_writes_the_three_tables(tmp_path):
     shift = pd.read_csv(out / "prior_shift.csv")
     assert set(shift.method) == {"direct_hgb", "logit_simple"} and len(pd.read_csv(out / "prior_shift_grid.csv")) == 132
     assert (out / "rare_mcar.csv").exists() and (run_dir / "run.robustness.json").exists()
+
+
+def test_inject_z_nan_touches_only_z_at_the_requested_rate():
+    rng = np.random.default_rng(0)
+    inst = ObservedInstance(
+        "s", np.where(rng.random(2000) < 0.3, np.nan, 1.0), pd.DataFrame(rng.normal(size=(2000, 3)))
+    )
+    holes = inject_z_nan(inst, 0.10, seed=5)
+    assert abs(holes.z.isna().to_numpy().mean() - 0.10) < 0.01
+    np.testing.assert_array_equal(holes.y, inst.y)
+    assert not inst.z.isna().any().any()  # a instância original não muda
+    np.testing.assert_array_equal(holes.z.isna().to_numpy(), inject_z_nan(inst, 0.10, seed=5).z.isna().to_numpy())

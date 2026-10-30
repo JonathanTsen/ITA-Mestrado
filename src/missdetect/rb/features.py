@@ -14,6 +14,10 @@ Regras (Cap3, `sec:m_descriptors`):
 
 Grupos: G0 taxa; G1 forma de Y observado; G2 máscara × auxiliares; G3 Y dado Z (mediação); G4 análogo observável
 do 1º teste do MechDetect.
+
+NaN nas auxiliares (só no ensaio do passo 40, item 6; 30/10/2026): o HGB trata NaN nativamente; a logística recebe a
+mediana do treino; AUC, KS e informação mútua usam os pares completos de cada auxiliar. Esses desvios só rodam quando Z
+tem NaN: com Z completo, o cálculo é o original, idêntico ao congelado.
 """
 
 import numpy as np
@@ -21,6 +25,7 @@ import pandas as pd
 from scipy import stats
 from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostingRegressor
 from sklearn.feature_selection import mutual_info_classif
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -38,7 +43,10 @@ SEED = 0
 def canonicalize(y: np.ndarray, z: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     """Ordem canônica das colunas (pela sua soma e variância) e das linhas (lexicográfica nos valores observados)."""
     zv = z.to_numpy(dtype=float)
-    col_keys = np.lexsort((np.round(zv.var(axis=0), 10), np.round(zv.sum(axis=0), 8)))
+    if np.isnan(zv).any():  # passo 40, item 6 (NaN em Z): estatísticas sem os NaN; Z completo segue o caminho original
+        col_keys = np.lexsort((np.round(np.nanvar(zv, axis=0), 10), np.round(np.nansum(zv, axis=0), 8)))
+    else:
+        col_keys = np.lexsort((np.round(zv.var(axis=0), 10), np.round(zv.sum(axis=0), 8)))
     zv = zv[:, col_keys]
     mask = np.isnan(y)
     y_key = np.where(mask, np.inf, y)
@@ -67,7 +75,9 @@ def _cv_auc(x: np.ndarray, m: np.ndarray, model: str, n_folds: int = N_FOLDS, se
     folds = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
     scores = []
     for train, test in folds.split(x, m):
-        if model == "logistic":
+        if model == "logistic" and np.isnan(x).any():  # NaN em Z (passo 40): mediana do treino antes da logística
+            clf = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(), LogisticRegression(max_iter=1000))
+        elif model == "logistic":
             clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
         else:
             clf = HistGradientBoostingClassifier(max_iter=100, early_stopping=False, random_state=seed)
@@ -134,15 +144,28 @@ def compute(instance: ObservedInstance) -> dict:
     # G2: máscara × auxiliares
     out["g2_cv_auc_logistic"] = float(np.nanmean(_cv_auc(z, m, "logistic")))
     out["g2_cv_auc_boosting"] = float(np.nanmean(_cv_auc(z, m, "boosting")))
+    z_has_nan = bool(np.isnan(z).any())
     uni_auc, ks = [], []
     for j in range(z.shape[1]):
-        zj = z[:, j]
-        a = _auc(m.astype(int), zj)
+        zj, mj = z[:, j], m
+        if z_has_nan:  # NaN em Z (passo 40): pares completos da auxiliar
+            ok = ~np.isnan(zj)
+            zj, mj = zj[ok], m[ok]
+        a = _auc(mj.astype(int), zj) if len(zj) else np.nan
         uni_auc.append(abs(a - 0.5) if np.isfinite(a) else np.nan)
-        ks.append(stats.ks_2samp(zj[m], zj[~m]).statistic if m.any() and (~m).any() else np.nan)
+        ks.append(stats.ks_2samp(zj[mj], zj[~mj]).statistic if mj.any() and (~mj).any() else np.nan)
     out.update(_agg("g2_univariate_auc_dev", uni_auc))
     out.update(_agg("g2_ks", ks))
-    mi = mutual_info_classif(z, m, random_state=SEED) if m.any() and (~m).any() else np.full(z.shape[1], np.nan)
+    if not (m.any() and (~m).any()):
+        mi = np.full(z.shape[1], np.nan)
+    elif z_has_nan:  # NaN em Z: uma auxiliar por vez, nos pares completos (Z completo usa a chamada conjunta original)
+        mi = np.array([
+            mutual_info_classif(z[~np.isnan(z[:, j]), j : j + 1], m[~np.isnan(z[:, j])], random_state=SEED)[0]
+            if (~np.isnan(z[:, j])).sum() > 3 else np.nan
+            for j in range(z.shape[1])
+        ])  # fmt: skip
+    else:
+        mi = mutual_info_classif(z, m, random_state=SEED)
     out.update(_agg("g2_mutual_information", list(mi)))
 
     # G3: Y dado Z (mediação), só com as linhas observadas para ajustar
