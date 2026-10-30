@@ -91,6 +91,9 @@ class ResponseCache:
             raise ValueError(f"tentativa {attempt} fora de 0..{MAX_ATTEMPTS - 1}")
         _write_once(self._dir(key) / f"attempt-{attempt}.json", {**record, "key": key, "attempt": attempt})
 
+    def has_attempt(self, key: str, attempt: int) -> bool:
+        return (self._dir(key) / f"attempt-{attempt}.json").exists()
+
     def attempts(self, key: str) -> list[dict]:
         out = []
         for attempt in range(MAX_ATTEMPTS):
