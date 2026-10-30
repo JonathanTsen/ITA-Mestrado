@@ -10,18 +10,22 @@ Braços, todos com as mesmas linhas e a mesma ordem de colunas da tabela cega do
 - S0, cego: exatamente o A1 da produção (colunas c0…ck, inteiros de 0 a 999), sem contexto;
 - S1, só os nomes reais das colunas, valores em 0–999;
 - S2, nomes + contexto detalhado, valores em 0–999;
-- S3, nomes + contexto detalhado + valores originais (3 algarismos significativos).
+- S3, nomes + contexto detalhado + valores originais (3 algarismos significativos);
+- decomposição do S3 (segunda rodada): S5, valores originais com colunas anônimas; S4, + nomes; S6, + contexto sem as
+  faixas típicas; S7, + contexto com as faixas deslocadas ao acaso em até ±25% da largura (documentação imperfeita).
+Conjuntos de bases: "1" (a primeira rodada) e "2" (oito domínios novos, para replicar).
 
 Uso (no ITA-Mestrado; o Flash está autorizado, o Argon não roda aqui):
-  uv run --frozen python scripts/revisao_banca/llm/contexto_sintetico.py gerar data_rb/contexto_sintetico
+  uv run --frozen python scripts/revisao_banca/llm/contexto_sintetico.py gerar data_rb/contexto_sintetico [--conjunto 2]
   uv run --frozen python -m missdetect.rb.cli inject --config configs/rb/contexto-sintetico.yaml
-  uv run --frozen python scripts/revisao_banca/llm/contexto_sintetico.py perguntar <run> [--budget-only]
-  uv run --frozen python scripts/revisao_banca/llm/contexto_sintetico.py analisar <run> <diretório de saída>
+  uv run --frozen python scripts/revisao_banca/llm/contexto_sintetico.py perguntar <run> [--config ...] [--bracos S0,S3]
+  uv run --frozen python scripts/revisao_banca/llm/contexto_sintetico.py analisar <run> <saída> [--config ...] [--bracos]
 """
 
 import argparse
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -54,7 +58,7 @@ MODEL = "gemini-3.8-flash"
 GENERATOR_SEED = 20261030
 N_ROWS = 1000
 RENDERER = "contexto-sintetico-1"
-ARMS = ("S0", "S1", "S2", "S3")
+ALL_ARMS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7")
 
 _SCALED = "Each column was rescaled by an increasing linear transformation and rounded to integers from 0 to 999."
 _RAW = "The values are the original ones, rounded to 3 significant digits."
@@ -64,7 +68,9 @@ S1_SYSTEM = S2_SYSTEM.replace(
     "You will receive a table from a dataset in CSV format.",
 )
 S3_SYSTEM = S2_SYSTEM.replace(_SCALED, _RAW)
-assert len({A3_SYSTEM, S1_SYSTEM, S2_SYSTEM, S3_SYSTEM}) == 4, "as instruções dos braços precisam diferir"
+S4_SYSTEM = S1_SYSTEM.replace(_SCALED, _RAW)  # nomes + valores originais, sem contexto
+S5_SYSTEM = A1_SYSTEM.replace(_SCALED, _RAW)  # colunas anônimas + valores originais
+assert len({A1_SYSTEM, A3_SYSTEM, S1_SYSTEM, S2_SYSTEM, S3_SYSTEM, S4_SYSTEM, S5_SYSTEM}) == 7, "instruções iguais"
 
 
 @dataclass(frozen=True)
@@ -384,6 +390,307 @@ DOMAINS = (
 )
 
 
+def _fishery(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    distance = np.exp(rng.normal(2.8, 0.5, n))
+    sea_temp = rng.normal(17, 2.5, n)
+    trip = np.clip(4 + 0.35 * distance + rng.normal(0, 2, n), 2, None)
+    fuel = np.clip(30 + 9 * distance + 4 * trip + rng.normal(0, 25, n), 10, None)
+    wave = np.clip(rng.gamma(2.5, 0.6, n), 0.1, None)
+    catch = np.clip(np.exp(5.2 + 0.03 * trip + 0.02 * distance - 0.05 * (sea_temp - 17) ** 2 - 0.25 * wave
+                           + rng.normal(0, 0.45, n)), 5, None)  # fmt: skip
+    ice = np.clip(20 + 0.35 * catch + rng.normal(0, 15, n), 0, None)
+    price = np.clip(9 - 0.004 * catch + 0.3 * wave + rng.normal(0, 0.8, n), 2, None)
+    return pd.DataFrame({
+        "distance_offshore_km": distance.round(1), "sea_temp_c": sea_temp.round(1), "trip_hours": trip.round(1),
+        "fuel_liters": fuel.round(0), "wave_height_m": wave.round(2), "catch_kg": catch.round(0), "ice_kg": ice.round(0),
+        "price_per_kg": price.round(2),
+    })  # fmt: skip
+
+
+def _emergency(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    age = rng.uniform(18, 90, n)
+    severity = rng.gamma(2.0, 1.2, n)  # gravidade latente: não é coluna
+    heart = np.clip(75 + 6 * severity + 0.05 * (age - 50) + rng.normal(0, 9, n), 40, 180)
+    temp = np.clip(36.8 + 0.25 * severity + rng.normal(0, 0.4, n), 35, 41)
+    resp = np.clip(15 + 1.5 * severity + rng.normal(0, 2.5, n), 8, 40)
+    spo2 = np.clip(98 - 1.1 * severity - 0.02 * (age - 50) + rng.normal(0, 1.2, n), 70, 100)
+    wait = np.clip(np.exp(rng.normal(3.6 - 0.25 * severity, 0.6)), 1, None)
+    stay = np.clip(np.exp(rng.normal(1.2 + 0.25 * severity + 0.006 * (age - 50), 0.45)), 0.5, None)
+    cost = np.clip(80 + 35 * severity + 1.2 * stay + rng.normal(0, 30, n), 0, None)
+    return pd.DataFrame({
+        "patient_age": age.round(0), "heart_rate_bpm": heart.round(0), "body_temp_c": temp.round(1),
+        "resp_rate_min": resp.round(1), "oxygen_sat_pct": spo2.round(1), "triage_wait_min": wait.round(0),
+        "length_of_stay_h": stay.round(1), "lab_cost": cost.round(0),
+    })  # fmt: skip
+
+
+def _bikes(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    temp = rng.normal(17, 7, n)
+    rain = rng.gamma(0.6, 4, n)
+    wind = np.clip(rng.gamma(2.5, 4, n), 0.5, None)
+    metro = np.exp(rng.normal(6.0, 0.7, n))
+    trips = np.clip(
+        np.exp(4.0 + 0.04 * temp - 0.08 * rain - 0.015 * wind - 0.0004 * metro + rng.normal(0, 0.35, n)), 1, None
+    )
+    trip_min = np.clip(14 + 0.15 * temp - 0.3 * rain + rng.normal(0, 3, n), 3, None)
+    available = np.clip(12 + 0.003 * metro - 0.05 * trips + rng.normal(0, 3, n), 0, None)
+    docks = np.clip(55 + 0.2 * trips - 0.002 * metro + rng.normal(0, 8, n), 0, 100)
+    return pd.DataFrame({
+        "temp_c": temp.round(1), "rain_mm": rain.round(1), "wind_kmh": wind.round(1), "distance_to_metro_m": metro.round(0),
+        "trips_started": trips.round(1), "avg_trip_minutes": trip_min.round(1), "bikes_available_avg": available.round(1),
+        "dock_utilization_pct": docks.round(1),
+    })  # fmt: skip
+
+
+def _water(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    occupants = np.clip(rng.normal(2.8, 1.2, n), 1, None)
+    garden = np.exp(rng.normal(3.5, 0.8, n))
+    rain = rng.gamma(2.0, 35, n)
+    temp = rng.normal(22, 4, n)
+    pressure = rng.normal(3.2, 0.5, n)
+    water = np.clip(4 + 3.2 * occupants + 0.008 * garden * np.clip(temp - 15, 0, None) - 0.01 * rain
+                    + 0.8 * (pressure - 3.2) + rng.normal(0, 2.2, n), 1, None)  # fmt: skip
+    leak = np.clip(rng.gamma(1.5, 0.8, n) + 0.3 * (pressure - 3.2), 0, None)
+    bill = 8 + 2.6 * water + 1.5 * leak + rng.normal(0, 4, n)
+    return pd.DataFrame({
+        "occupants_avg": occupants.round(1), "garden_area_m2": garden.round(0), "monthly_rain_mm": rain.round(1),
+        "avg_temp_c": temp.round(1), "supply_pressure_bar": pressure.round(2), "water_m3": water.round(1),
+        "leak_index": leak.round(2), "water_bill": bill.round(1),
+    })  # fmt: skip
+
+
+def _callcenter(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    experience = rng.gamma(2.0, 10, n)
+    calls = np.clip(rng.normal(45 + 0.25 * experience, 9), 5, None)
+    handle = np.clip(rng.normal(7.5 - 0.03 * experience, 1.4), 2, None)
+    hold = np.clip(np.exp(rng.normal(3.6 - 0.008 * experience, 0.5)), 2, None)
+    fcr = np.clip(rng.normal(68 + 0.25 * experience - 1.5 * (handle - 7.5), 7), 20, 100)
+    overtime = rng.gamma(1.6, 1.5, n)
+    csat = np.clip(7.2 + 0.03 * (fcr - 68) - 0.006 * (hold - 40) - 0.08 * overtime + rng.normal(0, 0.5, n), 0, 10)
+    absence = rng.gamma(1.4, 1.2, n) + 0.2 * overtime
+    return pd.DataFrame({
+        "experience_months": experience.round(1), "calls_per_day": calls.round(1), "avg_handle_min": handle.round(2),
+        "avg_hold_s": hold.round(0), "first_call_resolution_pct": fcr.round(1), "overtime_h_week": overtime.round(1),
+        "csat_score": csat.round(2), "absence_h_month": absence.round(1),
+    })  # fmt: skip
+
+
+def _vineyard(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    sun = rng.normal(1450, 160, n)
+    rain = np.clip(rng.normal(420, 110, n), 100, None)
+    vine_age = rng.uniform(4, 60, n)
+    crop = np.clip(4.5 - 0.03 * vine_age + 0.002 * rain + rng.normal(0, 0.7, n), 0.5, None)
+    brix = (
+        18 + 0.004 * (sun - 1450) - 0.35 * (crop - 3.5) - 0.004 * (rain - 420) + 0.02 * vine_age + rng.normal(0, 0.9, n)
+    )
+    acidity = np.clip(7.2 - 0.12 * (brix - 22) + 0.002 * (rain - 420) + rng.normal(0, 0.5, n), 3, None)
+    ph = 3.45 + 0.05 * (brix - 22) - 0.06 * (acidity - 6.5) + rng.normal(0, 0.06, n)
+    alcohol = 0.6 * brix - 0.2 + rng.normal(0, 0.25, n)
+    return pd.DataFrame({
+        "sun_hours": sun.round(0), "season_rain_mm": rain.round(0), "vine_age_years": vine_age.round(1),
+        "yield_kg_vine": crop.round(2), "sugar_brix": brix.round(1), "acidity_g_l": acidity.round(2),
+        "must_ph": ph.round(2), "alcohol_pct": alcohol.round(2),
+    })  # fmt: skip
+
+
+def _running(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    age = rng.uniform(20, 65, n)
+    mass = np.clip(rng.normal(70, 10, n), 45, None)
+    weekly = np.clip(rng.gamma(3.0, 12, n), 3, None)
+    vo2 = np.clip(rng.normal(48 - 0.25 * (age - 40) - 0.2 * (mass - 70) + 0.08 * weekly, 4), 25, 80)
+    rest_hr = np.clip(rng.normal(62 - 0.35 * (vo2 - 48), 5), 38, 95)
+    sleep = np.clip(rng.normal(7.3, 0.8, n), 4, 10)
+    pace = np.clip(rng.normal(5.6 - 0.07 * (vo2 - 48) + 0.01 * (mass - 70), 0.35), 3, 9)
+    injury = np.clip(20 + 0.25 * weekly - 3 * (sleep - 7.3) + 0.2 * (mass - 70) + rng.normal(0, 6, n), 0, 100)
+    return pd.DataFrame({
+        "age_years": age.round(0), "body_mass_kg": mass.round(1), "weekly_km": weekly.round(1), "vo2max": vo2.round(1),
+        "resting_hr": rest_hr.round(0), "sleep_hours": sleep.round(1), "avg_pace_min_km": pace.round(2),
+        "injury_risk_score": injury.round(1),
+    })  # fmt: skip
+
+
+def _retail(rng: np.random.Generator, n: int) -> pd.DataFrame:
+    footfall = np.exp(rng.normal(8.3, 0.4, n))
+    competitor = np.exp(rng.normal(1.0, 0.6, n))
+    promo = rng.gamma(2.0, 400, n)
+    temp = rng.normal(18, 7, n)
+    staff = np.clip(300 + 0.05 * footfall + rng.normal(0, 40, n), 100, None)
+    basket = np.clip(32 + 0.004 * promo + 0.3 * competitor + rng.normal(0, 5, n), 5, None)
+    sales = np.clip(footfall * basket * np.exp(rng.normal(-0.6, 0.12, n)) / 1000, 1, None)
+    shrink = np.clip(1.5 + 0.0002 * footfall - 0.001 * staff + rng.normal(0, 0.4, n), 0.05, None)
+    return pd.DataFrame({
+        "footfall_week": footfall.round(0), "competitor_distance_km": competitor.round(2), "promo_spend": promo.round(0),
+        "avg_temp_c": temp.round(1), "staff_hours": staff.round(0), "avg_basket": basket.round(2),
+        "weekly_sales_k": sales.round(1), "shrinkage_pct": shrink.round(2),
+    })  # fmt: skip
+
+
+DOMAINS_2 = (
+    Domain(
+        990101,
+        "Brackwater Coastal Fishery Landings",
+        "Landing records of the fictional Brackwater fishing cooperative (2030), joining the vessels' trip logs, the "
+        "harbour weighbridge, the fuel dock and the first-sale auction, used to set fuel subsidies and quotas. Each row "
+        "is one fishing trip of one vessel.",
+        {
+            "distance_offshore_km": "distance from the harbour to the fishing ground, in km",
+            "sea_temp_c": "sea surface temperature at the fishing ground, in degrees Celsius",
+            "trip_hours": "duration of the trip, in hours",
+            "fuel_liters": "fuel used in the trip, in litres",
+            "wave_height_m": "significant wave height during the trip, in metres",
+            "catch_kg": "total catch landed, in kg",
+            "ice_kg": "ice loaded to preserve the catch, in kg",
+            "price_per_kg": "average first-sale price at the auction, in currency units per kg",
+        },
+        "Longer and more distant trips use more fuel and catch a little more; catches are best near 17 degrees and "
+        "drop in rough seas; more catch needs more ice; prices are higher when catches are small and seas are rough.",
+        _fishery,
+    ),
+    Domain(
+        990102,
+        "St. Alder Emergency Department Visits",
+        "Visit records of the emergency department of the fictional St. Alder hospital (2031), from the triage system, "
+        "the bedside monitors and the billing of laboratory tests, used to plan staffing. Each row is one adult visit.",
+        {
+            "patient_age": "age of the patient, in years",
+            "heart_rate_bpm": "heart rate at triage, in beats per minute",
+            "body_temp_c": "body temperature at triage, in degrees Celsius",
+            "resp_rate_min": "respiratory rate at triage, in breaths per minute",
+            "oxygen_sat_pct": "blood oxygen saturation at triage, in %",
+            "triage_wait_min": "time from arrival to the first medical evaluation, in minutes",
+            "length_of_stay_h": "total time in the department, in hours",
+            "lab_cost": "cost of the laboratory tests of the visit, in currency units",
+        },
+        "Sicker patients arrive with higher heart rate, temperature and respiratory rate and lower oxygen saturation; "
+        "they are seen faster, stay longer and need more laboratory tests; older patients stay a little longer and "
+        "have slightly lower saturation.",
+        _emergency,
+    ),
+    Domain(
+        990103,
+        "Corvo City Bike-Share Stations",
+        "Daily station summaries of the fictional Corvo City bike-sharing system (2030), from the docking stations' "
+        "telemetry and the city weather service, used to rebalance bikes between stations. Each row is one station on "
+        "one day.",
+        {
+            "temp_c": "average air temperature of the day, in degrees Celsius",
+            "rain_mm": "rainfall of the day, in mm",
+            "wind_kmh": "average wind speed, in km/h",
+            "distance_to_metro_m": "distance to the nearest metro entrance, in m",
+            "trips_started": "trips started at the station in the day",
+            "avg_trip_minutes": "average duration of those trips, in minutes",
+            "bikes_available_avg": "average number of bikes available at the station during the day",
+            "dock_utilization_pct": "share of the day the docks were occupied, in %",
+        },
+        "Warm, dry and calm days have more and longer trips; stations near the metro are busier; busier stations have "
+        "fewer bikes left and more occupied docks; stations far from the metro keep more bikes.",
+        _bikes,
+    ),
+    Domain(
+        990104,
+        "Pinecrest Water Utility District Meters",
+        "Monthly meter readings of homes served by the fictional Pinecrest water utility (2031), with household data "
+        "from the customer register and weather from the district station, used to design a drought tariff. Each row "
+        "is one home in one month.",
+        {
+            "occupants_avg": "average number of people living in the home during the month",
+            "garden_area_m2": "irrigated garden area, in m2",
+            "monthly_rain_mm": "rainfall in the month, in mm",
+            "avg_temp_c": "average temperature of the month, in degrees Celsius",
+            "supply_pressure_bar": "average water pressure at the meter, in bar",
+            "water_m3": "water consumed in the month, in m3",
+            "leak_index": "leak indicator from night-time flow, higher means more leakage",
+            "water_bill": "water bill of the month, in currency units",
+        },
+        "Consumption grows with the number of occupants and, on warm months, with the garden area; rain lowers garden "
+        "watering; higher pressure raises consumption and leakage; the bill grows with consumption and leakage.",
+        _water,
+    ),
+    Domain(
+        990105,
+        "Northgate Telecom Support Center",
+        "Weekly agent records of the fictional Northgate Telecom customer support centre (2030), from the telephony "
+        "platform, the ticketing system and post-call surveys, used to plan training. Each row is one agent in one "
+        "week.",
+        {
+            "experience_months": "months since the agent was hired",
+            "calls_per_day": "average calls handled per working day",
+            "avg_handle_min": "average handling time of a call, in minutes",
+            "avg_hold_s": "average time customers waited on hold, in seconds",
+            "first_call_resolution_pct": "share of issues solved in the first call, in %",
+            "overtime_h_week": "overtime worked in the week, in hours",
+            "csat_score": "average customer satisfaction score from the survey, from 0 to 10",
+            "absence_h_month": "hours of unplanned absence in the month",
+        },
+        "More experienced agents handle more calls, faster, with shorter holds and more first-call resolutions; "
+        "satisfaction rises with first-call resolution and falls with long holds and with agent overtime; overtime "
+        "comes with more absence.",
+        _callcenter,
+    ),
+    Domain(
+        990106,
+        "Valdeluz Vineyard Harvest Lots",
+        "Harvest lots of the fictional Valdeluz wine estate (2029-2031), with weather from the estate station, "
+        "vineyard records and the cellar laboratory analysis of the must, used to decide picking dates. Each row is "
+        "one harvested lot.",
+        {
+            "sun_hours": "sunshine hours in the growing season",
+            "season_rain_mm": "rainfall in the season, in mm",
+            "vine_age_years": "age of the vines, in years",
+            "yield_kg_vine": "grapes harvested per vine, in kg",
+            "sugar_brix": "sugar content of the must, in degrees Brix",
+            "acidity_g_l": "total acidity of the must, in g/L",
+            "must_ph": "pH of the must",
+            "alcohol_pct": "potential alcohol of the wine, in % by volume",
+        },
+        "Sunnier and drier seasons give sweeter grapes; heavier crops are less sweet; older vines yield less but "
+        "sweeter fruit; sweeter musts are less acidic, with higher pH, and give wines with more alcohol.",
+        _vineyard,
+    ),
+    Domain(
+        990107,
+        "Oriel Running Club Training Log",
+        "Training log of members of the fictional Oriel running club (2031), from GPS watches, a yearly fitness test "
+        "and a wellbeing questionnaire, used by the coaches to prevent injuries. Each row is one runner in one week.",
+        {
+            "age_years": "age of the runner, in years",
+            "body_mass_kg": "body mass, in kg",
+            "weekly_km": "distance run in the week, in km",
+            "vo2max": "maximal oxygen uptake from the fitness test, in mL/kg/min",
+            "resting_hr": "resting heart rate, in beats per minute",
+            "sleep_hours": "average sleep per night, in hours",
+            "avg_pace_min_km": "average running pace, in minutes per km",
+            "injury_risk_score": "coach's injury-risk score, from 0 to 100",
+        },
+        "Fitter runners (higher VO2max) are younger, lighter and run more, have lower resting heart rate and a faster "
+        "pace (fewer minutes per km); injury risk rises with weekly distance and body mass and falls with sleep.",
+        _running,
+    ),
+    Domain(
+        990108,
+        "Bramble Mart Store Weekly Panel",
+        "Weekly panel of the fictional Bramble Mart supermarket chain (2030), from door counters, the point-of-sale "
+        "system, the marketing budget and stock audits, used to allocate staff and promotions. Each row is one store in "
+        "one week.",
+        {
+            "footfall_week": "visitors counted at the doors in the week",
+            "competitor_distance_km": "distance to the nearest competing supermarket, in km",
+            "promo_spend": "promotion spending in the week, in currency units",
+            "avg_temp_c": "average temperature of the week, in degrees Celsius",
+            "staff_hours": "staff hours worked in the week",
+            "avg_basket": "average spend per purchase, in currency units",
+            "weekly_sales_k": "sales in the week, in thousand currency units",
+            "shrinkage_pct": "stock lost to damage and theft, in % of sales",
+        },
+        "Busier stores sell more and get more staff hours; promotions and a distant competitor raise the average "
+        "basket; sales are footfall times basket times the share of visitors who buy; losses grow with footfall and "
+        "fall with staff hours.",
+        _retail,
+    ),
+)
+CONJUNTOS = {"1": DOMAINS, "2": DOMAINS_2}
+
+
 def describe(domain: Domain, table: pd.DataFrame) -> str:
     """O contexto detalhado: a história, cada coluna com significado, unidade e faixa típica (do percentil 5 ao 95 dos
     dados completos) e as relações conhecidas. Nada sobre dados faltantes."""
@@ -397,14 +704,37 @@ def describe(domain: Domain, table: pd.DataFrame) -> str:
     return text
 
 
+_RANGE = re.compile(r" \(typical range (\S+) to (\S+)\)")
+APPROX_ERROR = 0.25  # S7: cada limite da faixa desloca até ±25% da largura da faixa (documentação imperfeita)
+
+
+def without_ranges(description: str) -> str:
+    """S6: o mesmo contexto, sem as faixas típicas."""
+    return _RANGE.sub("", description)
+
+
+def approximate_ranges(description: str, seed: int) -> str:
+    """S7: o mesmo contexto, com cada limite da faixa deslocado ao acaso (semente fixa por base)."""
+    rng = np.random.default_rng(seed)
+
+    def shift(match: re.Match) -> str:
+        low, high = float(match.group(1)), float(match.group(2))
+        span = high - low
+        a, b = sorted((low + rng.uniform(-APPROX_ERROR, APPROX_ERROR) * span,
+                       high + rng.uniform(-APPROX_ERROR, APPROX_ERROR) * span))  # fmt: skip
+        return f" (typical range {a:.3g} to {b:.3g})"
+
+    return _RANGE.sub(shift, description)
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def gerar(out: Path) -> None:
+def gerar(out: Path, conjunto: str) -> None:
     (out / "csv").mkdir(parents=True, exist_ok=False)
     sources, contexts = [], {}
-    for domain in DOMAINS:
+    for domain in CONJUNTOS[conjunto]:
         table = domain.generate(np.random.default_rng([GENERATOR_SEED, domain.source_id]), N_ROWS).astype(float)
         assert list(table.columns) == list(domain.columns), domain.name
         path = out / "csv" / f"{domain.source_id}.csv"
@@ -416,10 +746,10 @@ def gerar(out: Path) -> None:
     pd.DataFrame(sources).to_csv(out / "sources.csv", index=False)
     (out / "contexts.json").write_text(json.dumps(contexts, indent=2, ensure_ascii=False), encoding="utf-8")
     manifest = {"created_at": datetime.now(UTC).isoformat(timespec="seconds"), "generator_seed": GENERATOR_SEED,
-                "n_rows": N_ROWS, "script_sha256": _sha256(Path(__file__)),
+                "conjunto": conjunto, "n_rows": N_ROWS, "script_sha256": _sha256(Path(__file__)),
                 "files": {str(p.relative_to(out)): _sha256(p) for p in sorted(out.rglob("*")) if p.is_file()}}  # fmt: skip
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"{len(DOMAINS)} bases em {out}")
+    print(f"{len(CONJUNTOS[conjunto])} bases em {out}")
 
 
 def _fmt(value: float) -> str:
@@ -428,14 +758,16 @@ def _fmt(value: float) -> str:
     return np.format_float_positional(float(f"{value:.3g}"), trim="-")
 
 
-def raw_table_csv(instance: ObservedInstance, seed: int, names: list[str]) -> str:
-    """A tabela do S3: as mesmas linhas e a mesma ordem de colunas da tabela cega, com os valores originais."""
+def raw_table_csv(instance: ObservedInstance, seed: int, names: list[str], anonymous: bool = False) -> str:
+    """A tabela com os valores originais: as mesmas linhas e a mesma ordem de colunas da tabela cega. Com
+    `anonymous`, o cabeçalho é c0…ck (S5)."""
     rng = np.random.default_rng(seed)
     n = len(instance.y)
     rows = rng.choice(n, size=min(MAX_ROWS, n), replace=False)  # o mesmo sorteio de render.blind_table
     columns = [np.asarray(instance.y, dtype=float)] + [instance.z[c].to_numpy(dtype=float) for c in instance.z.columns]
     order = rng.permutation(len(columns))
-    lines = [",".join(names[i] for i in order)]
+    header = [f"c{j}" for j in range(len(order))] if anonymous else [names[i] for i in order]
+    lines = [",".join(header)]
     for r in rows:
         lines.append(",".join(_fmt(columns[i][r]) for i in order))
     return "\n".join(lines) + "\n"
@@ -448,11 +780,15 @@ def _scaled_named_csv(instance: ObservedInstance, seed: int, names: list[str]) -
     return "\n".join(lines) + "\n"
 
 
-def prompts(instance: ObservedInstance, seed: int, target: str, description: str) -> dict[str, tuple[str, str]]:
+def prompts(
+    instance: ObservedInstance, seed: int, target: str, description: str, ranges_seed: int
+) -> dict[str, tuple[str, str]]:  # fmt: skip
     names = [target, *[str(c) for c in instance.z.columns]]
     scaled = _scaled_named_csv(instance, seed, names)
     raw = raw_table_csv(instance, seed, names)
+    raw_anonymous = raw_table_csv(instance, seed, names, anonymous=True)
     assert scaled.splitlines()[0] == raw.splitlines()[0]  # mesma ordem de colunas
+    assert raw.splitlines()[1:] == raw_anonymous.splitlines()[1:]
     assert [[v == NA_TOKEN for v in line.split(",")] for line in scaled.splitlines()[1:]] == [
         [v == NA_TOKEN for v in line.split(",")] for line in raw.splitlines()[1:]
     ]  # mesmas linhas, mesmos buracos
@@ -461,49 +797,54 @@ def prompts(instance: ObservedInstance, seed: int, target: str, description: str
         "S1": (S1_SYSTEM, scaled),
         "S2": (S2_SYSTEM, f"Description: {description}\n\nTable:\n{scaled}"),
         "S3": (S3_SYSTEM, f"Description: {description}\n\nTable:\n{raw}"),
+        "S4": (S4_SYSTEM, raw),
+        "S5": (S5_SYSTEM, raw_anonymous),
+        "S6": (S3_SYSTEM, f"Description: {without_ranges(description)}\n\nTable:\n{raw}"),
+        "S7": (S3_SYSTEM, f"Description: {approximate_ranges(description, ranges_seed)}\n\nTable:\n{raw}"),
     }
 
 
-def _panel_with_keys(run_dir: Path, config) -> dict[str, pd.DataFrame]:
+def _panel_with_keys(run_dir: Path, config, arms: tuple[str, ...]) -> dict[str, pd.DataFrame]:
     panel = build_panel(run_dir, config)
     panel = panel[panel.replicate == 0].reset_index(drop=True)  # sem a repetição de 10%, para economizar
     contexts = pd.read_parquet(run_dir / "contexts.parquet").set_index("context_id")
-    texts = json.loads((repo_root() / "data_rb" / "contexto_sintetico" / "contexts.json").read_text(encoding="utf-8"))
+    texts = json.loads((Path(config.sources.csv_dir).parent / "contexts.json").read_text(encoding="utf-8"))
     cache = ResponseCache(cache_root(run_dir, config))
-    keys: dict[str, list[str]] = {arm: [] for arm in ARMS}
-    by_context: dict[str, dict[str, set[str]]] = {}
+    keys: dict[str, list[str]] = {arm: [] for arm in arms}
+    heads: dict[str, set[str]] = {}
     for row in panel.itertuples():
         context = contexts.loc[row.context_id]
         seed = child_seed(config.root_seed, "llm_render", row.context_id)
-        description = texts[str(int(context.openml_id))]["description"]
-        for arm, (system, user) in prompts(read_observed(run_dir, row.sample_id), seed, str(context.target),
-                                           description).items():  # fmt: skip
+        source = int(context.openml_id)
+        all_prompts = prompts(read_observed(run_dir, row.sample_id), seed, str(context.target),
+                              texts[str(source)]["description"],
+                              child_seed(GENERATOR_SEED, "faixas_aproximadas", source))  # fmt: skip
+        for arm in arms:
+            system, user = all_prompts[arm]
             request = build_request(arm=f"ctx-{arm}", model=MODEL, system=system, user=user, schema=A1_SCHEMA,
                                     thinking_level="medium", max_output_tokens=32_768, renderer_version=RENDERER)  # fmt: skip
             keys[arm].append(cache.register(request))
-            if arm in ("S2", "S3"):  # o contexto e o cabeçalho são os mesmos nos três mecanismos do trio
-                head = user.split("Table:\n", 1)
-                by_context.setdefault(f"{row.context_id}-{arm}", {}).setdefault("head", set()).add(
-                    head[0] + head[1].splitlines()[0]
-                )
-    assert all(len(v["head"]) == 1 for v in by_context.values()), "contexto diferente entre os mecanismos de um trio"
-    return {arm: panel.assign(key=keys[arm]) for arm in ARMS}
+            if "Table:\n" in user:  # o contexto e o cabeçalho são os mesmos nos três mecanismos do trio
+                head, table = user.split("Table:\n", 1)
+                heads.setdefault(f"{row.context_id}-{arm}", set()).add(head + table.splitlines()[0])
+    assert all(len(v) == 1 for v in heads.values()), "contexto diferente entre os mecanismos de um trio"
+    return {arm: panel.assign(key=keys[arm]) for arm in arms}
 
 
-def perguntar(run_dir: Path, budget_only: bool) -> None:
-    config = load_config(repo_root() / "configs" / "rb" / "contexto-sintetico.yaml")
-    panels = _panel_with_keys(run_dir, config)
+def perguntar(run_dir: Path, config_path: Path, arms: tuple[str, ...], budget_only: bool) -> None:
+    config = load_config(config_path)
+    panels = _panel_with_keys(run_dir, config, arms)
     cache = ResponseCache(cache_root(run_dir, config))
     backend = GeminiBackend(load_api_keys(repo_root() / ".env"))
     work = run_dir / "contexto-sintetico" / "_work"
     work.mkdir(parents=True, exist_ok=True)
     runner = Runner(backend, cache, MODEL, events=work / "events.jsonl")
-    keys = list(dict.fromkeys(k for arm in ARMS for k in panels[arm].key))
+    keys = list(dict.fromkeys(k for arm in arms for k in panels[arm].key))
     gate = budget_gate(runner, run_dir, config, keys, "ctx", "batch", work, None)
     print("projeção:", gate.read_text().splitlines()[-1])
     if budget_only:
         return
-    runner.run_batch(keys, work / "jobs.jsonl", "rb-contexto-sintetico")
+    runner.run_batch(keys, work / "jobs.jsonl", f"rb-{config.name}")
     print("respostas no caderno:", sum(cache.first_valid(k) is not None for k in keys), "de", len(keys))
 
 
@@ -513,18 +854,28 @@ def _mcnemar(a: np.ndarray, b: np.ndarray) -> dict:
     return {"so_o_segundo_acerta": only_b, "so_o_primeiro_acerta": only_a, "p_mcnemar": float(p)}
 
 
-def analisar(run_dir: Path, out: Path) -> None:
-    config = load_config(repo_root() / "configs" / "rb" / "contexto-sintetico.yaml")
-    panels = _panel_with_keys(run_dir, config)
+PAIRS = (
+    ("S0", "S1"), ("S1", "S2"), ("S2", "S3"), ("S0", "S3"),  # a escada da primeira rodada
+    ("S0", "S5"), ("S5", "S4"), ("S4", "S6"), ("S6", "S3"), ("S3", "S7"),  # decomposição com valores originais
+    ("S0", "S4"), ("S4", "S3"), ("S4", "S7"), ("S0", "S7"),
+)  # fmt: skip
+
+
+def analisar(run_dir: Path, config_path: Path, arms: tuple[str, ...], out: Path) -> None:
+    config = load_config(config_path)
+    panels = _panel_with_keys(run_dir, config, arms)
     cache = ResponseCache(cache_root(run_dir, config))
     out.mkdir(parents=True, exist_ok=True)
-    preds = {arm: predictions_from_cache(cache, panels[arm], arm, config.root_seed) for arm in ARMS}
-    lines = ["# Contexto detalhado em bases sintéticas inventadas (exploratório; gemini-3.8-flash; 30/10/2026)", ""]
-    lines.append(
-        f"{len(preds['S0'])} instâncias por braço, 8 bases inventadas, 18 instâncias por base (6 de cada tipo)."
-    )
-    lines.append("")
-    summary = []
+    preds = {arm: predictions_from_cache(cache, panels[arm], arm, config.root_seed) for arm in arms}
+    first = next(iter(preds.values()))
+    lines = [f"# Contexto detalhado em bases inventadas ({config.name}; exploratório; {MODEL}; 30/10/2026)", ""]
+    lines += [
+        f"{len(first)} instâncias por braço, {first.family_id.nunique()} bases inventadas, 6 de cada tipo por base.",
+        "",
+    ]
+    ctx = pd.read_parquet(run_dir / "contexts.parquet")[["context_id", "beta"]]
+    inst = pd.read_parquet(run_dir / "instances.parquet")[["sample_id", "context_id"]]
+    summary, by_beta = [], []
     for arm, p in preds.items():
         proba = p[[f"p_{c}" for c in CLASSES]].to_numpy()
         m = metrics(p.y_true.to_numpy(), proba, p.y_pred.to_numpy())
@@ -533,32 +884,29 @@ def analisar(run_dir: Path, out: Path) -> None:
                         "macro_recall": m["macro_recall"], "recall_MCAR": m["recall_MCAR"], "recall_MAR": m["recall_MAR"],
                         "recall_MNAR": m["recall_MNAR"], "log_loss": m["log_loss"],
                         "macro_recall_por_base_media": per_family.macro_recall.mean()})  # fmt: skip
+        mnar = p[p.y_true == 2].merge(inst, on="sample_id").merge(ctx, on="context_id")
+        by_beta.append(mnar.assign(hit=mnar.y_pred == 2).groupby("beta").hit.mean().rename(arm))
         p.to_parquet(out / f"predicoes_{arm}.parquet", index=False)
     table = pd.DataFrame(summary)
     lines += ["## Acerto por braço", table.round(3).to_string(index=False), ""]
+    lines += ["## Recall de MNAR por força do apagamento (β)", pd.concat(by_beta, axis=1).round(2).to_string(), ""]
     correct = {arm: (p.sort_values("sample_id").y_pred.to_numpy() == p.sort_values("sample_id").y_true.to_numpy())
                for arm, p in preds.items()}  # fmt: skip
-    family = preds["S0"].sort_values("sample_id").family_id.to_numpy()
+    family = first.sort_values("sample_id").family_id.to_numpy()
     pairs = []
-    for first, second in (("S0", "S1"), ("S0", "S2"), ("S0", "S3"), ("S1", "S2"), ("S2", "S3")):
-        per = pd.DataFrame({"f": family, "a": correct[first], "b": correct[second]}).groupby("f")[["a", "b"]].mean()
+    for a, b in (pair for pair in PAIRS if pair[0] in preds and pair[1] in preds):
+        per = pd.DataFrame({"f": family, "a": correct[a], "b": correct[b]}).groupby("f")[["a", "b"]].mean()
         d = (per.b - per.a).to_numpy()
         low, high = bootstrap_hl_ci(d)
-        pairs.append({"comparação": f"{second} − {first}", "dif_acerto": float(correct[second].mean() - correct[first].mean()),
-                      "HL_por_base": hodges_lehmann(d), "ic_baixo": low, "ic_alto": high,
-                      **_mcnemar(correct[first], correct[second])})  # fmt: skip
+        pairs.append({"comparação": f"{b} − {a}", "dif_acerto": float(correct[b].mean() - correct[a].mean()),
+                      "HL_por_base": hodges_lehmann(d), "ic_baixo": low, "ic_alto": high, **_mcnemar(correct[a], correct[b])})  # fmt: skip
     lines += ["## Comparações pareadas (mesmas instâncias)", pd.DataFrame(pairs).round(3).to_string(index=False), ""]
-    for arm, p in preds.items():
-        cm = pd.crosstab(
-            p.y_true.map(dict(enumerate(CLASSES))), p.y_pred.map({-1: "falha", **dict(enumerate(CLASSES))})
-        )
-        lines += [f"## Matriz de confusão, {arm}", cm.to_string(), ""]
     usage = []
-    for arm in ARMS:
-        attempts = [a for k in panels[arm].key for a in cache.attempts(k)]
+    for arm in arms:
+        attempts = [x for k in panels[arm].key for x in cache.attempts(k)]
         usage.append({"braço": arm, "chamadas": len(attempts),
-                      "entrada_média": np.mean([a["usage"].get("prompt_token_count") or 0 for a in attempts]),
-                      "raciocínio_médio": np.mean([a["usage"].get("thoughts_token_count") or 0 for a in attempts])})  # fmt: skip
+                      "entrada_média": np.mean([x["usage"].get("prompt_token_count") or 0 for x in attempts]),
+                      "raciocínio_médio": np.mean([x["usage"].get("thoughts_token_count") or 0 for x in attempts])})  # fmt: skip
     lines += ["## Tokens", pd.DataFrame(usage).round(0).to_string(index=False)]
     (out / "relatorio.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     table.to_csv(out / "resumo.csv", index=False)
@@ -571,19 +919,27 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("gerar")
     p.add_argument("out", type=Path)
-    p = sub.add_parser("perguntar")
-    p.add_argument("run", type=Path)
-    p.add_argument("--budget-only", action="store_true")
-    p = sub.add_parser("analisar")
-    p.add_argument("run", type=Path)
-    p.add_argument("out", type=Path)
+    p.add_argument("--conjunto", choices=sorted(CONJUNTOS), default="1")
+    for name in ("perguntar", "analisar"):
+        p = sub.add_parser(name)
+        p.add_argument("run", type=Path)
+        if name == "analisar":
+            p.add_argument("out", type=Path)
+        p.add_argument("--config", type=Path, default=Path("configs/rb/contexto-sintetico.yaml"))
+        p.add_argument("--bracos", default=",".join(ALL_ARMS), help="braços separados por vírgula (padrão: todos)")
+        if name == "perguntar":
+            p.add_argument("--budget-only", action="store_true")
     args = parser.parse_args()
     if args.command == "gerar":
-        gerar(args.out)
-    elif args.command == "perguntar":
-        perguntar(args.run, args.budget_only)
+        gerar(args.out, args.conjunto)
+        return
+    arms = tuple(a.strip() for a in args.bracos.split(","))
+    if not set(arms) <= set(ALL_ARMS):
+        raise SystemExit(f"braços válidos: {ALL_ARMS}")
+    if args.command == "perguntar":
+        perguntar(args.run, args.config, arms, args.budget_only)
     else:
-        analisar(args.run, args.out)
+        analisar(args.run, args.config, arms, args.out)
 
 
 if __name__ == "__main__":
