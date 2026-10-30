@@ -19,6 +19,7 @@ descritor, num prompt de LLM ou em qualquer entrada de método. Os métodos usam
 
 import hashlib
 import json
+import os
 import platform
 import subprocess
 from dataclasses import asdict
@@ -132,6 +133,28 @@ def write_parquet(frame: pd.DataFrame, path: Path) -> None:
         raise FileExistsError(f"{path} já existe; não sobrescrevo.")
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(path, index=False)
+
+
+def write_tables_atomically(out_dir: Path, tables: dict[str, pd.DataFrame]) -> None:
+    """Grava todas as tabelas (CSV) ou nenhuma, para que uma etapa interrompida possa ser refeita (C1, 29/10/2026).
+
+    Cada tabela vai primeiro para um arquivo temporário; só quando todas foram gravadas os temporários são renomeados,
+    na ordem dada. A última tabela é o **marcador de conclusão**: se ela existe, a etapa terminou e nada é sobrescrito.
+    Se não existe, as outras saídas que estiverem no diretório são sobras de uma interrupção entre as renomeações e são
+    refeitas."""
+    names = list(tables)
+    marker = out_dir / names[-1]
+    if marker.exists():
+        raise FileExistsError(f"{marker} já existe; não sobrescrevo.")
+    tmp = {name: out_dir / f".{name}.tmp" for name in names}
+    try:
+        for name in names:
+            tables[name].to_csv(tmp[name], index=False)
+        for name in names:
+            os.replace(tmp[name], out_dir / name)
+    finally:
+        for path in tmp.values():
+            path.unlink(missing_ok=True)
 
 
 def observed_path(sample_id: str) -> str:

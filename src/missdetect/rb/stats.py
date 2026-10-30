@@ -18,7 +18,8 @@ Para cada hipótese "método × comparador", sobre os escores por família (macr
 
 Família confirmatória principal (Holm m = 6): H1, H2 (diferença), H2e (equivalência), H3, H5 (fora do gerador, contra a
 logística simples treinada no mesmo gerador) e H6 (AUC MAR × MNAR contra a logística simples). A H4 (LLM) é uma
-família própria (m = 1). Uma hipótese que não puder rodar entra no Holm da sua família com p = 1.
+família própria (m = 1). Uma hipótese que não puder rodar (tabela ausente, método ausente ou menos de 2 famílias
+pareadas) entra no Holm da sua família com p = 1, numa linha com o motivo na decisão ("não rodou: …"); m não muda.
 
 Tabela de decisão (uma única regra, pré-registrada):
 - teste de diferença: "superior" ou "inferior" se o p ajustado < 0,05, pelo sinal do Hodges–Lehmann. Se |HL| < δ, o
@@ -41,6 +42,11 @@ N_BOOT = 10_000
 SEED = 20261101
 BAYES_SAMPLES = 50_000
 BAYES_PRIOR = 0.5
+MIN_PAIRED_FAMILIES = 2
+
+
+class HypothesisUnavailable(ValueError):
+    """A hipótese não pode rodar com os dados disponíveis; entra no Holm com p = 1 (pré-registro, seção 5)."""
 
 
 @dataclass(frozen=True)
@@ -173,9 +179,17 @@ ORDER = ("H1", "H2", "H2e", "H3", "H5", "H6")
 H4 = ("llm_a1", PRIMARY)
 
 
-def _pair(per_family: pd.DataFrame, method: str, comparator: str, metric: str) -> tuple[np.ndarray, np.ndarray]:
+def _pair(per_family: pd.DataFrame | None, method: str, comparator: str, metric: str) -> tuple[np.ndarray, np.ndarray]:
+    """Escores pareados por família; `HypothesisUnavailable` quando a comparação não pode ser feita."""
+    if per_family is None or per_family.empty or metric not in per_family:
+        raise HypothesisUnavailable(f"tabela de escores ausente ou sem a métrica {metric}")
+    absent = [m for m in (method, comparator) if m not in set(per_family.method)]
+    if absent:
+        raise HypothesisUnavailable(f"método ausente: {', '.join(absent)}")
     wide = per_family.pivot(index="family_id", columns="method", values=metric)
     pair = wide[[method, comparator]].dropna()
+    if len(pair) < MIN_PAIRED_FAMILIES:
+        raise HypothesisUnavailable(f"{len(pair)} família(s) pareada(s)")
     return pair[method].to_numpy(float), pair[comparator].to_numpy(float)
 
 
@@ -201,15 +215,43 @@ def _raw_equivalence(per_family: pd.DataFrame, name: str, method: str, comparato
     return _describe(name, method, comparator, "tost", a, b, wilcoxon_tost(a - b))
 
 
+def _unavailable(name: str, method: str, comparator: str, test: str, reason: str) -> dict:
+    """Linha de uma hipótese que não rodou: p = 1 no Holm e o motivo na decisão."""
+    nan = float("nan")
+    return {
+        "hypothesis": name, "method": method, "comparator": comparator, "test": test, "n_families": 0,
+        "mean_diff": nan, "sd_diff": nan, "hodges_lehmann": nan, "ci_low": nan, "ci_high": nan, "rank_biserial": nan,
+        "p_value": 1.0, "p_left": nan, "p_rope": nan, "p_right": nan, "unavailable": reason,
+    }  # fmt: skip
+
+
+def _hypothesis_row(
+    per_family: pd.DataFrame | None, name: str, method: str, comparator: str, metric: str, test: str
+) -> dict:
+    """Uma hipótese da família confirmatória: o teste, ou a linha de "não rodou" com p = 1."""
+    try:
+        if test == "tost":
+            return _raw_equivalence(per_family, name, method, comparator, metric)
+        return _raw_comparison(per_family, name, method, comparator, metric)
+    except HypothesisUnavailable as exc:
+        return _unavailable(name, method, comparator, test, str(exc))
+
+
 def _adjust(raw: list[dict], extra_p: dict[str, float] | None = None) -> pd.DataFrame:
     """Holm sobre todas as hipóteses da família (inclusive as que não rodaram, com p = 1) e rótulo de decisão."""
     p_values = {r["hypothesis"]: r["p_value"] for r in raw} | (extra_p or {})
     adjusted = holm(p_values)
     rows = []
     for r in raw:
+        fields = {k: v for k, v in r.items() if k != "unavailable"}
         p_holm = adjusted[r["hypothesis"]]
-        label = decide_equivalence(p_holm) if r["test"] == "tost" else decide(p_holm, r["hodges_lehmann"])
-        rows.append(asdict(Comparison(**r, p_holm=p_holm, decision=label)))
+        if "unavailable" in r:
+            label = f"não rodou: {r['unavailable']}"
+        elif r["test"] == "tost":
+            label = decide_equivalence(p_holm)
+        else:
+            label = decide(p_holm, r["hodges_lehmann"])
+        rows.append(asdict(Comparison(**fields, p_holm=p_holm, decision=label)))
     return pd.DataFrame(rows)
 
 
@@ -233,31 +275,34 @@ def confirmatory(
     - `auc_mar_mnar`: AUC MAR × MNAR por família, colunas `family_id`, `method` e `auc`, com a configuração primária e
       a logística simples (H6).
 
-    Uma tabela ausente faz a hipótese correspondente entrar no Holm com p = 1."""
+    Toda hipótese aparece na saída. Uma tabela ou um método ausente, ou menos de 2 famílias pareadas, faz a hipótese
+    entrar no Holm com p = 1, com o motivo na decisão; m continua 6."""
     tables = {"main": per_family_main, "cross": per_family_cross, "auc": auc_mar_mnar}
     metric = {"main": "macro_recall", "cross": "macro_recall", "auc": "auc"}
-    raw, missing = [], {}
+    raw = []
     for name in ORDER:
         if name == "H2e":
-            method, comparator, _ = DIFFERENCE["H2"]
-            raw.append(_raw_equivalence(per_family_main, name, method, comparator, "macro_recall"))
+            method, comparator, table = (*DIFFERENCE["H2"][:2], "main")
+            raw.append(_hypothesis_row(tables[table], name, method, comparator, metric[table], "tost"))
             continue
         method, comparator, table = DIFFERENCE[name]
-        if tables[table] is None:
-            missing[name] = 1.0
-        else:
-            raw.append(_raw_comparison(tables[table], name, method, comparator, metric[table]))
-    return _adjust(raw, missing)
+        raw.append(_hypothesis_row(tables[table], name, method, comparator, metric[table], "wilcoxon"))
+    return _adjust(raw)
 
 
-def llm_hypothesis(per_family_llm: pd.DataFrame) -> pd.DataFrame:
-    """H4 (LLM-A1 × configuração primária, no painel de LLM): família própria, m = 1."""
-    return _adjust([_raw_comparison(per_family_llm, "H4", H4[0], H4[1], "macro_recall")])
+def llm_hypothesis(per_family_llm: pd.DataFrame | None) -> pd.DataFrame:
+    """H4 (LLM-A1 × configuração primária, no painel de LLM): família própria, m = 1. Sem dados, p = 1 com o motivo."""
+    return _adjust([_hypothesis_row(per_family_llm, "H4", H4[0], H4[1], "macro_recall", "wilcoxon")])
 
 
 def level_estimate(per_family: pd.DataFrame, method: str = PRIMARY, metric: str = "macro_recall") -> dict:
-    """Estimando de nível: média entre famílias do escore por família, com IC95% por bootstrap de famílias."""
+    """Estimando de nível: média entre famílias do escore por família, com IC95% por bootstrap de famílias.
+
+    Sem escores do método, devolve n_families = 0 e NaN (a ausência é reportada, não vira erro)."""
     values = per_family.loc[per_family.method == method, metric].dropna().to_numpy(float)
+    if len(values) == 0:
+        nan = float("nan")
+        return {"method": method, "metric": metric, "n_families": 0, "mean": nan, "ci_low": nan, "ci_high": nan}
     low, high = bootstrap_mean_ci(values)
     return {
         "method": method, "metric": metric, "n_families": len(values), "mean": float(values.mean()),

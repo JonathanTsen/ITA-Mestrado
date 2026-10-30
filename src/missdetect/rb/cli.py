@@ -14,7 +14,8 @@ Comandos:
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
     case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
-    stats      família confirmatória H1, H2, H2e, H3, H5, H6 (Wilcoxon-Pratt, TOST, Holm m = 6) e a H4 (LLM, m = 1)
+    stats      família confirmatória H1, H2, H2e, H3, H5, H6 (Wilcoxon-Pratt, TOST, Holm m = 6); saídas gravadas juntas
+    stats-llm  H4 (LLM-A1 × configuração primária, m = 1), etapa separada, depois do painel de LLM
     oracle-features  descritores-oráculo (Y completo) para o painel oráculo; rodar antes do evaluate
     ablation   RQ2: todos os descritores × sem cada grupo G1–G4 (Holm m = 4)
     logo       leave-one-generator-out (exploratória)
@@ -36,7 +37,7 @@ from missdetect.rb.config import load_config
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
-    "cross-generator",
+    "cross-generator", "stats-llm",
 )  # fmt: skip
 NOT_YET = {
     "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
@@ -63,10 +64,13 @@ def build_parser() -> argparse.ArgumentParser:
             p.add_argument("--only-pklm", action="store_true", help="roda só o PKLM (pklm.parquet)")
         if name == "evaluate":
             p.add_argument("--generators", nargs="*", default=[], help="filtra instâncias por gerador")
-    p = sub.add_parser("stats", help="testes confirmatórios H1–H4 de um run avaliado")
+    p = sub.add_parser("stats", help="testes confirmatórios H1, H2, H2e, H3, H5, H6 de um run avaliado")
     p.add_argument("--config", type=Path, required=True)
-    p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/per_family.parquet)")
-    p.add_argument("--llm-per-family", type=Path, default=None, help="per_family.parquet do painel de LLM (H4)")
+    p.add_argument("--run", type=Path, required=True, help="diretório do run (usa eval-symmetric/ e eval-cross/)")
+    p = sub.add_parser("stats-llm", help="H4: LLM-A1 × configuração primária no painel de LLM (etapa separada)")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--run", type=Path, required=True, help="diretório do run")
+    p.add_argument("--llm-per-family", type=Path, required=True, help="per_family.parquet do painel de LLM (H4)")
     for name in (
         "oracle-features",
         "ablation",
@@ -141,7 +145,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "case-study":
         print(pipeline.run_case_study(args.model, args.registry, args.tables, config, n_jobs, args.manifest))
     elif args.command == "stats":
-        print(pipeline.run_stats(args.run, config, args.llm_per_family))
+        print(pipeline.run_stats(args.run, config))
+    elif args.command == "stats-llm":
+        print(pipeline.run_stats_llm(args.run, config, args.llm_per_family))
     return 0
 
 

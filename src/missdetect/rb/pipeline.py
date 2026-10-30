@@ -55,6 +55,7 @@ from missdetect.rb.runs import (
     sha256_path,
     write_json,
     write_parquet,
+    write_tables_atomically,
 )
 from missdetect.rb.splits import outer_splits
 from missdetect.rb.stats import (
@@ -422,10 +423,15 @@ def _h3_decomposition(per_family: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=columns)
 
 
-def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = None) -> Path:
-    """Família confirmatória principal (H1, H2, H2e, H3, H5, H6; Holm m = 6) e, com o painel de LLM, a H4 (m = 1).
+def run_stats(run_dir: Path, config: RunConfig) -> Path:
+    """Família confirmatória principal (H1, H2, H2e, H3, H5, H6; Holm m = 6). A H4 fica no `stats-llm`.
 
-    Lê `eval-symmetric/` (H1–H3 e a AUC MAR × MNAR da H6) e `eval-cross/` (H5; rode `cross-generator` antes)."""
+    Lê `eval-symmetric/` (H1–H3 e a AUC MAR × MNAR da H6) e `eval-cross/` (H5). Sem o `eval-cross`, a etapa para:
+    é um passo esquecido (rode `cross-generator` antes), não uma hipótese que não pode rodar. Uma hipótese sem dados
+    entra no Holm com p = 1, com o motivo (pré-registro, seção 5).
+
+    As saídas são gravadas juntas (C1): `stats_confirmatory.csv`, a última, marca a conclusão. Se a etapa for
+    interrompida, nada fica pela metade, e ela pode ser refeita."""
     out = run_dir / "stats_confirmatory.csv"
     if out.exists():
         raise FileExistsError(f"{out} já existe; não sobrescrevo.")
@@ -437,21 +443,33 @@ def run_stats(run_dir: Path, config: RunConfig, llm_per_family: Path | None = No
     pred = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
     auc = pd.concat([mar_mnar_auc(pred, m).assign(method=m) for m in (PRIMARY, "logit_simple")], ignore_index=True)
     result = confirmatory(main, cross, auc)
-    result.to_csv(out, index=False)
     level = [
         level_estimate(main, PRIMARY),
         level_estimate(cross, "cross_direct_hgb"),
         level_estimate(auc, PRIMARY, "auc"),
     ]
-    pd.DataFrame(level).to_csv(run_dir / "stats_level.csv", index=False)
-    auc.to_csv(run_dir / "stats_h6_auc_by_family.csv", index=False)
-    _h3_decomposition(main).to_csv(run_dir / "stats_h3_decomposition.csv", index=False)
-    extra = {"hypotheses": result.hypothesis.tolist(), "llm_panel": bool(llm_per_family)}
-    if llm_per_family:
-        llm = llm_hypothesis(pd.read_parquet(llm_per_family))
-        llm.to_csv(run_dir / "stats_llm.csv", index=False)
-    append_run_log(run_dir, config, "stats", extra)
+    write_tables_atomically(
+        run_dir,
+        {
+            "stats_level.csv": pd.DataFrame(level),
+            "stats_h6_auc_by_family.csv": auc,
+            "stats_h3_decomposition.csv": _h3_decomposition(main),
+            "stats_confirmatory.csv": result,  # por último: marcador de conclusão
+        },
+    )
+    append_run_log(run_dir, config, "stats", {"hypotheses": result.hypothesis.tolist()})
     return out
+
+
+def run_stats_llm(run_dir: Path, config: RunConfig, llm_per_family: Path) -> Path:
+    """H4 (LLM-A1 × configuração primária, no painel de LLM; família própria, m = 1), numa etapa separada (C1).
+
+    Roda depois do painel de LLM sem tocar a saída confirmatória principal (`stats_confirmatory.csv`)."""
+    result = llm_hypothesis(pd.read_parquet(llm_per_family))
+    write_tables_atomically(run_dir, {"stats_llm.csv": result})
+    extra = {"llm_per_family": str(llm_per_family), "llm_per_family_sha256": sha256_path(llm_per_family)}
+    append_run_log(run_dir, config, "stats-llm", extra)
+    return run_dir / "stats_llm.csv"
 
 
 # ---------------------------------------------------------------------------------------------------------------------

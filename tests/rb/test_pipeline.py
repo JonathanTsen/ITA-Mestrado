@@ -243,6 +243,44 @@ def test_secondary_and_stats_outputs(extended):
     assert {"learner", "descriptors"} <= set(decomposition.component)
 
 
+def test_stats_leaves_nothing_behind_when_it_fails(run, extended, tmp_path, monkeypatch):
+    """C1 (29/10): se o `stats` falha, nenhuma saída fica pela metade, e a re-execução funciona depois."""
+    run_dir, config = run
+    copy = tmp_path / "copy"
+    copy.mkdir()
+    for sub in ("eval-symmetric", "eval-cross"):
+        shutil.copytree(run_dir / sub, copy / sub)
+
+    def boom(per_family):
+        raise RuntimeError("falha no meio")
+
+    monkeypatch.setattr(pipeline, "_h3_decomposition", boom)
+    with pytest.raises(RuntimeError):
+        pipeline.run_stats(copy, config)
+    assert not list(copy.glob("stats_*")) and not list(copy.glob(".stats_*"))
+    monkeypatch.undo()
+    pipeline.run_stats(copy, config)
+    assert (copy / "stats_confirmatory.csv").exists() and (copy / "stats_level.csv").exists()
+
+
+def test_stats_llm_is_a_separate_step(run, extended, tmp_path):
+    """C1 (29/10): a H4 roda depois da produção, sem tocar a saída confirmatória principal."""
+    run_dir, config = run
+    before = (run_dir / "stats_confirmatory.csv").read_bytes()
+    rng = np.random.default_rng(0)
+    rows = [{"method": m, "family_id": f, "macro_recall": rng.uniform(0.3, 0.7)}
+            for m in ("llm_a1", "direct_hgb") for f in range(8)]  # fmt: skip
+    path = tmp_path / "llm_per_family.parquet"
+    pd.DataFrame(rows).to_parquet(path, index=False)
+    out = pipeline.run_stats_llm(run_dir, config, path)
+    res = pd.read_csv(out)
+    assert list(res.hypothesis) == ["H4"] and res.n_families.iloc[0] == 8
+    assert (run_dir / "stats_confirmatory.csv").read_bytes() == before
+    assert json.loads((run_dir / "run.stats-llm.json").read_text())["llm_per_family_sha256"]
+    with pytest.raises(FileExistsError):
+        pipeline.run_stats_llm(run_dir, config, path)
+
+
 def test_transfer_predicts_every_real_instance(extended):
     run_dir, transfer_dir = extended
     pred = pd.read_parquet(transfer_dir / "predictions.parquet")

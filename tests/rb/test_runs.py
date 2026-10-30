@@ -16,6 +16,7 @@ from missdetect.rb.runs import (
     read_observed,
     write_observed,
     write_parquet,
+    write_tables_atomically,
 )
 
 
@@ -63,3 +64,28 @@ def test_no_label_in_observed(tmp_path):
     assert set(vars(back)) == {"sample_id", "y", "z"}
     with pytest.raises(ValueError):
         observed_path("MNAR-1")
+
+
+class _Boom:
+    def to_csv(self, *args, **kwargs):
+        raise RuntimeError("falha no meio da gravação")
+
+
+def test_tables_are_written_all_or_nothing(tmp_path):
+    """C1 (29/10): uma etapa interrompida não deixa saída pela metade; o último arquivo marca a conclusão."""
+    good = pd.DataFrame({"a": [1]})
+    with pytest.raises(RuntimeError):
+        write_tables_atomically(tmp_path, {"x.csv": good, "y.csv": _Boom(), "marker.csv": good})
+    assert not list(tmp_path.iterdir())  # nem arquivo final nem temporário
+    write_tables_atomically(tmp_path, {"x.csv": good, "marker.csv": good})
+    assert {p.name for p in tmp_path.iterdir()} == {"x.csv", "marker.csv"}
+    with pytest.raises(FileExistsError):
+        write_tables_atomically(tmp_path, {"x.csv": good, "marker.csv": good})
+
+
+def test_leftovers_of_an_interrupted_rename_are_redone(tmp_path):
+    """Sem o marcador (último arquivo), saídas que já existem são sobras de uma interrupção e são refeitas."""
+    (tmp_path / "x.csv").write_text("parcial", encoding="utf-8")
+    write_tables_atomically(tmp_path, {"x.csv": pd.DataFrame({"a": [1]}), "marker.csv": pd.DataFrame({"a": [2]})})
+    assert pd.read_csv(tmp_path / "x.csv").a.tolist() == [1]
+    assert pd.read_csv(tmp_path / "marker.csv").a.tolist() == [2]

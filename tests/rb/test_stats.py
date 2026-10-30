@@ -127,3 +127,42 @@ def test_level_estimate_has_a_bootstrap_interval():
     truth = main[main.method == "direct_hgb"].macro_recall.mean()
     assert level["mean"] == pytest.approx(truth)
     assert level["ci_low"] < truth < level["ci_high"] and level["n_families"] == 40
+
+
+def test_level_estimate_without_the_method_is_empty_not_an_error():
+    main, _, _ = _inputs()
+    level = level_estimate(main, "ausente")
+    assert level["n_families"] == 0 and np.isnan(level["mean"]) and np.isnan(level["ci_low"])
+
+
+# Pré-registro, seção 5: uma hipótese que não puder rodar entra no Holm com p = 1, e m continua 6 (emenda C1, 29/10).
+def test_missing_method_enters_holm_with_p_one_and_a_reason():
+    main, cross, auc = _inputs()
+    res = confirmatory(main[main.method != "mechdetect_obs"], cross, auc).set_index("hypothesis")
+    assert list(res.index) == ["H1", "H2", "H2e", "H3", "H5", "H6"]
+    h1 = res.loc["H1"]
+    assert h1.p_value == 1.0 and h1.p_holm == 1.0 and h1.n_families == 0
+    assert h1.decision.startswith("não rodou") and "mechdetect_obs" in h1.decision
+    others = res.drop(index="H1")
+    assert others.p_holm.min() == pytest.approx(min(6 * others.p_value.min(), 1.0))  # m continua 6
+    assert res.loc["H3", "decision"] == "superior"
+
+
+def test_missing_table_enters_holm_with_p_one():
+    main, _, auc = _inputs()
+    res = confirmatory(main, None, auc).set_index("hypothesis")
+    assert len(res) == 6 and res.loc["H5", "p_value"] == 1.0
+    assert res.loc["H5", "decision"].startswith("não rodou")
+
+
+def test_too_few_paired_families_is_unavailable():
+    main, cross, auc = _inputs()
+    lonely = cross[(cross.method != "cross_logit_simple") | (cross.family_id == 0)]  # só 1 família pareada
+    res = confirmatory(main, lonely, auc).set_index("hypothesis")
+    assert res.loc["H5", "decision"].startswith("não rodou") and res.loc["H5", "p_value"] == 1.0
+
+
+def test_llm_hypothesis_without_the_llm_method_does_not_crash():
+    res = llm_hypothesis(_per_family({"direct_hgb": 0.0}, n=30)).set_index("hypothesis")
+    assert list(res.index) == ["H4"] and res.loc["H4", "p_value"] == 1.0
+    assert res.loc["H4", "decision"].startswith("não rodou")
