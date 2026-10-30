@@ -12,7 +12,8 @@ Fluxo, por modelo e braço:
    - `predictions.parquet`: a resposta válida de cada instância, ou falha (probabilidades uniformes, classe −1).
      Empate no máximo é desfeito por sorteio com semente da instância;
    - `per_family.parquet`: o LLM e a configuração primária restrita às mesmas instâncias (média das 3 repetições da
-     CV principal), que é a entrada do `stats-llm` (H4). Só sai se o `eval-symmetric` já existir;
+     CV principal), que é a entrada do `stats-llm` (H4). Sem o `eval-symmetric`, a etapa faz as chamadas e para antes
+     das saídas; repetida depois do `evaluate`, monta tudo sem pagar de novo;
    - `repeat.parquet` e `repeat_agreement.csv`: a segunda consulta e a concordância (κ de Cohen e diferença de
      macro-recall), descritivas;
    - `usage.csv` e `summary.json`: tokens, custo, planos, versões do modelo, janela das chamadas e o SHA-256 do caderno.
@@ -175,13 +176,10 @@ def repeat_agreement(predictions: pd.DataFrame) -> pd.DataFrame:
     )  # fmt: skip
 
 
-def h4_per_family(run_dir: Path, predictions: pd.DataFrame) -> pd.DataFrame | None:
+def h4_per_family(run_dir: Path, predictions: pd.DataFrame) -> pd.DataFrame:
     """LLM × configuração primária nas mesmas instâncias (a primária: média das 3 repetições da CV principal)."""
-    path = run_dir / "eval-symmetric" / "predictions.parquet"
-    if not path.exists():
-        return None
     llm = predictions[predictions.replicate == 0]
-    primary = pd.read_parquet(path)
+    primary = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
     primary = primary[(primary.method == PRIMARY) & primary.sample_id.isin(llm.sample_id)]
     columns = ["method", "repeat", "family_id", "sample_id", "y_true", "y_pred", *[f"p_{c}" for c in CLASSES]]
     per_family, _ = summarize_by_family(pd.concat([llm[columns], primary[columns]], ignore_index=True))
@@ -242,6 +240,14 @@ def run_llm(
         runner.run_sync(keys)
     else:
         runner.run_batch(keys, work / "jobs.jsonl", f"rb-{config.name}-{arm}")
+    if not (run_dir / "eval-symmetric" / "predictions.parquet").exists():
+        note = work / "aguardando-eval-symmetric.txt"
+        note.write_text(
+            "As respostas estão no caderno. A tabela da H4 precisa das predições da CV principal: rode o evaluate e "
+            "repita este comando (nenhuma pergunta é paga de novo).\n",
+            encoding="utf-8",
+        )
+        return note
     predictions = predictions_from_cache(cache, panel, arm, config.root_seed)
     usage = usage_table(cache, panel, model)
     main = predictions[predictions.replicate == 0]
@@ -270,9 +276,7 @@ def run_llm(
     predictions[predictions.replicate == 1].to_parquet(tmp / "repeat.parquet", index=False)
     repeat_agreement(predictions).to_csv(tmp / "repeat_agreement.csv", index=False)
     usage.to_csv(tmp / "usage.csv", index=False)
-    per_family = h4_per_family(run_dir, predictions)
-    if per_family is not None:
-        per_family.to_parquet(tmp / "per_family.parquet", index=False)
+    h4_per_family(run_dir, predictions).to_parquet(tmp / "per_family.parquet", index=False)
     (tmp / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
     tmp.rename(out_dir)
     append_run_log(run_dir, config, f"llm-{model}-{arm}", {k: v for k, v in summary.items() if k != "model_versions"})

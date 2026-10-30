@@ -171,3 +171,16 @@ def test_a2_prompt_is_only_the_descriptors(run):
     assert all(set(json.loads(u)) == set(DESCRIPTORS) for u in users)
     cache = ResponseCache(cache_root(run_dir, config))
     assert cache.digest()
+
+
+def test_without_the_primary_predictions_the_calls_are_made_and_the_outputs_wait(run):
+    run_dir, config = run
+    saved = run_dir / "eval-symmetric-saved"
+    (run_dir / "eval-symmetric").rename(saved)
+    fake = Fake(_mcar_always)
+    note = run_llm(run_dir, config, model=FLASH, arm="A1", mode="sync", backend=fake, sleep=lambda s: None)
+    assert note.name == "aguardando-eval-symmetric.txt" and not (run_dir / "llm" / FLASH / "A1").exists()
+    calls = len(fake.generated)
+    saved.rename(run_dir / "eval-symmetric")
+    out = run_llm(run_dir, config, model=FLASH, arm="A1", mode="sync", backend=fake, sleep=lambda s: None)
+    assert (out / "per_family.parquet").exists() and len(fake.generated) == calls == 20
