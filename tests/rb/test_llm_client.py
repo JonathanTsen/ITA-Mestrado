@@ -17,9 +17,11 @@ from missdetect.rb.llm.client import (
     generation_config,
     is_daily_quota,
     load_api_keys,
+    openapi_schema,
     require_authorization,
     retry_delay,
 )
+from missdetect.rb.llm.render import A1_SCHEMA
 
 FLASH, ARGON = "gemini-3.8-flash", "gemini-4-argon"
 VALID = '{"MCAR": 0.2, "MAR": 0.3, "MNAR": 0.5}'
@@ -124,8 +126,19 @@ def test_generation_config_sends_no_sampling_parameters_nor_tools():
     assert config.temperature is None and config.top_p is None and config.top_k is None and config.seed is None
     assert config.tools is None
     assert config.thinking_config.thinking_level == types.ThinkingLevel.MEDIUM
-    assert config.response_json_schema == {"type": "object"} and config.response_mime_type == "application/json"
+    assert config.response_json_schema is None and config.response_mime_type == "application/json"
+    assert config.response_schema.type == types.Type.OBJECT
     assert generation_config({**_request(), "schema": None}).response_mime_type is None
+
+
+def test_schema_goes_as_openapi_because_batch_ignores_json_schema():
+    """30/10: no lote, o response_json_schema foi ignorado e o response_schema, respeitado (diagnóstico em _audit)."""
+    schema = openapi_schema(A1_SCHEMA)
+    assert schema.property_ordering == ["MCAR", "MAR", "MNAR"] and schema.required == ["MCAR", "MAR", "MNAR"]
+    assert schema.properties["MAR"].type == types.Type.NUMBER and schema.properties["MAR"].maximum == 1
+    legacy = {k: v for k, v in _request().items() if k != "schema_transport"}
+    with pytest.raises(ValueError, match="schema_transport"):
+        generation_config(legacy)
 
 
 def test_sync_stores_metadata_and_never_pays_twice(tmp_path):

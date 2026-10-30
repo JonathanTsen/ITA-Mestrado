@@ -54,6 +54,10 @@ USAGE_FIELDS = (
 )  # fmt: skip
 
 Validator = Callable[[str | None], tuple[Any, str | None]]
+# O esquema vai como `response_schema` (subconjunto OpenAPI): em 30/10/2026, o modo de lote ignorou o
+# `response_json_schema` (só manteve o JSON) e respeitou o `response_schema`; no síncrono, os dois são aplicados
+# (results_rb/_audit/20261030-schema-lote). O formato de envio faz parte da pergunta (e da chave do caderno).
+SCHEMA_TRANSPORT = "openapi"
 
 
 class AuthorizationRequired(PermissionError):
@@ -81,7 +85,7 @@ def build_request(
     return {
         "arm": arm, "model": model, "system": system, "user": user, "schema": schema,
         "thinking_level": thinking_level, "max_output_tokens": max_output_tokens,
-        "renderer_version": renderer_version, "replicate": replicate,
+        "renderer_version": renderer_version, "replicate": replicate, "schema_transport": SCHEMA_TRANSPORT,
     }  # fmt: skip
 
 
@@ -96,11 +100,27 @@ def contents_of(request: dict) -> Any:  # str ou list[types.Content]; as uniões
     ]
 
 
+def openapi_schema(schema: dict) -> types.Schema:
+    """O subconjunto de JSON Schema que usamos (objeto, número, texto com enum, obrigatórios, faixa) em OpenAPI."""
+    kind = {"object": types.Type.OBJECT, "number": types.Type.NUMBER, "integer": types.Type.INTEGER,
+            "string": types.Type.STRING, "boolean": types.Type.BOOLEAN}[schema["type"]]  # fmt: skip
+    fields: dict[str, Any] = {"type": kind}
+    if "properties" in schema:
+        fields["properties"] = {name: openapi_schema(sub) for name, sub in schema["properties"].items()}
+        fields["property_ordering"] = list(schema["properties"])
+    for key in ("required", "enum", "minimum", "maximum"):
+        if key in schema:
+            fields[key] = schema[key]
+    return types.Schema(**fields)
+
+
 def generation_config(request: dict) -> types.GenerateContentConfig:
     """Só raciocínio, esquema e teto de saída: nenhum parâmetro de amostragem nem ferramenta (P20)."""
     extra: dict[str, Any] = {}
     if request["schema"] is not None:
-        extra = {"response_mime_type": "application/json", "response_json_schema": request["schema"]}
+        if request.get("schema_transport") != SCHEMA_TRANSPORT:
+            raise ValueError("pergunta sem o formato de envio do esquema (schema_transport); refaça o registro")
+        extra = {"response_mime_type": "application/json", "response_schema": openapi_schema(request["schema"])}
     return types.GenerateContentConfig(
         system_instruction=request["system"],
         thinking_config=types.ThinkingConfig(thinking_level=request["thinking_level"]),
