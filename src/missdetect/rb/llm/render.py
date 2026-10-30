@@ -79,11 +79,20 @@ def scale_to_int(values: np.ndarray) -> np.ndarray:
     return np.rint((v - low) / (high - low) * SCALE_MAX)
 
 
+def _draw_rows(n: int, rng: np.random.Generator) -> np.ndarray:
+    return rng.choice(n, size=min(MAX_ROWS, n), replace=False)
+
+
+def llm_rows(n: int, seed: int) -> np.ndarray:
+    """As linhas que o A1 mostra (o primeiro sorteio da semente), para a sensibilidade de 200 linhas da H4."""
+    return _draw_rows(n, np.random.default_rng(seed))
+
+
 def blind_table(instance: ObservedInstance, seed: int) -> pd.DataFrame:
     """Tabela cega do A1: ≤ 200 linhas sorteadas, colunas permutadas e renomeadas, inteiros de 0 a 999 por coluna."""
     rng = np.random.default_rng(seed)
     n = len(instance.y)
-    rows = rng.choice(n, size=min(MAX_ROWS, n), replace=False)
+    rows = _draw_rows(n, rng)
     columns = [np.asarray(instance.y, dtype=float)] + [instance.z[c].to_numpy(dtype=float) for c in instance.z.columns]
     order = rng.permutation(len(columns))
     return pd.DataFrame({f"c{j}": scale_to_int(columns[i][rows]) for j, i in enumerate(order)})

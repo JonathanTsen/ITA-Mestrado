@@ -13,6 +13,7 @@ from missdetect.rb.llm.render import (
     MAX_ROWS,
     NA_TOKEN,
     blind_table,
+    llm_rows,
     render_a1,
     render_a2,
     scale_to_int,
@@ -91,3 +92,12 @@ def test_schema_is_only_the_three_probabilities():
     assert set(A1_SCHEMA["properties"]) == {"MCAR", "MAR", "MNAR"}
     assert A1_SCHEMA["additionalProperties"] is False
     json.dumps(A1_SCHEMA)
+
+
+def test_llm_rows_are_the_rows_the_blind_table_shows():
+    n = 700
+    inst = ObservedInstance("s", np.arange(n, dtype=float), pd.DataFrame({"a": np.arange(n) * 2.0}))
+    table = blind_table(inst, seed=21)
+    rows = llm_rows(n, seed=21)
+    assert len(rows) == MAX_ROWS and not table.isna().any().any()
+    np.testing.assert_array_equal(np.argsort(table.c0.to_numpy()), np.argsort(rows))
