@@ -71,6 +71,7 @@ MAX_OUTPUT_TOKENS = 32_768  # teto de segurança generoso; o adendo fixa o valor
 MODES = ("sync", "batch")
 OPENML_METADATA = Path("data_rb/openml_metadata_20261022.csv")
 OPENML_DESCRIPTIONS = Path("data_rb/openml_descriptions_20261030.csv")  # texto cru congelado para o A3
+ALIASES = Path("data_rb/llm_dataset_aliases.csv")  # apelidos da sonda de nome (lista fechada, antes das sondas)
 
 
 def cache_root(run_dir: Path, config: RunConfig) -> Path:
@@ -372,6 +373,7 @@ def run_probes(
     run_dir: Path, config: RunConfig, *, model: str, mode: str, authorization: str | None = None,
     env_file: Path | None = None, max_workers: int = 4, budget_only: bool = False, backend: Backend | None = None,
     sleep: Callable[[float], None] = time.sleep, today: date | None = None, metadata: Path | None = None,
+    aliases: Path | None = None,
 ) -> Path:  # fmt: skip
     """Sondas de memorização (P21) nas famílias do painel: tabela crua (covariável) e renderização cega do A1 (critério
     de exclusão da H4). Saídas em `<run>/llm/<modelo>/probes/`: `results.csv`, `excluded_families.csv` e `summary.json`.
@@ -389,6 +391,7 @@ def run_probes(
     tables = probes.probe_tables(
         run_dir, build_panel(run_dir, config), Path(config.sources.csv_dir),
         pd.read_csv(metadata or repo_root() / OPENML_METADATA), work, config.root_seed,
+        pd.read_csv(alias_file) if (alias_file := aliases or repo_root() / ALIASES).exists() else None,
     )  # fmt: skip
 
     def battery(llm: probes.ProbeLLM) -> list[dict]:
@@ -396,7 +399,7 @@ def run_probes(
         with (work / "tabmemcheck.log").open("a", encoding="utf-8") as log:
             for row in tables.itertuples():
                 seed = child_seed(config.root_seed, "llm_probe", row.family_id, row.table) % 2**31
-                result = probes.run_battery(row.path, llm, seed, row.name, log)
+                result = probes.run_battery(row.path, llm, seed, list(row.names), log)
                 rows.append({"family_id": row.family_id, "openml_id": row.openml_id, "name": row.name,
                              "table": row.table, **result})  # fmt: skip
         return rows
@@ -426,7 +429,8 @@ def run_probes(
     usage = [a for k in keys for a in cache.attempts(k)]
     summary = {
         "model": model, "mode": mode, "thinking_level": probes.THINKING_LEVEL, "probes_version": probes.PROBES_VERSION,
-        "thresholds": probes.THRESHOLDS, "n_tables": len(results), "n_questions": len(keys),
+        "thresholds": probes.THRESHOLDS, "aliases": str(aliases or repo_root() / ALIASES),
+        "n_tables": len(results), "n_questions": len(keys),
         "n_failed_questions": len(failed), "n_calls": len(usage),
         "cost_usd": float(sum(budget.response_cost(model, a) for a in usage)),
         "recognized_raw": int(results[results.table == "raw"].recognized.sum()),

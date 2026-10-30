@@ -288,3 +288,17 @@ def test_a3_uses_real_names_and_the_neutral_description(run):
     pd.read_csv(descriptions).iloc[:1].to_csv(bad, index=False)
     with pytest.raises(ValueError, match="sem descrição"):
         run_llm(run_dir, config, model=FLASH, arm="A3", mode="sync", backend=fake, descriptions=bad, budget_only=True)
+
+
+def test_name_matching_uses_the_alias_list_and_feature_test_has_a_chance_baseline(tmp_path):
+    from missdetect.rb.llm.probes import feature_chance, name_matches
+
+    assert name_matches("This is Breast Cancer Wisconsin (Original)", ["BNG(breast-w)", "breast cancer wisconsin"])
+    assert not name_matches("Statlog (Shuttle)", ["BNG(breast-w)", "breast cancer wisconsin"])
+    assert not name_matches("pc4", ["pc3"])
+    csv = tmp_path / "t.csv"
+    pd.DataFrame({"a": [1, 1, 1, 1, 2, 3, 4, 5, 6, 7], "b": range(10)}).to_csv(csv, index=False)
+    share, p_value = feature_chance(csv, "a", matches=4, n_queries=10)
+    assert share == pytest.approx(0.4) and p_value > 0.05  # 4 de 10 é o que o chute da moda daria
+    share, p_value = feature_chance(csv, "b", matches=4, n_queries=10)
+    assert share == pytest.approx(0.1) and p_value < 0.05

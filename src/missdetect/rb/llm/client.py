@@ -81,12 +81,16 @@ def build_request(
     *, arm: str, model: str, system: str, user: str | list[dict], schema: dict | None, thinking_level: str,
     max_output_tokens: int, renderer_version: str, replicate: int = 0,
 ) -> dict:  # fmt: skip
-    """A pergunta inteira, como entra na chave do caderno de respostas."""
-    return {
+    """A pergunta inteira, como entra na chave do caderno de respostas. O formato de envio do esquema só entra quando
+    há esquema (as sondas não têm)."""
+    request = {
         "arm": arm, "model": model, "system": system, "user": user, "schema": schema,
         "thinking_level": thinking_level, "max_output_tokens": max_output_tokens,
-        "renderer_version": renderer_version, "replicate": replicate, "schema_transport": SCHEMA_TRANSPORT,
+        "renderer_version": renderer_version, "replicate": replicate,
     }  # fmt: skip
+    if schema is not None:
+        request["schema_transport"] = SCHEMA_TRANSPORT
+    return request
 
 
 def contents_of(request: dict) -> Any:  # str ou list[types.Content]; as uniões do SDK não aceitam list[Content]

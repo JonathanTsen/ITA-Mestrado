@@ -9,7 +9,10 @@ temperatura, e um teto pequeno seria gasto no raciocínio e a resposta viria vaz
 - **linhas:** 10 perguntas; conta as linhas completadas literalmente;
 - **atributo:** 10 perguntas, no atributo com mais valores distintos; conta os valores exatos;
 - **nome:** as 5 primeiras linhas, com o cabeçalho, e "qual é o nome desta base?" (sonda própria: a do pacote não devolve
-  o resultado). Acerto = a resposta contém o nome do OpenML, normalizado; a resposta crua fica para conferência.
+  o resultado). Acerto = a resposta contém o nome do OpenML ou um apelido da lista fechada
+  (`data_rb/llm_dataset_aliases.csv`, montada antes das sondas confirmatórias), normalizados; a resposta crua fica
+  para conferência e para a adjudicação dos casos não cobertos.
+- **linha de base do atributo:** o acerto só conta se passar do chute do valor mais frequente (binomial, p < 0,05).
 
 **Aplicação dupla (P21):** à tabela crua, com os nomes reais (covariável), e à renderização cega do A1 (critério de
 exclusão da família na H4). Na renderização cega, as linhas são sorteadas e embaralhadas: completar a próxima linha é
@@ -28,7 +31,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import binomtest
 from tabmemcheck import functions as tm
+from tabmemcheck.analysis import find_most_unique_feature
 from tabmemcheck.llm import LLM_Interface
 
 from missdetect.rb.ids import child_seed
@@ -44,7 +49,7 @@ HEADER_SPLIT_ROWS = [2, 4, 6, 8]
 N_ROW_QUERIES = 10
 N_FEATURE_QUERIES = 10
 N_NAME_ROWS = 5
-THRESHOLDS = {"header_chars": 50, "row_matches": 2, "feature_matches": 3}
+THRESHOLDS = {"header_chars": 50, "row_matches": 2, "feature_matches": 3, "feature_chance_p": 0.05}
 # Sem resposta (passada de gravação ou pergunta que falhou): um caractere que nunca aparece numa tabela, para não contar
 # acerto e para contornar o `header_test` do tabmemcheck 0.1.6, que falha quando todas as respostas vêm vazias.
 NO_ANSWER = "\x00"
@@ -84,9 +89,18 @@ def _normalize(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", name.lower()).strip()
 
 
-def name_matches(response: str, dataset_name: str) -> bool:
-    target = _normalize(dataset_name)
-    return bool(target) and f" {target} " in f" {_normalize(response)} "
+def name_matches(response: str, names: list[str]) -> bool:
+    """Acerto do nome: a resposta contém o nome do OpenML ou um apelido da lista fechada, normalizados."""
+    answer = f" {_normalize(response)} "
+    return any(target and f" {target} " in answer for target in (_normalize(n) for n in names))
+
+
+def feature_chance(csv_file: Path, feature: str, matches: int, n_queries: int) -> tuple[float, float]:
+    """Linha de base do teste de atributo: a fração do valor mais frequente do atributo (o acerto de quem chuta a moda)
+    e o p do teste binomial de ≥ `matches` acertos em `n_queries` com essa probabilidade."""
+    values = pd.read_csv(csv_file)[feature].astype(str)
+    share = float(values.value_counts(normalize=True).iloc[0])
+    return share, float(binomtest(matches, n_queries, share, alternative="greater").pvalue) if matches else 1.0
 
 
 def _common_prefix(a: str, b: str) -> int:
@@ -98,7 +112,7 @@ def _common_prefix(a: str, b: str) -> int:
     return n
 
 
-def run_battery(csv_file: Path, llm: ProbeLLM, seed: int, dataset_name: str, log) -> dict:
+def run_battery(csv_file: Path, llm: ProbeLLM, seed: int, names: list[str], log) -> dict:
     """Roda a bateria numa tabela. Com o caderno vazio, só grava as perguntas (as contagens saem zeradas)."""
     out: dict = {}
     with contextlib.redirect_stdout(log):
@@ -112,26 +126,35 @@ def run_battery(csv_file: Path, llm: ProbeLLM, seed: int, dataset_name: str, log
         out["row_matches"] = int(
             sum(bool(s.strip()) and s.strip() in a.strip() for s, a in zip(suffixes, answers, strict=True))
         )
+        feature, _ = find_most_unique_feature(str(csv_file))
         try:
             truth, guesses = tm.feature_completion_test(
-                str(csv_file), llm, num_queries=N_FEATURE_QUERIES, rng=np.random.default_rng(seed + 2)
-            )
+                str(csv_file), llm, feature_name=feature, num_queries=N_FEATURE_QUERIES,
+                rng=np.random.default_rng(seed + 2),
+            )  # fmt: skip
             out["feature_matches"] = int(
                 sum(str(t).strip() == str(g).strip() for t, g in zip(truth, guesses, strict=True))
             )
         except (ValueError, KeyError, IndexError):  # respostas vazias da passada de gravação não se deixam analisar
             out["feature_matches"] = 0
+    out["feature_name"] = feature
+    out["feature_mode_share"], out["feature_chance_p"] = feature_chance(
+        Path(csv_file), feature, out["feature_matches"], N_FEATURE_QUERIES
+    )
     rows = Path(csv_file).read_text(encoding="utf-8").splitlines()[: N_NAME_ROWS + 1]
     messages = [{"role": "system", "content": NAME_SYSTEM},
                 {"role": "user", "content": NAME_PROMPT.format(rows="\n".join(rows))}]  # fmt: skip
     answer = llm.chat_completion(messages, temperature=0.0, max_tokens=0)
     out["name_answer"] = answer
-    out["name_match"] = name_matches(answer, dataset_name)
+    out["name_match"] = name_matches(answer, names)
     out["recognized"] = bool(
         out["name_match"]
         or out["header_chars"] >= THRESHOLDS["header_chars"]
         or out["row_matches"] >= THRESHOLDS["row_matches"]
-        or out["feature_matches"] >= THRESHOLDS["feature_matches"]
+        or (
+            out["feature_matches"] >= THRESHOLDS["feature_matches"]
+            and out["feature_chance_p"] < THRESHOLDS["feature_chance_p"]
+        )
     )
     return out
 
@@ -161,8 +184,10 @@ def raw_csv(source_csv: Path, default_target: str | None, path: Path) -> Path:
     return path
 
 
-def probe_tables(run_dir: Path, panel: pd.DataFrame, csv_dir: Path, metadata: pd.DataFrame, work: Path,
-                 root_seed: int) -> pd.DataFrame:  # fmt: skip
+def probe_tables(
+    run_dir: Path, panel: pd.DataFrame, csv_dir: Path, metadata: pd.DataFrame, work: Path, root_seed: int,
+    aliases: pd.DataFrame | None = None,
+) -> pd.DataFrame:  # fmt: skip
     """Uma tabela crua e uma renderização cega por família do painel.
 
     A renderização cega é a da primeira instância (por `sample_id`) do contexto do painel com o maior k e a menor taxa,
@@ -182,6 +207,10 @@ def probe_tables(run_dir: Path, panel: pd.DataFrame, csv_dir: Path, metadata: pd
         blind = blind_csv(
             blind_table(read_observed(run_dir, chosen.sample_id), seed), work / "tables" / f"{family}-blind.csv"
         )
-        rows.append({"family_id": int(family), "openml_id": openml_id, "name": name, "table": "raw", "path": raw})
-        rows.append({"family_id": int(family), "openml_id": openml_id, "name": name, "table": "blind", "path": blind})
+        names = [name]
+        if aliases is not None:
+            names += [str(a) for a in aliases.loc[aliases.openml_id == openml_id, "alias"]]
+        for table, path in (("raw", raw), ("blind", blind)):
+            rows.append({"family_id": int(family), "openml_id": openml_id, "name": name, "names": names,
+                         "table": table, "path": path})  # fmt: skip
     return pd.DataFrame(rows)

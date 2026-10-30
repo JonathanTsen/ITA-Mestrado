@@ -257,3 +257,13 @@ def test_conversations_become_gemini_turns():
     turns = contents_of(request)
     assert [t.role for t in turns] == ["user", "model", "user"] and turns[1].parts[0].text == "b"
     assert contents_of(_request()) == "tabela"
+
+
+def test_schema_transport_only_when_there_is_a_schema():
+    """As sondas não têm esquema: o formato de envio não entra na pergunta (as chaves do piloto continuam valendo)."""
+    with_schema = _request()
+    without = build_request(
+        arm="probe", model=FLASH, system="s", user=[{"role": "user", "content": "u"}], schema=None,
+        thinking_level="low", max_output_tokens=16384, renderer_version="1",
+    )  # fmt: skip
+    assert with_schema["schema_transport"] == "openapi" and "schema_transport" not in without

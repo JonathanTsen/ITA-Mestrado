@@ -1,0 +1,11 @@
+openml_id,alias,motivo
+37,pima indians diabetes,nome da base no UCI (título da descrição do OpenML)
+37,pima,a base é conhecida pela população (Pima Indian heritage)
+151,elec2,"nome original, citado na descrição do OpenML"
+251,breast-w,a BNG(breast-w) é gerada a partir da breast-w
+251,breast cancer wisconsin,nome da breast-w no UCI
+251,wisconsin breast cancer,variante comum do mesmo nome
+44089,give me some credit,competição do Kaggle de onde vem a base
+44124,ipums,extrato do censo IPUMS de onde vem a base (kdd_ipums_la_97)
+44145,sulfur recovery unit,processo industrial que nomeia a base (descrição do OpenML)
+44980,kin8,"família kin8 (kin8nm, kin8fh, ...) de simulações do braço robótico"
