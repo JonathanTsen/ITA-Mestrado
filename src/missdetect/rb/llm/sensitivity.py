@@ -1,4 +1,7 @@
-"""Sensibilidade de 200 linhas da H4 (pré-registro §4, H4: "informação desigual, declarada"; 30/10/2026).
+"""Análises do LLM que retreinam a configuração primária (30/10/2026): a sensibilidade de 200 linhas da H4 e a
+secundária RQ4-A2.
+
+**Sensibilidade de 200 linhas** (pré-registro §4, H4: "informação desigual, declarada").
 
 O LLM vê no máximo 200 linhas sorteadas; a configuração primária vê a instância inteira. Na sensibilidade pré-registrada,
 a configuração primária é **retreinada** com subamostras de ≤ 200 linhas das instâncias de treino, nas mesmas partições,
@@ -124,4 +127,66 @@ def run_llm_sensitivity(
     extra = {"method": method, "n_instances": len(frame), "n_panel": len(panel_ids), "n_feature_failures": len(failed),
              "llm_predictions": str(llm_predictions) if llm_predictions else None}  # fmt: skip
     append_run_log(run_dir, config, "llm-sensitivity", extra)
+    return out_dir
+
+
+def run_a2_ablation(run_dir: Path, config: RunConfig, a2_predictions: Path) -> Path:
+    """Secundária RQ4-A2 (m = 1; pré-registro §6, emenda P23): pipeline + descritores do LLM × pipeline, no painel.
+
+    Os dois braços são avaliados por CV de famílias dentro do painel (mesmas partições, mesma semente): a configuração
+    primária com os 28 descritores × a mesma configuração com os 28 descritores mais as 3 probabilidades do LLM-A2
+    (uma falha do A2 entra como 1/3, 1/3, 1/3). Teste: Wilcoxon-Pratt do macro-recall por família, sem Holm (m = 1)."""
+    run_dir = Path(run_dir)
+    out_dir = run_dir / "llm-a2-ablation"
+    if out_dir.exists():
+        return out_dir
+    a2 = pd.read_parquet(a2_predictions)
+    if "replicate" in a2:
+        a2 = a2[a2.replicate == 0]
+    names = [f["name"] for f in json.loads((run_dir / "feature_schema.json").read_text())["features"]]
+    oracle = pd.read_parquet(run_dir / "oracle.parquet")[["sample_id", "mechanism"]]
+    frame = (
+        a2[["sample_id", "family_id", "p_MCAR", "p_MAR", "p_MNAR"]]
+        .rename(columns={f"p_{c}": f"llm_a2_{c}" for c in CLASSES})
+        .merge(
+            pd.read_parquet(run_dir / "features.parquet", columns=["sample_id", "feature_status", *names]),
+            on="sample_id",
+        )
+        .merge(oracle, on="sample_id")
+        .sort_values("sample_id")
+        .reset_index(drop=True)
+    )
+    ev = config.evaluate
+    seed = child_seed(config.root_seed, "model")
+    y = frame.mechanism.map({m: i for i, m in enumerate(CLASSES)}).to_numpy()
+    arms = {
+        f"direct_{ev.learner}_panel": names,
+        f"direct_{ev.learner}_panel_plus_llm_a2": [*names, *(f"llm_a2_{c}" for c in CLASSES)],
+    }
+    preds = []
+    with threadpool_limits(1):
+        for method, columns in arms.items():
+            pred, _ = run_method(
+                method, lambda: DirectClassifier(ev.learner, {}, seed), frame[columns].to_numpy(float), y,
+                frame.family_id, frame.sample_id, config.root_seed, ev.n_splits, ev.n_repeats,
+            )  # fmt: skip
+            preds.append(pred)
+    pred = pd.concat(preds, ignore_index=True)
+    failed = set(frame.loc[~frame.feature_status.eq("ok"), "sample_id"])
+    rows = pred.sample_id.isin(failed)
+    pred.loc[rows, [f"p_{c}" for c in CLASSES]] = 1 / 3
+    pred.loc[rows, ["y_pred", "status"]] = [-1, "failed: features"]
+    per_family, _ = summarize_by_family(pred)
+    plus, base = arms
+    comparison = pd.DataFrame([llm_sensitivity_row(per_family, plus, base) | {"hypothesis": "RQ4-A2"}])
+    for stale in run_dir.glob(".tmp-llm-a2-ablation-*"):
+        shutil.rmtree(stale)
+    tmp = run_dir / f".tmp-llm-a2-ablation-{os.getpid()}"
+    tmp.mkdir()
+    pred.to_parquet(tmp / "predictions.parquet", index=False)
+    per_family.to_parquet(tmp / "per_family.parquet", index=False)
+    comparison.to_csv(tmp / "rq4_a2.csv", index=False)
+    tmp.rename(out_dir)
+    append_run_log(run_dir, config, "llm-a2-ablation", {"a2_predictions": str(a2_predictions), "n_instances": len(frame),
+                                                         "n_families": int(frame.family_id.nunique())})  # fmt: skip
     return out_dir

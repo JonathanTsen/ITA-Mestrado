@@ -1,5 +1,6 @@
 """Testes da sensibilidade de 200 linhas da H4: mesmas linhas que o LLM vê, mesmas partições, saídas por família."""
 
+import dataclasses
 import json
 
 import numpy as np
@@ -89,3 +90,28 @@ def test_sensitivity_retrains_on_200_rows_in_the_same_partitions(run, tmp_path):
     assert comparison.hypothesis.tolist() == ["H4-200"] and comparison.n_families.iloc[0] == 3
     assert (run_dir / "run.llm-sensitivity.json").exists()
     assert sensitivity.run_llm_sensitivity(run_dir, config, n_jobs=1, panel_ids=panel) == out  # já feito
+
+
+def test_a2_ablation_compares_the_primary_with_and_without_llm_scores(run, tmp_path):
+    run_dir, config, _ = run
+    instances = pd.read_parquet(run_dir / "instances.parquet")
+    rng = np.random.default_rng(3)
+    features = pd.DataFrame({"sample_id": instances.sample_id, "feature_status": "ok",
+                             **{n: rng.normal(size=len(instances)) for n in NAMES}})  # fmt: skip
+    features.to_parquet(run_dir / "features.parquet", index=False)
+    oracle = pd.read_parquet(run_dir / "oracle.parquet").set_index("sample_id")
+    panel = instances[instances.context_id.str.endswith(("0.1", "0.5"))]
+    labels = panel.sample_id.map(oracle.mechanism)
+    a2 = pd.DataFrame({"method": "llm_a2", "replicate": 0, "sample_id": panel.sample_id, "family_id": panel.family_id,
+                       "p_MCAR": (labels == "MCAR") * 0.8 + 0.1, "p_MAR": (labels == "MAR") * 0.8 + 0.1,
+                       "p_MNAR": (labels == "MNAR") * 0.8 + 0.1})  # fmt: skip
+    path = tmp_path / "a2.parquet"
+    a2.to_parquet(path, index=False)
+    small = dataclasses.replace(config, evaluate=dataclasses.replace(config.evaluate, learner="logreg"))
+    out = sensitivity.run_a2_ablation(run_dir, small, path)  # o HGB não divide com 24 instâncias de treino
+    per_family = pd.read_parquet(out / "per_family.parquet")
+    wide = per_family.pivot(index="family_id", columns="method", values="macro_recall")
+    assert set(wide.columns) == {"direct_logreg_panel", "direct_logreg_panel_plus_llm_a2"} and len(wide) == 6
+    assert wide.direct_logreg_panel_plus_llm_a2.mean() > wide.direct_logreg_panel.mean() + 0.3  # o A2 sabe o rótulo
+    result = pd.read_csv(out / "rq4_a2.csv")
+    assert result.hypothesis.tolist() == ["RQ4-A2"] and result.n_families.iloc[0] == 6

@@ -15,6 +15,7 @@ Comandos:
     llm-probes sondas de memorização (P21) nas famílias do painel: tabela crua (covariável) e renderização cega do A1
                (critério de exclusão da H4); mesmas opções do llm
     llm-sensitivity  H4 com 200 linhas: primária retreinada nas subamostras que o LLM vê (mesmas partições); descritiva
+    llm-a2-ablation  secundária RQ4-A2 (P23): primária + escores do LLM-A2 × primária, CV de famílias dentro do painel
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
     case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
@@ -41,14 +42,14 @@ from pathlib import Path
 from missdetect.rb import pipeline, report, sources
 from missdetect.rb.config import load_config
 from missdetect.rb.llm.run import ARMS, MODES, build_panel, run_llm, run_probes
-from missdetect.rb.llm.sensitivity import run_llm_sensitivity
+from missdetect.rb.llm.sensitivity import run_a2_ablation, run_llm_sensitivity
 from missdetect.rb.runs import confirmatory_guard, repo_root
 
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
     "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute", "llm-probes",
-    "llm-sensitivity",
+    "llm-sensitivity", "llm-a2-ablation",
 )  # fmt: skip
 NOT_YET: dict[str, str] = {}
 
@@ -94,6 +95,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
     p.add_argument("--llm-predictions", type=Path, default=None, help="predictions.parquet do LLM-A1, para comparar")
     p.add_argument("--n-jobs", type=int, default=None)
+    p = sub.add_parser("llm-a2-ablation", help="secundária RQ4-A2: primária + escores do LLM-A2 no painel (P23)")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--run", type=Path, required=True, help="diretório do run")
+    p.add_argument("--a2-predictions", type=Path, required=True, help="predictions.parquet do LLM-A2")
     p = sub.add_parser("stats-llm", help="H4: LLM-A1 × configuração primária no painel de LLM (etapa separada)")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
@@ -205,6 +210,8 @@ def main(argv: list[str] | None = None) -> int:
         panel = build_panel(args.run, config)
         panel_ids = panel.loc[panel.replicate == 0, "sample_id"].tolist()
         print(run_llm_sensitivity(args.run, config, n_jobs, panel_ids, args.llm_predictions))
+    elif args.command == "llm-a2-ablation":
+        print(run_a2_ablation(args.run, config, args.a2_predictions))
     elif args.command == "stats-llm":
         print(pipeline.run_stats_llm(args.run, config, args.llm_per_family, args.probes))
     return 0
