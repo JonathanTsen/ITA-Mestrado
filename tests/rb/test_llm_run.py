@@ -14,6 +14,7 @@ from missdetect.rb.ids import child_seed
 from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.llm.cache import ResponseCache
 from missdetect.rb.llm.client import PAID, AuthorizationRequired
+from missdetect.rb.llm.probes import feature_chance, name_matches
 from missdetect.rb.llm.render import render_a1
 from missdetect.rb.llm.run import build_panel, cache_root, run_llm, run_probes
 from missdetect.rb.runs import read_observed, write_observed
@@ -291,8 +292,6 @@ def test_a3_uses_real_names_and_the_neutral_description(run):
 
 
 def test_name_matching_uses_the_alias_list_and_feature_test_has_a_chance_baseline(tmp_path):
-    from missdetect.rb.llm.probes import feature_chance, name_matches
-
     assert name_matches("This is Breast Cancer Wisconsin (Original)", ["BNG(breast-w)", "breast cancer wisconsin"])
     assert not name_matches("Statlog (Shuttle)", ["BNG(breast-w)", "breast cancer wisconsin"])
     assert not name_matches("pc4", ["pc3"])

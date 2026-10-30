@@ -16,6 +16,8 @@ Comandos:
                (critério de exclusão da H4); mesmas opções do llm
     llm-sensitivity  H4 com 200 linhas: primária retreinada nas subamostras que o LLM vê (mesmas partições); descritiva
     llm-a2-ablation  secundária RQ4-A2 (P23): primária + escores do LLM-A2 × primária, CV de famílias dentro do painel
+    robustness passo 40 (exploratória): prior-shift (acurácia sob prevalências realistas, correção de Saerens) e L1 com
+               MCAR raro, a partir das predições do eval-symmetric
     noise      RQ3: ruído de rótulo só no treino, mitigação com Confident Learning (pesos, poda) e flags (passo 44)
     fit-final  congela a configuração primária treinada no gerador principal de um run (SHA-256; passo 45)
     case-study aplica o modelo congelado aos casos com ausência natural do registro, sem métrica de acerto (passo 45)
@@ -39,7 +41,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from missdetect.rb import pipeline, report, sources
+from missdetect.rb import pipeline, report, robustness, sources
 from missdetect.rb.config import load_config
 from missdetect.rb.llm.run import ARMS, MODES, build_panel, run_llm, run_probes
 from missdetect.rb.llm.sensitivity import run_a2_ablation, run_llm_sensitivity
@@ -49,7 +51,7 @@ COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
     "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute", "llm-probes",
-    "llm-sensitivity", "llm-a2-ablation",
+    "llm-sensitivity", "llm-a2-ablation", "robustness",
 )  # fmt: skip
 NOT_YET: dict[str, str] = {}
 
@@ -120,6 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
         "secondary-extra",
         "inject-ampute",
         "cross-ampute",
+        "robustness",
     ):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
@@ -212,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
         panel = build_panel(args.run, config)
         panel_ids = panel.loc[panel.replicate == 0, "sample_id"].tolist()
         print(run_llm_sensitivity(args.run, config, n_jobs, panel_ids, args.llm_predictions))
+    elif args.command == "robustness":
+        print(robustness.run_robustness(args.run, config))
     elif args.command == "llm-a2-ablation":
         print(run_a2_ablation(args.run, config, args.a2_predictions))
     elif args.command == "stats-llm":
