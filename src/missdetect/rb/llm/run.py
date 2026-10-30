@@ -221,11 +221,41 @@ def budget_gate(
     return path
 
 
+def limited_summary(
+    cache: ResponseCache, keys: list[str], model: str, arm: str, mode: str, limit: int, authorization: str | None,
+    work: Path,
+) -> Path:  # fmt: skip
+    """Resumo de uso de uma execução parcial (`--limit`): validade, tokens, custo e versões, sem predições."""
+    attempts = [a for k in keys for a in cache.attempts(k)]
+    usage = [a.get("usage") or {} for a in attempts]
+
+    def mean(field: str) -> float | None:
+        values = [u.get(field) or 0 for u in usage]
+        return float(np.mean(values)) if values else None
+
+    summary = {
+        "model": model, "arm": arm, "mode": mode, "limit": limit, "n_questions": len(keys),
+        "n_valid": sum(cache.first_valid(k) is not None for k in keys), "n_calls": len(attempts),
+        "n_invalid_attempts": sum(not a.get("valid") for a in attempts),
+        "cost_usd": float(sum(budget.response_cost(model, a) for a in attempts)),
+        "mean_prompt_tokens": mean("prompt_token_count"), "mean_thoughts_tokens": mean("thoughts_token_count"),
+        "max_thoughts_tokens": max((u.get("thoughts_token_count") or 0 for u in usage), default=None),
+        "mean_output_tokens": mean("candidates_token_count"),
+        "model_versions": sorted({str(a["model_version"]) for a in attempts if a.get("model_version")}),
+        "authorization": authorization, "at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }  # fmt: skip
+    path = work / f"limit-{limit}.json"
+    path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
 def run_llm(
     run_dir: Path, config: RunConfig, *, model: str, arm: str, mode: str, authorization: str | None = None,
     env_file: Path | None = None, max_workers: int = 4, budget_only: bool = False, backend: Backend | None = None,
-    sleep: Callable[[float], None] = time.sleep, today: date | None = None,
+    sleep: Callable[[float], None] = time.sleep, today: date | None = None, limit: int | None = None,
 ) -> Path:  # fmt: skip
+    """Com `limit`, pergunta só as N primeiras perguntas distintas, na ordem de execução, e grava só um resumo de uso
+    em `<run>/llm/<modelo>/_work/<braço>/limit-<N>.json`, sem as saídas finais (o teste de ≈ 30 chamadas do Argon)."""
     if arm not in ARMS or mode not in MODES:
         raise ValueError(f"braço {arm} ou modo {mode} desconhecido")
     require_authorization(model, authorization)  # antes de abrir o cliente: o Argon nunca chama sem autorização
@@ -249,14 +279,18 @@ def run_llm(
         backend, cache, model, authorization=authorization, max_workers=max_workers, events=work / "events.jsonl",
         sleep=sleep,
     )  # fmt: skip
-    gate = budget_gate(runner, run_dir, config, list(panel.key), arm, mode, work, today)
+    keys = list(dict.fromkeys(panel.key))
+    if limit is not None:
+        keys = keys[:limit]
+    gate = budget_gate(runner, run_dir, config, keys, arm, mode, work, today)
     if budget_only:
         return gate
-    keys = list(dict.fromkeys(panel.key))
     if mode == "sync":
         runner.run_sync(keys)
     else:
         runner.run_batch(keys, work / "jobs.jsonl", f"rb-{config.name}-{arm}")
+    if limit is not None:
+        return limited_summary(cache, keys, model, arm, mode, limit, authorization, work)
     if not (run_dir / "eval-symmetric" / "predictions.parquet").exists():
         note = work / "aguardando-eval-symmetric.txt"
         note.write_text(

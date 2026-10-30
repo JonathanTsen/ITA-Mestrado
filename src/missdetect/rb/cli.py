@@ -90,6 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--env-file", type=Path, default=None, help="arquivo .env com as chaves (padrão: raiz do repo)")
         p.add_argument("--max-workers", type=int, default=4, help="chamadas síncronas em paralelo")
         p.add_argument("--budget-only", action="store_true", help="só conta tokens e projeta o custo, sem gerar")
+        if name == "llm":
+            p.add_argument("--limit", type=int, default=None, help="só as N primeiras perguntas (ex.: teste do Argon)")
     p = sub.add_parser("llm-sensitivity", help="H4 com 200 linhas (primária retreinada; descritiva)")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
@@ -197,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "llm":
         out = run_llm(
             args.run, config, model=args.model, arm=args.arm, mode=args.mode, authorization=args.authorization,
-            env_file=args.env_file, max_workers=args.max_workers, budget_only=args.budget_only,
+            env_file=args.env_file, max_workers=args.max_workers, budget_only=args.budget_only, limit=args.limit,
         )  # fmt: skip
         print(out)
     elif args.command == "llm-probes":

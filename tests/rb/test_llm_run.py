@@ -10,11 +10,13 @@ import pytest
 from google.genai import types
 
 from missdetect.rb.config import parse_config
+from missdetect.rb.ids import child_seed
 from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.llm.cache import ResponseCache
 from missdetect.rb.llm.client import PAID, AuthorizationRequired
+from missdetect.rb.llm.render import render_a1
 from missdetect.rb.llm.run import build_panel, cache_root, run_llm, run_probes
-from missdetect.rb.runs import write_observed
+from missdetect.rb.runs import read_observed, write_observed
 from missdetect.rb.stats import PRIMARY
 
 FLASH = "gemini-3.8-flash"
@@ -243,3 +245,23 @@ def test_probes_exclude_a_family_recognized_in_the_blind_rendering(run):
     assert pd.read_csv(out / "excluded_families.csv").family_id.tolist() == [1]
     with pytest.raises(AuthorizationRequired):
         run_probes(run_dir, config, model="gemini-4-argon", mode="batch", backend=fake, metadata=metadata)
+
+
+def test_limit_asks_only_the_first_questions_and_writes_only_a_usage_summary(run):
+    """Teste do Argon (≈ 30 chamadas): --limit pergunta só as N primeiras, na ordem de execução, sem saídas finais."""
+    run_dir, config = run
+    fake = Fake(_mcar_always)
+    path = run_llm(run_dir, config, model=FLASH, arm="A1", mode="sync", backend=fake, sleep=lambda s: None, limit=5)
+    assert len(fake.generated) == 5 and not (run_dir / "llm" / FLASH / "A1").exists()
+    summary = json.loads(path.read_text())
+    assert summary["n_questions"] == 5 and summary["n_valid"] == 5 and summary["cost_usd"] > 0
+    assert summary["mean_thoughts_tokens"] == 500 and summary["limit"] == 5
+    order = build_panel(run_dir, config)
+    first = order[order.replicate == 0].sample_id.iloc[0]
+    assert render_a1_user_of(run_dir, config, first) in {r["user"] for r in fake.generated}
+
+
+def render_a1_user_of(run_dir, config, sample_id):
+    contexts = pd.read_parquet(run_dir / "instances.parquet").set_index("sample_id").context_id
+    seed = child_seed(config.root_seed, "llm_render", contexts.loc[sample_id])
+    return render_a1(read_observed(run_dir, sample_id), seed)
