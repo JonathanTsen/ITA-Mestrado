@@ -1,7 +1,7 @@
 """Referência do experimento do contexto (30/10/2026): o classificador do ensaio (modelo final congelado, treinado nas
 8 famílias reais de desenvolvimento) aplicado aos 144 casos das bases inventadas, que ele também nunca viu.
 Atenção: o classificador vê a instância inteira (1.000 linhas); o LLM vê 200.
-Uso: .venv/bin/python classificador.py <run sintético> <final_model> <saída>
+Uso: uv run --frozen python scripts/revisao_banca/llm/contexto_classificador.py <run sintético> <final_model> <saída>
 """
 
 import sys
@@ -20,7 +20,7 @@ from missdetect.rb.pipeline import load_final
 from missdetect.rb.runs import read_observed
 
 run, model_dir, out = (Path(a) for a in sys.argv[1:4])
-config = load_config(Path("configs/rb/contexto-sintetico.yaml"))
+config = load_config(Path("configs/rb/contexto-sintetico.yaml"))  # só a root_seed importa para o painel
 panel = build_panel(run, config)
 panel = panel[panel.replicate == 0].reset_index(drop=True)
 model, meta = load_final(model_dir)
