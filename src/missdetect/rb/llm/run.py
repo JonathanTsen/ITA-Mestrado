@@ -21,6 +21,7 @@ Fluxo, por modelo e braço:
 O log do run (`run.llm-<modelo>-<braço>.json`) é gravado por último e marca a etapa como concluída.
 """
 
+import hashlib
 import json
 import os
 import shutil
@@ -36,7 +37,7 @@ from sklearn.metrics import cohen_kappa_score
 from missdetect.rb.config import RunConfig
 from missdetect.rb.evaluate import metrics, summarize_by_family
 from missdetect.rb.ids import child_rng, child_seed
-from missdetect.rb.llm import budget
+from missdetect.rb.llm import budget, probes
 from missdetect.rb.llm.cache import CLASSES, ResponseCache
 from missdetect.rb.llm.client import (
     FREE,
@@ -57,6 +58,7 @@ ARMS = {"A1": (A1_SYSTEM, A1_SCHEMA), "A2": (A2_SYSTEM, A2_SCHEMA)}
 THINKING_LEVEL = "medium"
 MAX_OUTPUT_TOKENS = 32_768  # teto de segurança generoso; o adendo fixa o valor a partir do piloto (P20)
 MODES = ("sync", "batch")
+OPENML_METADATA = Path("data_rb/openml_metadata_20261022.csv")
 
 
 def cache_root(run_dir: Path, config: RunConfig) -> Path:
@@ -186,6 +188,39 @@ def h4_per_family(run_dir: Path, predictions: pd.DataFrame) -> pd.DataFrame:
     return per_family
 
 
+def _request_text(request: dict) -> str:
+    user = request["user"] if isinstance(request["user"], str) else "\n\n".join(m["content"] for m in request["user"])
+    return request["system"] + "\n\n" + user
+
+
+def budget_gate(
+    runner: Runner, run_dir: Path, config: RunConfig, keys: list[str], arm: str, mode: str, work: Path,
+    today: date | None,
+) -> Path:  # fmt: skip
+    """Trava do orçamento (P22), antes de qualquer geração: conta os tokens de entrada do que falta perguntar
+    (`countTokens` do Flash), projeta com a média de saída já observada e recusa se gasto + 1,5 × projeção > teto.
+    Cada conferência é acrescentada a `budget.jsonl`."""
+    root = cache_root(run_dir, config)
+    backend, cache, model = runner.backend, runner.cache, runner.model
+    counter = budget.TokenCounter(backend, root / "token_counts.json", PAID if PAID in backend.tiers() else FREE)
+    counts = [counter.count(k, _request_text(cache.request(k))) for k in dict.fromkeys(runner.pending(keys))]
+    mean_out = budget.observed_output_tokens(root, model, arm) or budget.DEFAULT_OUTPUT_TOKENS
+    when = today or datetime.now(UTC).date()
+    projected = budget.projection_usd(model, when, counts, mean_out, batch=mode == "batch")
+    spent = budget.spent_usd(root)
+    check = {
+        "at": datetime.now(UTC).isoformat(timespec="seconds"), "model": model, "arm": arm, "mode": mode,
+        "n_pending": len(counts), "mean_input_tokens": float(np.mean(counts)) if counts else 0.0,
+        "mean_output_tokens_assumed": mean_out, "projected_usd": projected, "spent_usd": spent,
+        "margin": budget.MARGIN, "cap_usd": budget.CAP_USD, "prices": budget.PRICES[model],
+    }  # fmt: skip
+    path = work / "budget.jsonl"
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(check, default=str) + "\n")
+    budget.check_budget(spent, projected)
+    return path
+
+
 def run_llm(
     run_dir: Path, config: RunConfig, *, model: str, arm: str, mode: str, authorization: str | None = None,
     env_file: Path | None = None, max_workers: int = 4, budget_only: bool = False, backend: Backend | None = None,
@@ -214,27 +249,9 @@ def run_llm(
         backend, cache, model, authorization=authorization, max_workers=max_workers, events=work / "events.jsonl",
         sleep=sleep,
     )  # fmt: skip
-    pending = runner.pending(panel.key)
-    counter = budget.TokenCounter(
-        backend, cache_root(run_dir, config) / "token_counts.json", PAID if PAID in backend.tiers() else FREE
-    )
-    system = ARMS[arm][0]
-    counts = [counter.count(k, system + "\n\n" + cache.request(k)["user"]) for k in dict.fromkeys(pending)]
-    mean_out = budget.observed_output_tokens(cache_root(run_dir, config), model, arm) or budget.DEFAULT_OUTPUT_TOKENS
-    when = today or datetime.now(UTC).date()
-    projected = budget.projection_usd(model, when, counts, mean_out, batch=mode == "batch")
-    spent = budget.spent_usd(cache_root(run_dir, config))
-    check = {
-        "at": datetime.now(UTC).isoformat(timespec="seconds"), "model": model, "arm": arm, "mode": mode,
-        "n_pending": len(counts), "mean_input_tokens": float(np.mean(counts)) if counts else 0.0,
-        "mean_output_tokens_assumed": mean_out, "projected_usd": projected, "spent_usd": spent,
-        "margin": budget.MARGIN, "cap_usd": budget.CAP_USD, "prices": budget.PRICES[model],
-    }  # fmt: skip
-    with (work / "budget.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(check, default=str) + "\n")
+    gate = budget_gate(runner, run_dir, config, list(panel.key), arm, mode, work, today)
     if budget_only:
-        return work / "budget.jsonl"
-    budget.check_budget(spent, projected)
+        return gate
     keys = list(dict.fromkeys(panel.key))
     if mode == "sync":
         runner.run_sync(keys)
@@ -280,4 +297,82 @@ def run_llm(
     (tmp / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
     tmp.rename(out_dir)
     append_run_log(run_dir, config, f"llm-{model}-{arm}", {k: v for k, v in summary.items() if k != "model_versions"})
+    return out_dir
+
+
+def run_probes(
+    run_dir: Path, config: RunConfig, *, model: str, mode: str, authorization: str | None = None,
+    env_file: Path | None = None, max_workers: int = 4, budget_only: bool = False, backend: Backend | None = None,
+    sleep: Callable[[float], None] = time.sleep, today: date | None = None, metadata: Path | None = None,
+) -> Path:  # fmt: skip
+    """Sondas de memorização (P21) nas famílias do painel: tabela crua (covariável) e renderização cega do A1 (critério
+    de exclusão da H4). Saídas em `<run>/llm/<modelo>/probes/`: `results.csv`, `excluded_families.csv` e `summary.json`.
+    """
+    if mode not in MODES:
+        raise ValueError(f"modo {mode} desconhecido")
+    require_authorization(model, authorization)
+    run_dir = Path(run_dir)
+    out_dir = run_dir / "llm" / model / "probes"
+    if out_dir.exists():
+        return out_dir
+    work = run_dir / "llm" / model / "_work" / "probes"
+    work.mkdir(parents=True, exist_ok=True)
+    cache = ResponseCache(cache_root(run_dir, config))
+    tables = probes.probe_tables(
+        run_dir, build_panel(run_dir, config), Path(config.sources.csv_dir),
+        pd.read_csv(metadata or repo_root() / OPENML_METADATA), work, config.root_seed,
+    )  # fmt: skip
+
+    def battery(llm: probes.ProbeLLM) -> list[dict]:
+        rows = []
+        with (work / "tabmemcheck.log").open("a", encoding="utf-8") as log:
+            for row in tables.itertuples():
+                seed = child_seed(config.root_seed, "llm_probe", row.family_id, row.table) % 2**31
+                result = probes.run_battery(row.path, llm, seed, row.name, log)
+                rows.append({"family_id": row.family_id, "openml_id": row.openml_id, "name": row.name,
+                             "table": row.table, **result})  # fmt: skip
+        return rows
+
+    recorder = probes.ProbeLLM(cache, model)
+    battery(recorder)  # passada 1: só grava as perguntas
+    keys = list(dict.fromkeys(recorder.keys))
+    if backend is None:
+        backend = GeminiBackend(load_api_keys(env_file or repo_root() / ".env"))
+    runner = Runner(
+        backend, cache, model, authorization=authorization, validator=probes.text_validator, max_workers=max_workers,
+        events=work / "events.jsonl", sleep=sleep,
+    )  # fmt: skip
+    gate = budget_gate(runner, run_dir, config, keys, "probe", mode, work, today)
+    if budget_only:
+        return gate
+    if mode == "sync":
+        runner.run_sync(keys)
+    else:
+        runner.run_batch(keys, work / "jobs.jsonl", f"rb-{config.name}-probes")
+    reader = probes.ProbeLLM(cache, model)
+    results = pd.DataFrame(battery(reader))  # passada 2: lê as respostas
+    if list(dict.fromkeys(reader.keys)) != keys:
+        raise RuntimeError("as perguntas das sondas mudaram entre as passadas; as sementes não fixaram o tabmemcheck")
+    failed = [k for k in keys if cache.first_valid(k) is None]
+    excluded = results[(results.table == "blind") & results.recognized][["family_id", "openml_id", "name"]]
+    usage = [a for k in keys for a in cache.attempts(k)]
+    summary = {
+        "model": model, "mode": mode, "thinking_level": probes.THINKING_LEVEL, "probes_version": probes.PROBES_VERSION,
+        "thresholds": probes.THRESHOLDS, "n_tables": len(results), "n_questions": len(keys),
+        "n_failed_questions": len(failed), "n_calls": len(usage),
+        "cost_usd": float(sum(budget.response_cost(model, a) for a in usage)),
+        "recognized_raw": int(results[results.table == "raw"].recognized.sum()),
+        "recognized_blind": len(excluded), "excluded_families": excluded.family_id.tolist(),
+        "excluded_sha256": hashlib.sha256(excluded.to_csv(index=False).encode()).hexdigest(),
+        "cache_digest": cache.digest(), "authorization": authorization,
+    }  # fmt: skip
+    for stale in (run_dir / "llm" / model).glob(".tmp-probes-*"):
+        shutil.rmtree(stale)
+    tmp = run_dir / "llm" / model / f".tmp-probes-{os.getpid()}"
+    tmp.mkdir(parents=True)
+    results.to_csv(tmp / "results.csv", index=False)
+    excluded.to_csv(tmp / "excluded_families.csv", index=False)
+    (tmp / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
+    tmp.rename(out_dir)
+    append_run_log(run_dir, config, f"llm-probes-{model}", summary)
     return out_dir

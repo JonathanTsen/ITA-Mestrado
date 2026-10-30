@@ -74,7 +74,7 @@ def load_api_keys(env_file: Path) -> dict[str, str]:
 
 
 def build_request(
-    *, arm: str, model: str, system: str, user: str, schema: dict | None, thinking_level: str,
+    *, arm: str, model: str, system: str, user: str | list[dict], schema: dict | None, thinking_level: str,
     max_output_tokens: int, renderer_version: str, replicate: int = 0,
 ) -> dict:  # fmt: skip
     """A pergunta inteira, como entra na chave do caderno de respostas."""
@@ -83,6 +83,17 @@ def build_request(
         "thinking_level": thinking_level, "max_output_tokens": max_output_tokens,
         "renderer_version": renderer_version, "replicate": replicate,
     }  # fmt: skip
+
+
+def contents_of(request: dict) -> Any:  # str ou list[types.Content]; as uniões do SDK não aceitam list[Content]
+    """A mensagem do usuário, ou uma conversa (lista de {"role", "content"}, papéis user/assistant) nas sondas."""
+    user = request["user"]
+    if isinstance(user, str):
+        return user
+    return [
+        types.Content(role="model" if m["role"] == "assistant" else "user", parts=[types.Part(text=m["content"])])
+        for m in user
+    ]
 
 
 def generation_config(request: dict) -> types.GenerateContentConfig:
@@ -175,7 +186,7 @@ class GeminiBackend:
 
     def generate(self, tier: str, request: dict) -> Any:
         return self._clients[tier].models.generate_content(
-            model=request["model"], contents=request["user"], config=generation_config(request)
+            model=request["model"], contents=contents_of(request), config=generation_config(request)
         )
 
     def count_tokens(self, tier: str, model: str, text: str) -> int:
@@ -310,7 +321,7 @@ class Runner:
         size = 0
         for item in pending:
             request = self.cache.request(item[0])
-            chars = len(request["user"]) + len(request["system"])
+            chars = len(json.dumps(request["user"])) + len(request["system"])
             if not chunks or len(chunks[-1]) >= BATCH_MAX_REQUESTS or size + chars > BATCH_MAX_CHARS:
                 chunks.append([])
                 size = 0
@@ -323,7 +334,9 @@ class Runner:
                 request = self.cache.request(key)
                 metadata = {"key": key, "attempt": str(attempt)}
                 inlined.append(
-                    types.InlinedRequest(contents=request["user"], config=generation_config(request), metadata=metadata)
+                    types.InlinedRequest(
+                        contents=contents_of(request), config=generation_config(request), metadata=metadata
+                    )
                 )
             job = self.backend.batch_create(self.model, inlined, display_name)
             _append_jsonl(

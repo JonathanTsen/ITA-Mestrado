@@ -13,6 +13,7 @@ from missdetect.rb.llm.client import (
     AuthorizationRequired,
     Runner,
     build_request,
+    contents_of,
     generation_config,
     is_daily_quota,
     load_api_keys,
@@ -235,3 +236,11 @@ def test_failed_batch_is_resubmitted_by_run_batch(tmp_path):
     backend.batch_create = create_done
     runner.run_batch(keys, jobs, "piloto", poll_seconds=0)
     assert runner.cache.first_valid(keys[0])["batch_job"] != first
+
+
+def test_conversations_become_gemini_turns():
+    request = {**_request(), "user": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"},
+                                      {"role": "user", "content": "c"}]}  # fmt: skip
+    turns = contents_of(request)
+    assert [t.role for t in turns] == ["user", "model", "user"] and turns[1].parts[0].text == "b"
+    assert contents_of(_request()) == "tabela"
