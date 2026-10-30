@@ -149,3 +149,33 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 5. `llm-sensitivity`, `llm-a2-ablation` e `stats-llm --probes`.
 
 Nenhuma chamada ao Argon roda sem a autorização explícita do autor, pedida antes de cada execução (regra de 29/10/2026; trava no código).
+
+## 10. PROPOSTA H7, efeito do contexto em bases inventadas (30/10/2026; **pendente do autor e do Vitor**; não vale até ser aprovada)
+
+**De onde vem:** o experimento exploratório do autor (`scripts/revisao_banca/llm/contexto_sintetico.py`; relatório no plano da tese, `execucao/38d-piloto-llm.md`), feito em 16 bases inventadas de desenvolvimento.
+- A IA com contexto detalhado (faixas típicas aproximadas em ±25%) e valores originais (S7) acertou 0,622, contra 0,510 da tabela cega (S0): +11,1 p.p., em 12 de 16 bases, McNemar p < 0,0001.
+- Replicou em dois grupos de domínios.
+
+**Desenho proposto:**
+- **Hipótese:** em bases inventadas com documentação, o macro-recall por base do LLM com contexto e valores originais (S7) difere do da tabela cega (S0). Família própria, α = 0,05, fora do Holm de H1–H6.
+  - Opcional: H7b, S7 × configuração primária nas mesmas instâncias, com a assimetria de 200 × n linhas declarada.
+- **Dados:** 24 a 30 domínios inventados **novos**, escritos e gerados antes de qualquer rodada confirmatória, com o mesmo gerador, o mesmo molde de contexto e a mesma regra das faixas aproximadas (±25%, semente fixa). Usa o apagamento do benchmark no desenho do painel: 18 instâncias por base, 6 de cada tipo.
+- **Congelado neste adendo:**
+  - os prompts S0 e S7 por hash;
+  - o molde do contexto e a regra das faixas;
+  - o modelo pela regra do §1 (mais o Flash secundário);
+  - o raciocínio, o esquema e o lote;
+  - o código de análise: Wilcoxon-Pratt por base, HL com IC por bootstrap de bases, McNemar descritivo;
+  - as frases permitidas por desfecho.
+- **Poder** (dp por base de 0,113 nas 16 bases de desenvolvimento):
+
+  | Bases | Efeito de 7,5 p.p. | Efeito de 10 p.p. |
+  |---|---|---|
+  | 24 | 86% | 98% |
+  | 30 | 92% | ≈ 100% |
+- **Custo:** 30 bases × 18 × 2 braços = 1.080 chamadas, ≈ US$ 50 no Argon e ≈ US$ 10 no Flash, em lote. O Argon só com a autorização do autor.
+- **Limites a declarar:**
+  - as bases inventadas são mais simples que as reais;
+  - a imperfeição das faixas é simulada;
+  - nada se afirma sobre bases reais conhecidas, onde contexto e memória se confundem.
+

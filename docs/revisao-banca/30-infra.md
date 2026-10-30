@@ -113,6 +113,13 @@ stats-llm       --config $C --run <run> --llm-per-family <run>/llm/<confirmatór
 # 5. Segundo depósito no Zenodo com os SHA-256 das saídas (P4)
 ```
 
+**Experimento do contexto em bases inventadas (30/10/2026; exploratório, fora da produção):**
+- **Gerar as bases:** `scripts/revisao_banca/llm/contexto_sintetico.py gerar data_rb/contexto_sintetico[_2] [--conjunto 2]`.
+- **Gerar as instâncias:** `cli inject --config configs/rb/contexto-sintetico[-2].yaml`, que usa o apagamento do benchmark.
+- **Perguntar e analisar:** `contexto_sintetico.py perguntar <run> [--config ...] [--bracos ...]` e `contexto_sintetico.py analisar <run> <saída>`, com o Flash, em lote.
+- **Referência e poder:** `contexto_classificador.py` (o classificador congelado nos mesmos casos) e `contexto_poder.py`.
+- **Resultados:** no plano da tese, `execucao/38d-piloto-llm.md`. A proposta de H7 está no `adendo-llm.md`, §10.
+
 **Piloto de LLM (30/10/2026; só desenvolvimento):** `llm` A1 síncrono e A2 em lote, `llm-probes`, `stats-llm --probes` e `llm-a2-ablation` rodaram no run de re-execução do ensaio (`results_rb/20261030-rehearsal-dev-b4ca243467d6`) com o `gemini-3.8-flash` (≈ US$ 6,30). Relatório no plano da tese (`execucao/38d-piloto-llm.md`).
 
 **Ensaio geral (22/10/2026):** a sequência completa acima, incluindo `report`, rodou sem erro com `configs/rb/rehearsal-dev.yaml` (inject-v1 nas 8 famílias de desenvolvimento; PKLM reduzido a 2 contextos por família) no commit `f3bb944`, com a árvore limpa. Run `results_rb/20261022-rehearsal-dev-b4ca243467d6`: 1.632 instâncias, nenhuma falha em nenhuma etapa, ≈ 52 min de relógio. Tempos por instância (núcleo): descritores 1,22 s; descritores-oráculo ≈ 0,6 s; MechDetect-O 3,98 s; oráculo 3,53 s; dirty 2,36 s; PKLM 57,1 s.
