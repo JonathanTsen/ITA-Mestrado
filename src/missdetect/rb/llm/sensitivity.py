@@ -177,7 +177,7 @@ def run_a2_ablation(run_dir: Path, config: RunConfig, a2_predictions: Path) -> P
     pred.loc[rows, [f"p_{c}" for c in CLASSES]] = 1 / 3
     pred.loc[rows, ["y_pred", "status"]] = [-1, "failed: features"]
     per_family, _ = summarize_by_family(pred)
-    plus, base = arms
+    base, plus = arms  # ordem de inserção: o braço sem o LLM primeiro; HL = com o LLM − sem
     comparison = pd.DataFrame([llm_sensitivity_row(per_family, plus, base) | {"hypothesis": "RQ4-A2"}])
     for stale in run_dir.glob(".tmp-llm-a2-ablation-*"):
         shutil.rmtree(stale)

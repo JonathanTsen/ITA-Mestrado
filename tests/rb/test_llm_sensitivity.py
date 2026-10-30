@@ -115,3 +115,8 @@ def test_a2_ablation_compares_the_primary_with_and_without_llm_scores(run, tmp_p
     assert wide.direct_logreg_panel_plus_llm_a2.mean() > wide.direct_logreg_panel.mean() + 0.3  # o A2 sabe o rótulo
     result = pd.read_csv(out / "rq4_a2.csv")
     assert result.hypothesis.tolist() == ["RQ4-A2"] and result.n_families.iloc[0] == 6
+    assert (
+        result.method.iloc[0] == "direct_logreg_panel_plus_llm_a2"
+        and result.comparator.iloc[0] == "direct_logreg_panel"
+    )
+    assert result.hodges_lehmann.iloc[0] > 0  # com o LLM − sem o LLM
