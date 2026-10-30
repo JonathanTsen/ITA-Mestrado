@@ -15,6 +15,7 @@ transformação afim positiva aos dados não muda o prompt. As instruções e o 
 `prereg-v1-llm`; sem exemplos, sem prior de classes e sem limiares (passo 42, §2).
 """
 
+import html
 import json
 import re
 
@@ -71,14 +72,30 @@ Classify the missingness mechanism of the column with missing values:
 {_DEFINITIONS}"""
 
 DESCRIPTION_MAX_CHARS = 600
-# Frases que saem da descrição neutra do A3 (pré-registro: sem missing, censor, nonresponse, MCAR/MAR/MNAR nem o nome
-# da base): termos de ausência, linhas de identificação (autor, fonte, citação, título...) e o nome distintivo.
-_FORBIDDEN = re.compile(r"missing|censor|non-?response|imput|\bN/?A\b|\bMN?AR\b|\bMCAR\b", re.IGNORECASE)
-_IDENTITY = re.compile(
-    r"^\W*(\d+\W+)?(author|source|please cite|cite|citation|reference|creator|donor|title|date|licen[cs]e|copyright|"
-    r"acknowledg|past usage|relevant papers|original owner|contact)",
+# Descrição neutra do A3 (pré-registro: sem missing, censor, nonresponse, MCAR/MAR/MNAR nem o nome da base). Regras
+# gerais, fixadas olhando só as 8 tabelas de desenvolvimento (30/10/2026). A descrição do OpenML é dividida em seções
+# (cabeçalhos markdown, seções numeradas do UCI e rótulos em negrito); as de identificação saem inteiras.
+_DROP_SECTION = re.compile(
+    r"author|source|cite|citation|title|past usage|relevant paper|paper|reference|acknowledg|licen[cs]e|copyright|"
+    r"owner|donor|contact|creator|missing|date|number of",
     re.IGNORECASE,
 )
+_MD_HEADER = re.compile(r"^\s*#{1,6}\s*(?P<title>.+?)\s*$")
+_UCI_HEADER = re.compile(r"^\s*\(?(\d{1,2}|[a-z])[.)]\s+(?P<title>[A-Z][A-Za-z /&-]{2,40}):(?P<rest>.*)$")
+_BOLD_LABEL = re.compile(r"^\s*\*\*(?P<title>[^*]{2,40})\*\*\s*:(?P<rest>.*)$")
+_FORBIDDEN = re.compile(r"missing|censor|non-?response|imput|\bN/?A\b|\bMN?AR\b|\bMCAR\b", re.IGNORECASE)
+_PROVENANCE = re.compile(
+    r"\b(named|known as|called|described by|analy[sz]ed by|converted by|collected by|created by|donated by|"
+    r"prepared by|provided by|normali[sz]ed by|benchmark|et al\b|proceedings|journal|transactions|ieee|acm\b|"
+    r"springer|doi\b|isbn|university|institute|laboratory|appendix|repository|version \d|original source|"
+    r"give credit|if you use)",
+    re.IGNORECASE,
+)
+_CITATION = re.compile(r"\((1[89]|20)\d\d\)|[A-Z]\.,?\s?[A-Z]\.|\b[A-Z][a-z]+,\s?[A-Z]\.|\b[A-Z]\.\s[A-Z][a-z]+\b")
+# fim de frase: depois de minúscula, dígito ou parêntese, ou de palavra em maiúsculas com 2+ letras ("MCAR."), mas não de
+# inicial de nome ("J. Gama")
+_SENTENCE_END = re.compile(r"(?:(?<=[a-z0-9)\]][.!?])|(?<=[A-Z]{2}[.!?]))\s+(?=[A-Z(])")
+_ITEM_PREFIX = re.compile(r"^(original description|data description|attribute description|description)\s*:?\s*", re.I)
 
 
 def _distinctive(name: str) -> bool:
@@ -92,25 +109,55 @@ def _normalized(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
-def neutral_description(text: str, dataset_name: str) -> str:
-    """Descrição neutra do OpenML para o A3: sem links, e-mails e formatação; sem as frases com termos de ausência,
-    as linhas de identificação e o nome distintivo da base; até 600 caracteres, cortada no fim de uma frase."""
-    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text or "")
-    text = re.sub(r"https?://\S+|www\.\S+|\S+@\S+", "", text)
-    text = re.sub(r"[*_`#>|]+", " ", text)
-    pieces = []
+def _sections(text: str) -> list[tuple[str, list[str]]]:
+    """(título, itens) de cada seção; um item é uma linha de lista ou um parágrafo (linhas seguidas juntadas)."""
+    sections: list[tuple[str, list[str]]] = [("", [])]
     for line in text.splitlines():
-        if _IDENTITY.match(line):
+        header = _MD_HEADER.match(line) or _UCI_HEADER.match(line) or _BOLD_LABEL.match(line)
+        if header:
+            rest = header.groupdict().get("rest") or ""
+            sections.append((header.group("title"), [rest.strip()] if rest.strip() else []))
+            if header.re is _BOLD_LABEL:  # rótulo em negrito vale só para a própria linha
+                sections.append(("", []))
             continue
-        pieces.extend(re.split(r"(?<=[.!?])\s+", line))
+        items = sections[-1][1]
+        stripped = line.strip()
+        if not stripped:
+            items.append("")
+        elif re.match(r"^[*\-•]\s", stripped) or not items or items[-1] == "":
+            items.append(re.sub(r"^[*\-•]\s+", "", stripped))
+        else:
+            items[-1] = f"{items[-1]} {stripped}"
+    return [(title, [i for i in items if i]) for title, items in sections]
+
+
+def neutral_description(text: str, dataset_name: str) -> str:
+    """Descrição neutra do OpenML para o A3:
+    - tira entidades HTML, links, e-mails e formatação;
+    - descarta as seções de identificação inteiras (autor, fonte, citação, título, uso anterior, artigos, dono,
+      datas, licença) e a de valores ausentes;
+    - nas demais, descarta as frases com termos de ausência (missing, censor, nonresponse, imputação, MCAR/MAR/MNAR,
+      N/A), de proveniência (nome alternativo, "descrito por", instituições, benchmark, repositório), referências
+      bibliográficas ou o nome distintivo da base;
+    - fica com até 600 caracteres, cortada no fim de uma frase. Sem descrição no OpenML, o texto é vazio."""
+    if not isinstance(text, str) or text.strip().lower() in ("", "nan", "none"):
+        return ""
+    text = html.unescape(text)
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"https?://\S+|www\.\S+|\S+@\S+", "", text)
     name = _normalized(dataset_name) if _distinctive(dataset_name) else ""
     kept = []
-    for sentence in (" ".join(p.split()) for p in pieces):
-        if not sentence or _FORBIDDEN.search(sentence) or _IDENTITY.match(sentence):
+    for title, items in _sections(text):
+        if title and _DROP_SECTION.search(title):
             continue
-        if name and f" {name} " in f" {_normalized(sentence)} ":
-            continue
-        kept.append(sentence)
+        for item in items:
+            clean = _ITEM_PREFIX.sub("", " ".join(re.sub(r"[*_`#>|{}~\"]+", " ", item).split()))
+            for sentence in (_ITEM_PREFIX.sub("", piece) for piece in _SENTENCE_END.split(clean)):
+                if len(sentence) < 3 or _FORBIDDEN.search(sentence) or _PROVENANCE.search(sentence):
+                    continue
+                if _CITATION.search(sentence) or (name and f" {name} " in f" {_normalized(sentence)} "):
+                    continue
+                kept.append(sentence)
     out = ""
     for sentence in kept:
         if len(out) + len(sentence) + 1 > DESCRIPTION_MAX_CHARS:
@@ -180,7 +227,7 @@ def render_a1(instance: ObservedInstance, seed: int) -> str:
 def render_a3(instance: ObservedInstance, seed: int, target_name: str, description: str) -> str:
     """Mensagem do usuário no A3 (exploratório): a descrição neutra e a tabela do A1 com os nomes reais."""
     names = [target_name, *[str(c) for c in instance.z.columns]]
-    return f"Description: {description}\n\nTable:\n{_csv(blind_table(instance, seed, names))}"
+    return f"Description: {description or '(none)'}\n\nTable:\n{_csv(blind_table(instance, seed, names))}"
 
 
 def render_a2(features: dict[str, float]) -> str:
