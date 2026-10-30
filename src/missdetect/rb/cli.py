@@ -98,6 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
     p.add_argument("--llm-per-family", type=Path, required=True, help="per_family.parquet do painel de LLM (H4)")
+    p.add_argument(
+        "--probes", type=Path, default=None, help="results.csv das sondas (P21; obrigatório no confirmatório)"
+    )
     for name in (
         "oracle-features",
         "ablation",
@@ -203,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         panel_ids = panel.loc[panel.replicate == 0, "sample_id"].tolist()
         print(run_llm_sensitivity(args.run, config, n_jobs, panel_ids, args.llm_predictions))
     elif args.command == "stats-llm":
-        print(pipeline.run_stats_llm(args.run, config, args.llm_per_family))
+        print(pipeline.run_stats_llm(args.run, config, args.llm_per_family, args.probes))
     return 0
 
 

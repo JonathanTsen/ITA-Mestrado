@@ -4,6 +4,7 @@ Verifica a separação física observado × oráculo, o checkpoint por sample_id
 (inclusive os de regra) e que nada é sobrescrito.
 """
 
+import dataclasses
 import json
 import shutil
 from pathlib import Path
@@ -279,6 +280,32 @@ def test_stats_llm_is_a_separate_step(run, extended, tmp_path):
     assert json.loads((run_dir / "run.stats-llm.json").read_text())["llm_per_family_sha256"]
     with pytest.raises(FileExistsError):
         pipeline.run_stats_llm(run_dir, config, path)
+
+
+def test_stats_llm_drops_blind_recognized_families_and_reports_the_raw_covariate(run, extended, tmp_path):
+    """P21: reconhecida na renderização cega → sai da H4; reconhecida só na crua → covariável (H4 à parte)."""
+    _, config = run
+    run_dir = tmp_path / "copy"
+    run_dir.mkdir()
+    rng = np.random.default_rng(1)
+    rows = [{"method": m, "family_id": f, "macro_recall": rng.uniform(0.3, 0.7)}
+            for m in ("llm_a1", "direct_hgb") for f in range(8)]  # fmt: skip
+    path = tmp_path / "per_family.parquet"
+    pd.DataFrame(rows).to_parquet(path, index=False)
+    probes = tmp_path / "results.csv"
+    pd.DataFrame(
+        [{"family_id": f, "table": t, "recognized": (t == "blind" and f == 0) or (t == "raw" and f in (1, 2))}
+         for f in range(8) for t in ("raw", "blind")]
+    ).to_csv(probes, index=False)  # fmt: skip
+    pipeline.run_stats_llm(run_dir, config, path, probes)
+    assert pd.read_csv(run_dir / "stats_llm.csv").n_families.iloc[0] == 7
+    covariate = pd.read_csv(run_dir / "stats_llm_covariate.csv")
+    assert covariate.n_families.iloc[0] == 5 and covariate.hypothesis.iloc[0] == "H4-não-reconhecidas-na-crua"
+    log = json.loads((run_dir / "run.stats-llm.json").read_text())
+    assert log["excluded_families_blind"] == [0] and log["recognized_families_raw"] == [1, 2]
+    confirm = dataclasses.replace(config, sources=dataclasses.replace(config.sources, roles=["confirm"]))
+    with pytest.raises(ValueError, match="sondas"):
+        pipeline.run_stats_llm(tmp_path / "other", confirm, path)
 
 
 def test_secondary_extra_writes_the_amendment_analyses(run, extended, tmp_path):
