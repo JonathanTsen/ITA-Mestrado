@@ -21,9 +21,9 @@ from missdetect.rb.models import CLASSES, macro_recall
 from missdetect.rb.pipeline import feature_columns, is_oracle_panel, load_eval_frame
 
 ALPHA = 0.05
-N_HYPOTHESES = 4
+N_HYPOTHESES = 6  # família principal do pré-registro v2 (Holm m = 6; §5.1)
 POWER = 0.8
-N_FAMILIES_PLANNED = (42, 61)
+N_FAMILIES_PLANNED = (50,)  # N efetivo (adendo do freeze-v1)
 SHORTCUT_LIMIT = 0.40
 
 

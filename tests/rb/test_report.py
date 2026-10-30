@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from missdetect.rb.report import l1_tests, mde
+from missdetect.rb.report import N_FAMILIES_PLANNED, N_HYPOTHESES, l1_tests, mde
 
 
 def test_l1_failure_counts_as_error(tmp_path):
@@ -23,4 +23,10 @@ def test_l1_failure_counts_as_error(tmp_path):
 
 
 def test_mde_matches_formula():
-    assert mde(0.06, 42) == pytest.approx((2.4977 + 0.8416) * 0.06 / np.sqrt(42), rel=1e-3)
+    assert mde(0.06, 42, m=4) == pytest.approx((2.4977 + 0.8416) * 0.06 / np.sqrt(42), rel=1e-3)
+
+
+def test_mde_uses_the_preregistered_family():
+    """C2 (29/10): Holm m = 6 e N = 50, como no §5.1 do pré-registro (fator 3,48)."""
+    assert N_HYPOTHESES == 6 and N_FAMILIES_PLANNED == (50,)
+    assert mde(0.058, 50) * np.sqrt(50) / 0.058 == pytest.approx(3.48, abs=0.01)
