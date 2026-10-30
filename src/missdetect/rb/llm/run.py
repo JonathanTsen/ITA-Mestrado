@@ -50,15 +50,27 @@ from missdetect.rb.llm.client import (
     require_authorization,
 )
 from missdetect.rb.llm.panel import family_order, panel_contexts, panel_families, panel_instances, repeat_subsample
-from missdetect.rb.llm.render import A1_SCHEMA, A1_SYSTEM, A2_SCHEMA, A2_SYSTEM, RENDERER_VERSION, render_a1, render_a2
+from missdetect.rb.llm.render import (
+    A1_SCHEMA,
+    A1_SYSTEM,
+    A2_SCHEMA,
+    A2_SYSTEM,
+    A3_SYSTEM,
+    RENDERER_VERSION,
+    neutral_description,
+    render_a1,
+    render_a2,
+    render_a3,
+)
 from missdetect.rb.runs import append_run_log, read_observed, repo_root
 from missdetect.rb.stats import PRIMARY
 
-ARMS = {"A1": (A1_SYSTEM, A1_SCHEMA), "A2": (A2_SYSTEM, A2_SCHEMA)}
+ARMS = {"A1": (A1_SYSTEM, A1_SCHEMA), "A2": (A2_SYSTEM, A2_SCHEMA), "A3": (A3_SYSTEM, A1_SCHEMA)}
 THINKING_LEVEL = "medium"
 MAX_OUTPUT_TOKENS = 32_768  # teto de segurança generoso; o adendo fixa o valor a partir do piloto (P20)
 MODES = ("sync", "batch")
 OPENML_METADATA = Path("data_rb/openml_metadata_20261022.csv")
+OPENML_DESCRIPTIONS = Path("data_rb/openml_descriptions_20261030.csv")  # texto cru congelado para o A3
 
 
 def cache_root(run_dir: Path, config: RunConfig) -> Path:
@@ -90,16 +102,37 @@ def _descriptor_frame(run_dir: Path) -> pd.DataFrame:
     return pd.read_parquet(run_dir / "features.parquet", columns=["sample_id", *names]).set_index("sample_id")
 
 
-def register_requests(run_dir: Path, config: RunConfig, panel: pd.DataFrame, model: str, arm: str) -> pd.DataFrame:
+def neutral_descriptions(descriptions: Path, openml_ids: list[int]) -> dict[int, str]:
+    """Descrição neutra do A3 por tabela-fonte, a partir do texto cru congelado; falta de descrição é erro."""
+    texts = pd.read_csv(descriptions).set_index("openml_id")
+    missing = [i for i in openml_ids if i not in texts.index or texts.loc[i, "status"] != "ok"]
+    if missing:
+        raise ValueError(f"A3 sem descrição do OpenML para as tabelas {missing} ({descriptions})")
+    return {i: neutral_description(str(texts.loc[i, "description"]), str(texts.loc[i, "name"])) for i in openml_ids}
+
+
+def register_requests(
+    run_dir: Path, config: RunConfig, panel: pd.DataFrame, model: str, arm: str, descriptions: Path | None = None
+) -> pd.DataFrame:  # fmt: skip
     """Renderiza e grava cada pergunta no caderno; devolve o painel com a chave de cada pergunta."""
     system, schema = ARMS[arm]
     cache = ResponseCache(cache_root(run_dir, config))
     descriptors = _descriptor_frame(run_dir) if arm == "A2" else None
+    contexts = pd.read_parquet(run_dir / "contexts.parquet").set_index("context_id")
+    neutral: dict[int, str] = {}
+    if arm == "A3":
+        ids = sorted({int(i) for i in contexts.loc[panel.context_id.unique(), "openml_id"]})
+        neutral = neutral_descriptions(descriptions or repo_root() / OPENML_DESCRIPTIONS, ids)
     keys = []
     for row in panel.itertuples():
+        seed = child_seed(config.root_seed, "llm_render", row.context_id)
         if arm == "A1":
-            seed = child_seed(config.root_seed, "llm_render", row.context_id)
             user = render_a1(read_observed(run_dir, row.sample_id), seed)
+        elif arm == "A3":
+            context = contexts.loc[row.context_id]
+            user = render_a3(
+                read_observed(run_dir, row.sample_id), seed, str(context.target), neutral[int(context.openml_id)]
+            )
         else:
             user = render_a2(descriptors.loc[row.sample_id].to_dict())  # type: ignore[union-attr]
         request = build_request(
@@ -253,6 +286,7 @@ def run_llm(
     run_dir: Path, config: RunConfig, *, model: str, arm: str, mode: str, authorization: str | None = None,
     env_file: Path | None = None, max_workers: int = 4, budget_only: bool = False, backend: Backend | None = None,
     sleep: Callable[[float], None] = time.sleep, today: date | None = None, limit: int | None = None,
+    descriptions: Path | None = None,
 ) -> Path:  # fmt: skip
     """Com `limit`, pergunta só as N primeiras perguntas distintas, na ordem de execução, e grava só um resumo de uso
     em `<run>/llm/<modelo>/_work/<braço>/limit-<N>.json`, sem as saídas finais (o teste de ≈ 30 chamadas do Argon)."""
@@ -271,7 +305,7 @@ def run_llm(
         return out_dir
     work = run_dir / "llm" / model / "_work" / arm
     work.mkdir(parents=True, exist_ok=True)
-    panel = register_requests(run_dir, config, build_panel(run_dir, config), model, arm)
+    panel = register_requests(run_dir, config, build_panel(run_dir, config), model, arm, descriptions)
     cache = ResponseCache(cache_root(run_dir, config))
     if backend is None:
         backend = GeminiBackend(load_api_keys(env_file or repo_root() / ".env"))

@@ -10,12 +10,15 @@ from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.llm.render import (
     A1_SCHEMA,
     A1_SYSTEM,
+    DESCRIPTION_MAX_CHARS,
     MAX_ROWS,
     NA_TOKEN,
     blind_table,
     llm_rows,
+    neutral_description,
     render_a1,
     render_a2,
+    render_a3,
     scale_to_int,
 )
 
@@ -101,3 +104,54 @@ def test_llm_rows_are_the_rows_the_blind_table_shows():
     rows = llm_rows(n, seed=21)
     assert len(rows) == MAX_ROWS and not table.isna().any().any()
     np.testing.assert_array_equal(np.argsort(table.c0.to_numpy()), np.argsort(rows))
+
+
+PIMA = """**Author**: [Vincent Sigillito](vgs@aplcen.apl.jhu.edu)
+
+**Source**: [Obtained from UCI](https://archive.ics.uci.edu/ml/datasets/pima+indians+diabetes)
+
+**Please cite**: [UCI citation policy](https://archive.ics.uci.edu/ml/citation_policy.html)
+
+1. Title: Pima Indians Diabetes Database
+
+4. Relevant Information: Several constraints were placed on the selection of these instances from a larger database. In particular, all patients here are females at least 21 years old of Pima Indian heritage. The diagnostic, binary-valued variable investigated is whether the patient shows signs of diabetes according to World Health Organization criteria.
+
+8. Missing Attribute Values: None. Values were imputed by the mean.
+9. Class Distribution: (class value 1 is interpreted as "tested positive for diabetes")"""
+
+
+def test_neutral_description_drops_identity_and_missingness_words():
+    text = neutral_description(PIMA, "diabetes")
+    low = text.lower()
+    for word in (
+        "missing",
+        "imput",
+        "sigillito",
+        "uci",
+        "http",
+        "@",
+        "title",
+        "cite",
+        "pima indians diabetes database",
+    ):
+        assert word not in low, word
+    assert "females at least 21 years old" in text and len(text) <= DESCRIPTION_MAX_CHARS
+    assert (
+        neutral_description("Built by the kdd_ipums_la_97-small team. Income data.", "kdd_ipums_la_97-small")
+        == "Income data."
+    )
+    assert neutral_description("", "x") == ""
+    for term in ("Censored values.", "Unit nonresponse here.", "Data are MCAR.", "Non-response was low."):
+        assert neutral_description(term + " Ok.", "x") == "Ok."
+
+
+def test_a3_is_the_a1_table_with_real_names_and_a_label_free_description():
+    base = _instance(sample_id="id-do-mcar", names=("preg", "pedi"))
+    a1 = render_a1(base, seed=11)
+    a3 = render_a3(base, seed=11, target_name="age", description="Patients aged 21 or more.")
+    table = a3.split("Table:\n", 1)[1]
+    assert table.splitlines()[1:] == a1.splitlines()[1:]  # mesmas linhas e valores
+    assert sorted(table.splitlines()[0].split(",")) == ["age", "pedi", "preg"]
+    renamed_label = ObservedInstance("id-do-mnar", base.y.copy(), base.z.copy())
+    assert render_a3(renamed_label, seed=11, target_name="age", description="Patients aged 21 or more.") == a3
+    assert "Patients aged 21 or more." in a3 and "NA" in table

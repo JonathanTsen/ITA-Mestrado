@@ -66,7 +66,7 @@ def run(tmp_path):
             for n in (500, 1000):
                 ctx = f"c{family}{rate}{n}"
                 contexts.append({"context_id": ctx, "base_id": base, "family_id": family, "n": n, "k": 2,
-                                 "rate": rate, "openml_id": 100 + family})  # fmt: skip
+                                 "rate": rate, "openml_id": 100 + family, "target": "outcome"})  # fmt: skip
                 rng = np.random.default_rng(len(contexts))
                 z = pd.DataFrame({"drv": rng.normal(size=n), "aux": rng.normal(size=n)})
                 for index, mech in enumerate(("MCAR", "MAR", "MNAR")):
@@ -106,6 +106,11 @@ def run(tmp_path):
          "sources": {"csv_dir": str(csv_dir), "roles": ["dev"]}}
     )  # fmt: skip
     run_dir.joinpath("_metadata").write_text(str(metadata))
+    descriptions = tmp_path / "openml_descriptions.csv"
+    pd.DataFrame({"openml_id": [101, 102], "status": "ok", "name": ["diabetes", "kdd_x_97"],
+                  "description": ["**Author**: Someone\n\nAdult patients. Missing values: none.",
+                                  "The kdd_x_97 extract. Household income records."]}).to_csv(descriptions, index=False)  # fmt: skip
+    run_dir.joinpath("_descriptions").write_text(str(descriptions))
     return run_dir, config
 
 
@@ -265,3 +270,21 @@ def render_a1_user_of(run_dir, config, sample_id):
     contexts = pd.read_parquet(run_dir / "instances.parquet").set_index("sample_id").context_id
     seed = child_seed(config.root_seed, "llm_render", contexts.loc[sample_id])
     return render_a1(read_observed(run_dir, sample_id), seed)
+
+
+def test_a3_uses_real_names_and_the_neutral_description(run):
+    run_dir, config = run
+    descriptions = Path((run_dir / "_descriptions").read_text())
+    fake = Fake(_mcar_always)
+    run_llm(run_dir, config, model=FLASH, arm="A3", mode="sync", backend=fake, sleep=lambda s: None, limit=4,
+            descriptions=descriptions)  # fmt: skip
+    users = [r["user"] for r in fake.generated]
+    assert all(u.startswith("Description: ") and "Table:\n" in u for u in users)
+    header = users[0].split("Table:\n", 1)[1].splitlines()[0]
+    assert sorted(header.split(",")) == ["aux", "drv", "outcome"]
+    joined = " ".join(users)
+    assert "Missing" not in joined and "Someone" not in joined and "kdd_x_97" not in joined
+    bad = descriptions.with_name("sem.csv")
+    pd.read_csv(descriptions).iloc[:1].to_csv(bad, index=False)
+    with pytest.raises(ValueError, match="sem descrição"):
+        run_llm(run_dir, config, model=FLASH, arm="A3", mode="sync", backend=fake, descriptions=bad, budget_only=True)
