@@ -281,6 +281,26 @@ def test_stats_llm_is_a_separate_step(run, extended, tmp_path):
         pipeline.run_stats_llm(run_dir, config, path)
 
 
+def test_secondary_extra_writes_the_amendment_analyses(run, extended, tmp_path):
+    """C4 (emendas de 29/10): P6, P7, P8, P11, P12, P13 e P15 a partir das avaliações gravadas, de uma vez."""
+    run_dir, config = run
+    nominal = tmp_path / "nominal.csv"
+    pd.DataFrame({"family_id": [100], "target": ["*"], "reason": ["teste"]}).to_csv(nominal, index=False)
+    out = pipeline.run_secondary_extra(run_dir, config, nominal_list=nominal)
+    names = {p.name for p in out.iterdir()}
+    for name in ("p6_recall_by_regime.csv", "p7_trio_concordance_summary.csv", "p8_generator_effect.csv",
+                 "p11_by_repeat.csv", "p12_tests.csv", "p13_l1_auc_summary.csv", "p15_nominal_sensitivity.csv"):  # fmt: skip
+        assert name in names, name
+    assert not [n for n in names if n.startswith(".")]  # sem temporários
+    regime = pd.read_csv(out / "p6_recall_by_regime.csv")
+    assert {"inf", "inf/lower", "inf/upper", "inf/both"} & set(regime.regime)
+    assert len(pd.read_csv(out / "p12_tests.csv")) == 2
+    p15 = pd.read_csv(out / "p15_nominal_sensitivity.csv")
+    assert list(p15.hypothesis) == ["H1", "H2", "H2e", "H3", "H5", "H6"] and p15.n_contexts_excluded.iloc[0] > 0
+    with pytest.raises(FileExistsError):
+        pipeline.run_secondary_extra(run_dir, config, nominal_list=nominal)
+
+
 def test_transfer_predicts_every_real_instance(extended):
     run_dir, transfer_dir = extended
     pred = pd.read_parquet(transfer_dir / "predictions.parquet")

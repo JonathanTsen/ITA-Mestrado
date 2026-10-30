@@ -19,12 +19,15 @@ from matplotlib.figure import Figure
 from threadpoolctl import threadpool_limits
 
 from missdetect.rb import case_study, noise
+from missdetect.rb import extra_analyses as extra
 from missdetect.rb import features as feat
 from missdetect.rb.analyses import (
     bootstrap_mean_ci,
     boundary_sensitivity,
     descriptive_classifiers,
     generator_family_tests,
+    l1_decisions,
+    l1_per_family,
     l1_secondary,
     l2_evaluation,
     mar_mnar_auc,
@@ -52,6 +55,7 @@ from missdetect.rb.runs import (
     new_run_dir,
     read_complete,
     read_observed,
+    repo_root,
     sha256_path,
     write_json,
     write_parquet,
@@ -696,6 +700,68 @@ def run_secondary(run_dir: Path, config: RunConfig) -> Path:
         }
         compare_family(pd.read_parquet(mdatagen), hypotheses).to_csv(out_dir / "mdatagen_tests.csv", index=False)
     append_run_log(run_dir, config, "secondary", {"outputs": sorted(p.name for p in out_dir.iterdir())})
+    return out_dir
+
+
+def _read_optional(path: Path) -> pd.DataFrame | None:
+    return pd.read_parquet(path) if path.exists() else None
+
+
+def run_secondary_extra(run_dir: Path, config: RunConfig, nominal_list: Path | None = None) -> Path:
+    """Análises das emendas de 29/10 ao pré-registro (§0.4: P6, P7, P8, P11, P12, P13, P15), a partir das avaliações
+    gravadas. Rode depois do `evaluate --generators symmetric`, do `cross-generator` e do `secondary`.
+
+    As saídas vão juntas para `secondary-extra/` (C1): o último arquivo marca a conclusão, e nada é sobrescrito."""
+    out_dir = run_dir / "secondary-extra"
+    cross_dir = run_dir / "eval-cross"
+    if not (cross_dir / "predictions.parquet").exists():
+        raise FileNotFoundError(f"{cross_dir} não existe: rode `cross-generator` antes do `secondary-extra`")
+    out_dir.mkdir(exist_ok=True)
+    simple = "logit_simple"
+    l1_method = f"hier_{config.evaluate.learner}_fullprob"
+    sym = pd.read_parquet(run_dir / "eval-symmetric" / "predictions.parquet")
+    sym_family = pd.read_parquet(run_dir / "eval-symmetric" / "per_family.parquet")
+    cross = pd.read_parquet(cross_dir / "predictions.parquet")
+    cross_family = pd.read_parquet(cross_dir / "per_family.parquet")
+    instances = pd.read_parquet(run_dir / "instances.parquet")[["sample_id", "context_id"]]
+    contexts = pd.read_parquet(run_dir / "contexts.parquet")
+    regimes = instances.merge(contexts[["context_id", "beta", "direction"]], on="context_id")
+    generators = pd.read_parquet(run_dir / "oracle.parquet")[["sample_id", "generator"]]
+    nominal_path = nominal_list or repo_root() / "data_rb" / "nominal_targets.csv"
+    excluded = extra.nominal_contexts(contexts, pd.read_csv(nominal_path))
+    concordance = pd.concat([extra.trio_concordance(sym, instances, m) for m in (PRIMARY, simple)], ignore_index=True)
+    errors = extra.decision_errors(sym)
+    l1 = extra.l1_auc(
+        sym, _read_optional(run_dir / "baselines.parquet"), _read_optional(run_dir / "pklm.parquet"), l1_method
+    )
+    tables = {
+        "p6_recall_by_regime.csv": pd.concat([extra.recall_by_regime(sym, regimes, m) for m in (PRIMARY, simple)]),
+        "p6_h6_auc_by_regime.csv": pd.concat([extra.h6_auc_by_regime(sym, regimes, m) for m in (PRIMARY, simple)]),
+        "p7_h6_outside_generator.csv": extra.h6_outside_generator(cross),
+        "p7_trio_concordance.csv": concordance,
+        "p7_trio_concordance_summary.csv": extra.trio_concordance_summary(concordance),
+        "p8_class_decomposition.csv": pd.concat(
+            [
+                extra.class_decomposition(cross_family, extra.CROSS_PRIMARY, extra.CROSS_SIMPLE, "H5"),
+                extra.class_decomposition(sym_family, PRIMARY, simple, "gerador_principal"),
+            ]
+        ),
+        "p8_generator_effect.csv": extra.generator_effect(cross, sym, regimes, generators),
+        "p8_specialization.csv": extra.specialization(cross, generators),
+        "p11_by_repeat.csv": extra.by_repeat(sym, cross),
+        "p12_decision_errors.csv": errors,
+        "p12_l1_false_mcar.csv": extra.l1_false_mcar(l1_per_family(l1_decisions(run_dir, l1_method=l1_method))),
+        "p12_tests.csv": extra.decision_error_tests(errors),
+        "p13_l1_auc.csv": l1,
+        "p13_l1_auc_summary.csv": extra.l1_auc_summary(l1),
+        "p15_nominal_sensitivity.csv": extra.without_contexts(sym, cross, instances, excluded),  # último: marcador
+    }
+    write_tables_atomically(out_dir, tables)
+    append_run_log(
+        run_dir, config, "secondary-extra",
+        {"outputs": list(tables), "nominal_list": str(nominal_path), "nominal_list_sha256": sha256_path(nominal_path),
+         "nominal_contexts_excluded": sorted(excluded)},
+    )  # fmt: skip
     return out_dir
 
 

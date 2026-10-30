@@ -1,0 +1,4 @@
+family_id,target,reason
+4135,*,"Amazon_employee_access: todas as bases têm Y = ROLE_* (códigos de categoria guardados como inteiros)"
+42493,Flight,"airlines: Flight é o número do voo (código)"
+40701,phone_number,"churn: phone_number é um identificador (código)"

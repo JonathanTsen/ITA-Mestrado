@@ -23,6 +23,7 @@ Comandos:
     secondary  L1 secundária, recall por mecanismo, L2, classificadores descritivos (CD), sensibilidade, painel oráculo
                por gerador, mdatagen e estatísticas do MechDetect como descritores
     cross-generator  H5: primária treinada só no gerador principal, testada nos geradores externos; rodar antes do stats
+    secondary-extra  análises das emendas de 29/10 (P6, P7, P8, P11, P12, P13, P15); depois do cross-generator
 
 Execute com OMP_NUM_THREADS=1; os workers também limitam threads com `threadpoolctl`.
 """
@@ -38,7 +39,7 @@ from missdetect.rb.runs import confirmatory_guard, repo_root
 COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
-    "cross-generator", "stats-llm",
+    "cross-generator", "stats-llm", "secondary-extra",
 )  # fmt: skip
 NOT_YET = {
     "llm": "passos 42/43 — ainda não implementado (precisa das chaves de API e do adendo LLM com a tag prereg-v1-llm)",
@@ -81,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
         "noise",
         "fit-final",
         "cross-generator",
+        "secondary-extra",
     ):
         p = sub.add_parser(name, help=f"{name} de um run existente")
         p.add_argument("--config", type=Path, required=True)
@@ -88,6 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--n-jobs", type=int, default=None)
         if name == "transfer":
             p.add_argument("--synth-run", type=Path, required=True, help="corpus sintético com descritores (synth-v2)")
+        if name == "secondary-extra":
+            p.add_argument("--nominal-list", type=Path, default=None, help="lista fechada de Y nominal (P15)")
     p = sub.add_parser("case-study", help="estudo de caso com ausência natural (modelo congelado)")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--model", type=Path, required=True, help="diretório final_model/ de um run (fit-final)")
@@ -143,6 +147,8 @@ def main(argv: list[str] | None = None) -> int:
         print(pipeline.run_noise(args.run, config, n_jobs))
     elif args.command == "cross-generator":
         print(pipeline.run_cross_generator(args.run, config, n_jobs))
+    elif args.command == "secondary-extra":
+        print(pipeline.run_secondary_extra(args.run, config, args.nominal_list))
     elif args.command == "fit-final":
         print(pipeline.run_fit_final(args.run, config))
     elif args.command == "case-study":
