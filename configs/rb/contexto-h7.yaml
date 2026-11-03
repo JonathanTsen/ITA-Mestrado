@@ -1,0 +1,23 @@
+# H7 confirmatória (adendo LLM, §10; inclusão decidida pelo autor em 03/11/2026): as 30 bases inventadas novas de
+# data_rb/contexto_h7/ (gerado por scripts/revisao_banca/llm/contexto_h7.py, IDs 990201–990230). O apagamento é o do
+# benchmark e a grade é a do exploratório (contexto-sintetico.yaml): r ∈ {0,1; 0,3; 0,5} × k ∈ {2, máx.} com n = 1000,
+# 18 instâncias por base no painel. Papel `confirm`: o inject só roda no commit da tag prereg-v1 e as perguntas no da
+# prereg-v1-llm. A root_seed foi fixada em 03/11/2026, antes de qualquer instância.
+name: contexto-h7
+root_seed: 20261103
+output_root: results_rb
+sources:
+  table: data_rb/contexto_h7/sources.csv
+  csv_dir: data_rb/contexto_h7/csv
+  roles: [confirm]
+  sentinel_exclusions: data_rb/sentinel_exclusions.csv
+inject:
+  n_grid: [1000]
+  k_grid: [2, 8]
+  rate_grid: [0.1, 0.3, 0.5]
+  beta_grid: [1, 2, 4, 8, .inf]
+  directions: [lower, upper, both]
+  driver_rules: [maxcorr, random]
+  max_base_attempts: 20
+features:
+  n_jobs: 8

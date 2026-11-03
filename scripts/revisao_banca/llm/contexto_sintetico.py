@@ -732,24 +732,29 @@ def _sha256(path: Path) -> str:
 
 
 def gerar(out: Path, conjunto: str) -> None:
+    gerar_bases(out, CONJUNTOS[conjunto], conjunto, "dev", Path(__file__))
+
+
+def gerar_bases(out: Path, domains: tuple[Domain, ...], conjunto: str, role: str, script: Path) -> None:
+    """As tabelas completas, os contextos e o manifesto (SHA-256 de cada arquivo) de um conjunto de domínios."""
     (out / "csv").mkdir(parents=True, exist_ok=False)
     sources, contexts = [], {}
-    for domain in CONJUNTOS[conjunto]:
+    for domain in domains:
         table = domain.generate(np.random.default_rng([GENERATOR_SEED, domain.source_id]), N_ROWS).astype(float)
         assert list(table.columns) == list(domain.columns), domain.name
         path = out / "csv" / f"{domain.source_id}.csv"
         table.to_csv(path)  # com a coluna de índice, como os CSV do MechDetect
         sources.append({"openml_id": domain.source_id, "family_id": domain.source_id, "representative": True,
-                        "role": "dev", "numeric_columns": ";".join(table.columns), "sha256_raw": _sha256(path),
+                        "role": role, "numeric_columns": ";".join(table.columns), "sha256_raw": _sha256(path),
                         "name": domain.name})  # fmt: skip
         contexts[str(domain.source_id)] = {"name": domain.name, "description": describe(domain, table)}
     pd.DataFrame(sources).to_csv(out / "sources.csv", index=False)
     (out / "contexts.json").write_text(json.dumps(contexts, indent=2, ensure_ascii=False), encoding="utf-8")
     manifest = {"created_at": datetime.now(UTC).isoformat(timespec="seconds"), "generator_seed": GENERATOR_SEED,
-                "conjunto": conjunto, "n_rows": N_ROWS, "script_sha256": _sha256(Path(__file__)),
+                "conjunto": conjunto, "role": role, "n_rows": N_ROWS, "script_sha256": _sha256(script),
                 "files": {str(p.relative_to(out)): _sha256(p) for p in sorted(out.rglob("*")) if p.is_file()}}  # fmt: skip
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"{len(CONJUNTOS[conjunto])} bases em {out}")
+    print(f"{len(domains)} bases em {out}")
 
 
 def _fmt(value: float) -> str:
@@ -804,7 +809,7 @@ def prompts(
     }
 
 
-def _panel_with_keys(run_dir: Path, config, arms: tuple[str, ...]) -> dict[str, pd.DataFrame]:
+def _panel_with_keys(run_dir: Path, config, arms: tuple[str, ...], model: str = MODEL) -> dict[str, pd.DataFrame]:
     panel = build_panel(run_dir, config)
     panel = panel[panel.replicate == 0].reset_index(drop=True)  # sem a repetição de 10%, para economizar
     contexts = pd.read_parquet(run_dir / "contexts.parquet").set_index("context_id")
@@ -821,7 +826,7 @@ def _panel_with_keys(run_dir: Path, config, arms: tuple[str, ...]) -> dict[str, 
                               child_seed(GENERATOR_SEED, "faixas_aproximadas", source))  # fmt: skip
         for arm in arms:
             system, user = all_prompts[arm]
-            request = build_request(arm=f"ctx-{arm}", model=MODEL, system=system, user=user, schema=A1_SCHEMA,
+            request = build_request(arm=f"ctx-{arm}", model=model, system=system, user=user, schema=A1_SCHEMA,
                                     thinking_level="medium", max_output_tokens=32_768, renderer_version=RENDERER)  # fmt: skip
             keys[arm].append(cache.register(request))
             if "Table:\n" in user:  # o contexto e o cabeçalho são os mesmos nos três mecanismos do trio
