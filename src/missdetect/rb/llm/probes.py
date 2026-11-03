@@ -14,6 +14,15 @@ temperatura, e um teto pequeno seria gasto no raciocínio e a resposta viria vaz
   para conferência e para a adjudicação dos casos não cobertos.
 - **linha de base do atributo:** o acerto só conta se passar do chute do valor mais frequente (binomial, p < 0,05).
 
+**Regra de decisão (aprovada pelo autor em 03/11/2026; `RULE_VERSION`):** cada tabela sai com um `status`:
+- `reconhecida`: um critério numérico (`THRESHOLDS`) ou um nome `claro` da lista;
+- `revisar`: só um nome `ambiguo` da lista (nome genérico/curto, só a família, versões relacionadas), ou uma resposta
+  de nome que não casa com a lista e não é uma recusa ("unknown", "I do not know"): pode identificar a família ou uma
+  versão vizinha, o que o casamento de texto não decide. Vai para a adjudicação do autor, sem acesso aos resultados da
+  comparação (`run.finalize_probes`); dúvida que persiste fica `inconclusiva` e não exclui;
+- `nao_reconhecida`: nenhum dos casos acima.
+O tipo do nome do OpenML vem da lista (o nome canônico também pode ser genérico, como `houses`); fora dela, é `claro`.
+
 **Aplicação dupla (P21):** à tabela crua, com os nomes reais (covariável), e à renderização cega do A1 (critério de
 exclusão da família na H4). Na renderização cega, as linhas são sorteadas e embaralhadas: completar a próxima linha é
 impossível mesmo para quem memorizou a base, e o que conta ali é a sonda de nome.
@@ -42,7 +51,8 @@ from missdetect.rb.llm.client import build_request
 from missdetect.rb.llm.render import blind_table
 from missdetect.rb.runs import read_observed
 
-PROBES_VERSION = "1"
+PROBES_VERSION = "1"  # entra na chave das perguntas no caderno: só muda se as perguntas mudarem
+RULE_VERSION = "2"  # regra de decisão: v1 = booleano `recognized`; v2 = `status` com adjudicação (03/11/2026)
 THINKING_LEVEL = "low"
 MAX_OUTPUT_TOKENS = 16_384
 HEADER_SPLIT_ROWS = [2, 4, 6, 8]
@@ -54,6 +64,13 @@ THRESHOLDS = {"header_chars": 50, "row_matches": 2, "feature_matches": 3, "featu
 # acerto e para contornar o `header_test` do tabmemcheck 0.1.6, que falha quando todas as respostas vêm vazias.
 NO_ANSWER = "\x00"
 NAME_SYSTEM = "You are an expert on public machine learning datasets."
+STATUSES = ("reconhecida", "revisar", "nao_reconhecida")
+NAME_TYPES = ("claro", "ambiguo")
+# Recusas: a resposta não arrisca um nome, então não há o que adjudicar.
+_REFUSAL = re.compile(
+    r"^(unknown|not sure|no idea|none|n a|i (do not|don t|cannot|can t) (know|identify|determine|tell)\b.*"
+    r"|(this|the) (dataset )?(is )?(unknown|not identifiable)\b.*|unable to (identify|determine)\b.*)$"
+)
 NAME_PROMPT = "Here are the first rows of a dataset in CSV format:\n\n{rows}\n\nWhat is the name of this dataset? Answer with the name only."
 
 
@@ -91,8 +108,52 @@ def _normalize(name: str) -> str:
 
 def name_matches(response: str, names: list[str]) -> bool:
     """Acerto do nome: a resposta contém o nome do OpenML ou um apelido da lista fechada, normalizados."""
+    return matched_name(response, names) is not None
+
+
+def matched_name(response: str, names: list[str]) -> str | None:
+    """O primeiro nome da lista contido na resposta (normalizados), ou None."""
     answer = f" {_normalize(response)} "
-    return any(target and f" {target} " in answer for target in (_normalize(n) for n in names))
+    return next((n for n in names if (target := _normalize(n)) and f" {target} " in answer), None)
+
+
+def is_refusal(response: str) -> bool:
+    """Resposta vazia, sem resposta ou que se recusa a nomear a base ("unknown", "I do not know")."""
+    answer = _normalize(response.replace(NO_ANSWER, ""))
+    return not answer or bool(_REFUSAL.match(answer))
+
+
+def name_types(canonical: str, aliases: pd.DataFrame | None, openml_id: int) -> tuple[list[str], list[str]]:
+    """Separa os nomes de uma base em claros e ambíguos pela coluna `tipo` da lista (sem a coluna, todos claros).
+
+    O nome canônico do OpenML entra sempre; o tipo dele é o da linha correspondente da lista, se houver."""
+    rows = pd.DataFrame(columns=["alias", "tipo"]) if aliases is None else aliases[aliases.openml_id == openml_id]
+    types = {
+        _normalize(str(a)): str(t) for a, t in zip(rows.alias, rows.get("tipo", ["claro"] * len(rows)), strict=True)
+    }
+    unknown = set(types.values()) - set(NAME_TYPES)
+    if unknown:
+        raise ValueError(f"tipo de nome desconhecido na lista: {sorted(unknown)} (use {NAME_TYPES})")
+    names = list(dict.fromkeys([canonical, *(str(a) for a in rows.alias)]))
+    clear = [n for n in names if types.get(_normalize(n), "claro") == "claro"]
+    return clear, [n for n in names if n not in clear]
+
+
+def probe_status(out: dict) -> str:
+    """`reconhecida`, `revisar` ou `nao_reconhecida` a partir dos campos da bateria (regra no docstring do módulo)."""
+    numeric = (
+        out["header_chars"] >= THRESHOLDS["header_chars"]
+        or out["row_matches"] >= THRESHOLDS["row_matches"]
+        or (
+            out["feature_matches"] >= THRESHOLDS["feature_matches"]
+            and out["feature_chance_p"] < THRESHOLDS["feature_chance_p"]
+        )
+    )
+    if numeric or out["name_match"]:
+        return "reconhecida"
+    if out["name_match_ambiguous"] or not is_refusal(out["name_answer"]):
+        return "revisar"
+    return "nao_reconhecida"
 
 
 def feature_chance(csv_file: Path, feature: str, matches: int, n_queries: int) -> tuple[float, float]:
@@ -112,8 +173,12 @@ def _common_prefix(a: str, b: str) -> int:
     return n
 
 
-def run_battery(csv_file: Path, llm: ProbeLLM, seed: int, names: list[str], log) -> dict:
-    """Roda a bateria numa tabela. Com o caderno vazio, só grava as perguntas (as contagens saem zeradas)."""
+def run_battery(
+    csv_file: Path, llm: ProbeLLM, seed: int, names: list[str], log, ambiguous_names: list[str] | None = None
+) -> dict:
+    """Roda a bateria numa tabela. Com o caderno vazio, só grava as perguntas (as contagens saem zeradas).
+
+    `names` são os nomes claros; `ambiguous_names`, os que só mandam a tabela para a adjudicação."""
     out: dict = {}
     with contextlib.redirect_stdout(log):
         _, header_true, header_answer = tm.header_test(
@@ -146,16 +211,12 @@ def run_battery(csv_file: Path, llm: ProbeLLM, seed: int, names: list[str], log)
                 {"role": "user", "content": NAME_PROMPT.format(rows="\n".join(rows))}]  # fmt: skip
     answer = llm.chat_completion(messages, temperature=0.0, max_tokens=0)
     out["name_answer"] = answer
-    out["name_match"] = name_matches(answer, names)
-    out["recognized"] = bool(
-        out["name_match"]
-        or out["header_chars"] >= THRESHOLDS["header_chars"]
-        or out["row_matches"] >= THRESHOLDS["row_matches"]
-        or (
-            out["feature_matches"] >= THRESHOLDS["feature_matches"]
-            and out["feature_chance_p"] < THRESHOLDS["feature_chance_p"]
-        )
-    )
+    clear, ambiguous = matched_name(answer, names), matched_name(answer, ambiguous_names or [])
+    out["name_match"] = clear is not None
+    out["name_match_ambiguous"] = clear is None and ambiguous is not None
+    out["matched_name"] = clear or ambiguous or ""
+    out["status"] = probe_status(out)
+    out["recognized"] = out["status"] == "reconhecida"
     return out
 
 
@@ -207,10 +268,8 @@ def probe_tables(
         blind = blind_csv(
             blind_table(read_observed(run_dir, chosen.sample_id), seed), work / "tables" / f"{family}-blind.csv"
         )
-        names = [name]
-        if aliases is not None:
-            names += [str(a) for a in aliases.loc[aliases.openml_id == openml_id, "alias"]]
+        names, ambiguous = name_types(name, aliases, openml_id)
         for table, path in (("raw", raw), ("blind", blind)):
             rows.append({"family_id": int(family), "openml_id": openml_id, "name": name, "names": names,
-                         "table": table, "path": path})  # fmt: skip
+                         "ambiguous_names": ambiguous, "table": table, "path": path})  # fmt: skip
     return pd.DataFrame(rows)

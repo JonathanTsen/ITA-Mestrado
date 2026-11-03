@@ -15,9 +15,9 @@ from missdetect.rb.inject import ObservedInstance
 from missdetect.rb.llm.budget import BudgetExceeded
 from missdetect.rb.llm.cache import ResponseCache
 from missdetect.rb.llm.client import PAID, AuthorizationRequired
-from missdetect.rb.llm.probes import feature_chance, name_matches
+from missdetect.rb.llm.probes import feature_chance, is_refusal, name_matches, name_types, probe_status
 from missdetect.rb.llm.render import render_a1
-from missdetect.rb.llm.run import build_panel, cache_root, run_llm, run_probes
+from missdetect.rb.llm.run import SHEET_COLUMNS, build_panel, cache_root, finalize_probes, run_llm, run_probes
 from missdetect.rb.runs import read_observed, write_observed
 from missdetect.rb.stats import PRIMARY
 
@@ -318,3 +318,88 @@ def test_name_matching_uses_the_alias_list_and_feature_test_has_a_chance_baselin
     assert share == pytest.approx(0.4) and p_value > 0.05  # 4 de 10 é o que o chute da moda daria
     share, p_value = feature_chance(csv, "b", matches=4, n_queries=10)
     assert share == pytest.approx(0.1) and p_value < 0.05
+
+
+def _battery(**kw):
+    return {"header_chars": 0, "row_matches": 0, "feature_matches": 0, "feature_chance_p": 1.0, "name_match": False,
+            "name_match_ambiguous": False, "name_answer": "unknown"} | kw  # fmt: skip
+
+
+def test_probe_rule_of_03_11_sends_ambiguous_and_unlisted_names_to_review():
+    """Regra B (03/11/2026): nome claro ou critério numérico → reconhecida; nome ambíguo ou fora da lista → revisar;
+    recusa → não reconhecida. Os limiares numéricos não mudam."""
+    aliases = pd.DataFrame({"openml_id": [823, 823, 251, 251], "alias": ["houses", "California housing", "breast-w",
+                            "breast cancer wisconsin"], "tipo": ["ambiguo", "claro", "claro", "ambiguo"]})  # fmt: skip
+    assert name_types("houses", aliases, 823) == (["California housing"], ["houses"])  # o canônico também é ambíguo
+    assert name_types("BNG(breast-w)", aliases, 251) == (["BNG(breast-w)", "breast-w"], ["breast cancer wisconsin"])
+    assert name_types("letter", None, 6) == (["letter"], [])
+    with pytest.raises(ValueError, match="tipo"):
+        name_types("x", aliases.assign(tipo="talvez"), 823)
+    assert probe_status(_battery(name_match=True)) == "reconhecida"
+    assert probe_status(_battery(row_matches=2)) == "reconhecida"
+    assert probe_status(_battery(feature_matches=3, feature_chance_p=0.01)) == "reconhecida"
+    assert probe_status(_battery(feature_matches=3, feature_chance_p=0.2)) == "nao_reconhecida"
+    assert probe_status(_battery(name_match_ambiguous=True, name_answer="houses")) == "revisar"
+    assert probe_status(_battery(name_match_ambiguous=True, header_chars=60)) == "reconhecida"
+    assert probe_status(_battery(name_answer="Wisconsin Diagnostic Breast Cancer (WDBC)")) == "revisar"
+    for refusal in ("unknown", "I do not know.", "I don't know", "Unable to identify the dataset", "\x00", " "):
+        assert is_refusal(refusal), refusal
+    assert not is_refusal("Boston housing")
+
+
+def _ambiguous_answer(request):
+    user = request["user"] if isinstance(request["user"], str) else request["user"][-1]["content"]
+    if "What is the name of this dataset?" not in user:
+        return "x"
+    if "preg" in user:
+        return "Some diabetes data"  # crua: ambíguo na família 1, fora da lista na 2 (as duas têm `preg`)
+    return "Wisconsin Diagnostic Breast Cancer" if "c0," in user and "drv" not in user else "unknown"
+
+
+def test_probes_write_a_blind_review_sheet_and_finalize_needs_the_author_decision(run, tmp_path):
+    run_dir, config = run
+    metadata = Path((run_dir / "_metadata").read_text())
+    aliases = tmp_path / "aliases.csv"
+    pd.DataFrame({"openml_id": [101], "alias": ["diabetes"], "tipo": ["ambiguo"]}).to_csv(aliases, index=False)
+    out = run_probes(run_dir, config, model=FLASH, mode="sync", backend=Fake(_ambiguous_answer), sleep=lambda s: None,
+                     metadata=metadata, aliases=aliases)  # fmt: skip
+    results = pd.read_csv(out / "results.csv").set_index(["family_id", "table"])
+    assert results.loc[(1, "raw"), "status"] == "revisar" and not results.loc[(1, "raw"), "recognized"]
+    assert results.loc[(1, "raw"), "matched_name"] == "diabetes"
+    assert set(results.loc[[(1, "blind"), (2, "blind"), (2, "raw")], "status"]) == {"revisar"}  # fora da lista
+    assert pd.read_csv(out / "excluded_families.csv").empty  # nada sai automaticamente
+    sheet = pd.read_csv(out / "adjudicacao_pendente.csv", keep_default_na=False)
+    assert list(sheet.columns) == SHEET_COLUMNS and len(sheet) == 4
+    assert not {"macro_recall", "pred", "correct", "status", "header_chars"} & set(sheet.columns)  # sem resultados
+    first = sheet.set_index(["family_id", "table"])
+    assert first.loc[(1, "raw"), "motivo_revisao"] == "nome_ambiguo" and first.loc[(1, "raw"), "decisao"] == ""
+    assert first.loc[(2, "blind"), "decisao"] == "nao_reconhecida"  # fora da lista: pré-preenchida
+    assert json.loads((out / "summary.json").read_text())["n_review"] == 4
+
+    with pytest.raises(ValueError, match="incompleta"):
+        finalize_probes(run_dir, FLASH)  # sem planilha
+    filled = sheet.assign(data="2026-11-20", responsavel="autor")
+    filled.to_csv(out / "adjudicacao.csv", index=False)
+    with pytest.raises(ValueError, match="incompleta"):
+        finalize_probes(run_dir, FLASH)  # a decisão do nome ambíguo ficou vazia
+    filled.loc[0, "decisao"] = "talvez"
+    filled.to_csv(out / "adjudicacao.csv", index=False)
+    with pytest.raises(ValueError, match="incompleta"):
+        finalize_probes(run_dir, FLASH)
+    extra = pd.concat([filled, filled.iloc[[0]].assign(family_id=3)])
+    extra.to_csv(out / "adjudicacao.csv", index=False)
+    with pytest.raises(ValueError, match="não estavam em revisão"):
+        finalize_probes(run_dir, FLASH)
+
+    decisions = {(1, "raw"): "inconclusiva", (1, "blind"): "reconhecida", (2, "blind"): "nao_reconhecida",
+                 (2, "raw"): "nao_reconhecida"}  # fmt: skip
+    filled["decisao"] = [decisions[(f, t)] for f, t in zip(filled.family_id, filled.table, strict=True)]
+    filled.to_csv(out / "adjudicacao.csv", index=False)
+    final = pd.read_csv(finalize_probes(run_dir, FLASH)).set_index(["family_id", "table"])
+    assert final.loc[(1, "raw"), "status_final"] == "inconclusiva" and final.loc[(1, "raw"), "origem"] == "adjudicacao"
+    assert final.loc[(1, "blind"), "status_final"] == "reconhecida"
+    assert final.loc[(2, "raw"), ("status_final", "origem")].tolist() == ["nao_reconhecida", "adjudicacao"]
+    summary = json.loads((out / "finalize_summary.json").read_text())
+    assert summary["excluded_families_blind"] == [1] and summary["adjudication_sha256"]
+    with pytest.raises(FileExistsError):
+        finalize_probes(run_dir, FLASH)

@@ -14,6 +14,7 @@ Comandos:
                o gemini-4-argon só roda com --authorization (regra do autor); --budget-only só projeta o custo
     llm-probes sondas de memorização (P21) nas famílias do painel: tabela crua (covariável) e renderização cega do A1
                (critério de exclusão da H4); mesmas opções do llm
+    llm-probes-finalize  lista final das sondas depois da adjudicação do autor (casos `revisar`); antes do evaluate
     llm-sensitivity  H4 com 200 linhas: primária retreinada nas subamostras que o LLM vê (mesmas partições); descritiva
     llm-a2-ablation  secundária RQ4-A2 (P23): primária + escores do LLM-A2 × primária, CV de famílias dentro do painel
     robustness passo 40 (exploratória): prior-shift (acurácia sob prevalências realistas, correção de Saerens) e L1 com
@@ -45,7 +46,7 @@ from pathlib import Path
 
 from missdetect.rb import pipeline, report, robustness, sources
 from missdetect.rb.config import load_config
-from missdetect.rb.llm.run import ARMS, MODES, build_panel, run_llm, run_probes
+from missdetect.rb.llm.run import ARMS, MODES, build_panel, finalize_probes, run_llm, run_probes
 from missdetect.rb.llm.sensitivity import run_a2_ablation, run_llm_sensitivity
 from missdetect.rb.runs import confirmatory_guard, repo_root
 
@@ -53,7 +54,7 @@ COMMANDS = (
     "sources", "inject", "synth", "features", "baselines", "evaluate", "report", "stats",
     "oracle-features", "ablation", "logo", "transfer", "secondary", "llm", "noise", "fit-final", "case-study",
     "cross-generator", "stats-llm", "secondary-extra", "inject-ampute", "cross-ampute", "llm-probes",
-    "llm-sensitivity", "llm-a2-ablation", "robustness", "robustness-znan",
+    "llm-probes-finalize", "llm-sensitivity", "llm-a2-ablation", "robustness", "robustness-znan",
 )  # fmt: skip
 NOT_YET: dict[str, str] = {}
 
@@ -96,6 +97,14 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--budget-only", action="store_true", help="só conta tokens e projeta o custo, sem gerar")
         if name == "llm":
             p.add_argument("--limit", type=int, default=None, help="só as N primeiras perguntas (ex.: teste do Argon)")
+    p = sub.add_parser("llm-probes-finalize", help="lista final das sondas depois da adjudicação do autor")
+    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--run", type=Path, required=True, help="diretório do run")
+    p.add_argument("--model", required=True, help="alias do modelo das sondas")
+    p.add_argument(
+        "--adjudication", type=Path, default=None,
+        help="planilha preenchida pelo autor (padrão: <run>/llm/<modelo>/probes/adjudicacao.csv)",
+    )  # fmt: skip
     p = sub.add_parser("llm-sensitivity", help="H4 com 200 linhas (primária retreinada; descritiva)")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
@@ -110,7 +119,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run", type=Path, required=True, help="diretório do run")
     p.add_argument("--llm-per-family", type=Path, required=True, help="per_family.parquet do painel de LLM (H4)")
     p.add_argument(
-        "--probes", type=Path, default=None, help="results.csv das sondas (P21; obrigatório no confirmatório)"
+        "--probes",
+        type=Path,
+        default=None,
+        help="exclusions_final.csv das sondas (llm-probes-finalize; P21; obrigatório no confirmatório)",
     )
     for name in (
         "oracle-features",
@@ -214,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
             env_file=args.env_file, max_workers=args.max_workers, budget_only=args.budget_only,
         )  # fmt: skip
         print(out)
+    elif args.command == "llm-probes-finalize":
+        print(finalize_probes(args.run, args.model, args.adjudication))
     elif args.command == "llm-sensitivity":
         panel = build_panel(args.run, config)
         panel_ids = panel.loc[panel.replicate == 0, "sample_id"].tolist()

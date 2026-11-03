@@ -63,7 +63,7 @@ from missdetect.rb.llm.render import (
     render_a2,
     render_a3,
 )
-from missdetect.rb.runs import append_run_log, read_observed, repo_root
+from missdetect.rb.runs import append_run_log, read_observed, repo_root, sha256_path
 from missdetect.rb.stats import PRIMARY
 
 ARMS = {"A1": (A1_SYSTEM, A1_SCHEMA), "A2": (A2_SYSTEM, A2_SCHEMA), "A3": (A3_SYSTEM, A1_SCHEMA)}
@@ -379,7 +379,9 @@ def run_probes(
     aliases: Path | None = None,
 ) -> Path:  # fmt: skip
     """Sondas de memorização (P21) nas famílias do painel: tabela crua (covariável) e renderização cega do A1 (critério
-    de exclusão da H4). Saídas em `<run>/llm/<modelo>/probes/`: `results.csv`, `excluded_families.csv` e `summary.json`.
+    de exclusão da H4). Saídas em `<run>/llm/<modelo>/probes/`: `results.csv`, `excluded_families.csv` (preliminar: só
+    as reconhecidas automaticamente na cega), `adjudicacao_pendente.csv` (as tabelas em `revisar`, sem nenhum resultado
+    da comparação) e `summary.json`. A lista final sai de `finalize_probes`, depois da adjudicação do autor.
     """
     if mode not in MODES:
         raise ValueError(f"modo {mode} desconhecido")
@@ -402,7 +404,7 @@ def run_probes(
         with (work / "tabmemcheck.log").open("a", encoding="utf-8") as log:
             for row in tables.itertuples():
                 seed = child_seed(config.root_seed, "llm_probe", row.family_id, row.table) % 2**31
-                result = probes.run_battery(row.path, llm, seed, list(row.names), log)
+                result = probes.run_battery(row.path, llm, seed, list(row.names), log, list(row.ambiguous_names))
                 rows.append({"family_id": row.family_id, "openml_id": row.openml_id, "name": row.name,
                              "table": row.table, **result})  # fmt: skip
         return rows
@@ -432,7 +434,10 @@ def run_probes(
     usage = [a for k in keys for a in cache.attempts(k)]
     summary = {
         "model": model, "mode": mode, "thinking_level": probes.THINKING_LEVEL, "probes_version": probes.PROBES_VERSION,
+        "rule_version": probes.RULE_VERSION,
         "thresholds": probes.THRESHOLDS, "aliases": str(aliases or repo_root() / ALIASES),
+        "aliases_sha256": sha256_path(alias_file) if alias_file.exists() else None,
+        "n_review": int((results.status == "revisar").sum()),
         "n_tables": len(results), "n_questions": len(keys),
         "n_failed_questions": len(failed), "n_calls": len(usage),
         "cost_usd": float(sum(budget.response_cost(model, a) for a in usage)),
@@ -447,7 +452,88 @@ def run_probes(
     tmp.mkdir(parents=True)
     results.to_csv(tmp / "results.csv", index=False)
     excluded.to_csv(tmp / "excluded_families.csv", index=False)
+    pending_sheet(results).to_csv(tmp / "adjudicacao_pendente.csv", index=False)
     (tmp / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
     tmp.rename(out_dir)
     append_run_log(run_dir, config, f"llm-probes-{model}", summary)
     return out_dir
+
+
+# Adjudicação das sondas (regra aprovada pelo autor em 03/11/2026; adendo LLM). Depois das sondas e antes do `evaluate`,
+# quando ainda não existe resultado da comparação IA × classificador. A planilha preenchida fica no run, fora do git
+# (commitá-la tiraria o HEAD da tag), e o SHA-256 dela é publicado com a lista final.
+DECISIONS = ("reconhecida", "nao_reconhecida", "inconclusiva")
+SHEET_KEYS = ["family_id", "table"]
+SHEET_COLUMNS = [*SHEET_KEYS, "openml_id", "name", "name_answer", "matched_name", "motivo_revisao", "decisao", "motivo",
+                 "data", "responsavel"]  # fmt: skip
+
+
+def pending_sheet(results: pd.DataFrame) -> pd.DataFrame:
+    """As tabelas em `revisar`, só com o que a adjudicação precisa: a base, a resposta de nome e o nome que casou.
+
+    Nome ambíguo: `decisao` vazia (o autor decide). Nome fora da lista: `decisao` pré-preenchida como `nao_reconhecida`,
+    para o autor confirmar ou mudar. Nenhuma coluna de resultado da comparação entra aqui."""
+    review = results[results.status == "revisar"].copy()
+    ambiguous = review.name_match_ambiguous.astype(bool)
+    review["motivo_revisao"] = np.where(ambiguous, "nome_ambiguo", "nome_fora_da_lista")
+    review["decisao"] = np.where(ambiguous, "", "nao_reconhecida")
+    for column in ("motivo", "data", "responsavel"):
+        review[column] = ""
+    return review[SHEET_COLUMNS].reset_index(drop=True)
+
+
+def finalize_probes(run_dir: Path, model: str, adjudication: Path | None = None) -> Path:
+    """Lista final das sondas, depois da adjudicação: `<run>/llm/<modelo>/probes/exclusions_final.csv`.
+
+    Cada tabela recebe `status_final`: a decisão automática (`reconhecida`/`nao_reconhecida`) ou a do autor, para as que
+    estavam em `revisar`. Falha se faltar decisão, responsável ou data, ou se a planilha tiver tabelas que não estavam
+    em `revisar`. `inconclusiva` não exclui. Não sobrescreve uma lista final já gravada."""
+    probes_dir = Path(run_dir) / "llm" / model / "probes"
+    out = probes_dir / "exclusions_final.csv"
+    if out.exists():
+        raise FileExistsError(f"{out} já existe; a lista final não é regravada")
+    adjudication = adjudication or probes_dir / "adjudicacao.csv"
+    results = pd.read_csv(probes_dir / "results.csv")
+    review = results[results.status == "revisar"].set_index(SHEET_KEYS)
+    sheet = (
+        pd.read_csv(adjudication, dtype=str, keep_default_na=False)
+        if adjudication.exists()
+        else pd.DataFrame(columns=SHEET_COLUMNS)
+    )
+    sheet["family_id"] = sheet.family_id.astype(int)
+    sheet = sheet.set_index(SHEET_KEYS)
+    if not sheet.index.is_unique:
+        raise ValueError(f"{adjudication}: tabela repetida na adjudicação")
+    extra = sorted(set(sheet.index) - set(review.index))
+    if extra:
+        raise ValueError(f"{adjudication}: tabelas que não estavam em revisão: {extra}")
+    missing = sorted(set(review.index) - set(sheet.index))
+    sheet = sheet.reindex(review.index)
+    bad = sheet.index[
+        ~sheet.decisao.isin(DECISIONS) | (sheet.responsavel.fillna("") == "") | (sheet.data.fillna("") == "")
+    ]
+    if missing or len(bad):
+        raise ValueError(
+            f"adjudicação incompleta em {adjudication}: {len(set(missing) | set(bad))} tabela(s) sem decisão em "
+            f"{DECISIONS}, responsável ou data; ex.: {sorted(set(missing) | set(bad))[:5]}"
+        )
+    final = results[["family_id", "openml_id", "name", "table", "status"]].copy()
+    keys = list(zip(final.family_id, final.table, strict=True))
+    final["status_final"] = [
+        sheet.decisao.get(k, s) if s == "revisar" else s for k, s in zip(keys, final.status, strict=True)
+    ]
+    final["origem"] = np.where(final.status == "revisar", "adjudicacao", "automatica")
+    final.to_csv(out, index=False)
+    blind = final[final.table == "blind"]
+    summary = {
+        "model": model, "rule_version": probes.RULE_VERSION,
+        "adjudication": str(adjudication) if len(review) else None,
+        "adjudication_sha256": sha256_path(adjudication) if len(review) else None,
+        "exclusions_final_sha256": sha256_path(out), "n_review": len(review),
+        "excluded_families_blind": sorted(blind.loc[blind.status_final == "reconhecida", "family_id"].astype(int)),
+        "inconclusive_families_blind": sorted(blind.loc[blind.status_final == "inconclusiva", "family_id"].astype(int)),
+    }  # fmt: skip
+    (probes_dir / "finalize_summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return out

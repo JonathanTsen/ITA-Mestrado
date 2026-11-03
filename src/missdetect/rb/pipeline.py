@@ -478,17 +478,32 @@ def run_stats_llm(run_dir: Path, config: RunConfig, llm_per_family: Path, probes
     Roda depois do painel de LLM sem tocar a saída confirmatória principal (`stats_confirmatory.csv`).
     Memorização (P21), com o `results.csv` das sondas: as famílias reconhecidas na renderização cega saem da H4 (sem
     reposição); o reconhecimento da tabela crua é covariável, e a H4 restrita às famílias não reconhecidas na crua é
-    reportada à parte, descritiva (`stats_llm_covariate.csv`). Num run confirmatório, as sondas são obrigatórias."""
-    if probes is None and "confirm" in config.sources.roles:
+    reportada à parte, descritiva (`stats_llm_covariate.csv`). Num run confirmatório, as sondas são obrigatórias e
+    entram pela lista final (`exclusions_final.csv` do `llm-probes-finalize`, regra de 03/11/2026): só `reconhecida`
+    exclui; `inconclusiva` fica na H4 e é listada no log."""
+    confirm = "confirm" in config.sources.roles
+    if probes is None and confirm:
         raise ValueError("stats-llm confirmatório precisa das sondas de memorização (--probes; pré-registro §4, P21)")
     per_family = pd.read_parquet(llm_per_family)
     excluded: list[int] = []
     raw_recognized: list[int] = []
+    inconclusive: list[int] = []
     tables: dict[str, pd.DataFrame] = {}
     if probes is not None:
         results = pd.read_csv(probes)
-        excluded = sorted(results.loc[(results.table == "blind") & results.recognized, "family_id"].astype(int))
-        raw_recognized = sorted(results.loc[(results.table == "raw") & results.recognized, "family_id"].astype(int))
+        if "status_final" in results.columns:
+            recognized = results.status_final == "reconhecida"
+            blind = (results.table == "blind") & (results.status_final == "inconclusiva")
+            inconclusive = sorted(results.loc[blind, "family_id"].astype(int))
+        elif confirm:
+            raise ValueError("stats-llm confirmatório usa a lista final das sondas (exclusions_final.csv, do "
+                             "llm-probes-finalize), não o results.csv")  # fmt: skip
+        elif "status" in results.columns and (results.status == "revisar").any():
+            raise ValueError("há sondas em `revisar`: adjudique e rode o llm-probes-finalize antes do stats-llm")
+        else:
+            recognized = results.recognized.astype(bool)
+        excluded = sorted(results.loc[(results.table == "blind") & recognized, "family_id"].astype(int))
+        raw_recognized = sorted(results.loc[(results.table == "raw") & recognized, "family_id"].astype(int))
         per_family = per_family[~per_family.family_id.isin(excluded)]
         unrecognized = per_family[~per_family.family_id.isin(raw_recognized)]
         tables["stats_llm_covariate.csv"] = pd.DataFrame(
@@ -500,6 +515,7 @@ def run_stats_llm(run_dir: Path, config: RunConfig, llm_per_family: Path, probes
         "llm_per_family": str(llm_per_family), "llm_per_family_sha256": sha256_path(llm_per_family),
         "probes": str(probes) if probes else None, "probes_sha256": sha256_path(probes) if probes else None,
         "excluded_families_blind": excluded, "recognized_families_raw": raw_recognized,
+        "inconclusive_families_blind": inconclusive,
     }  # fmt: skip
     append_run_log(run_dir, config, "stats-llm", extra)
     return run_dir / "stats_llm.csv"

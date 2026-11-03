@@ -308,6 +308,36 @@ def test_stats_llm_drops_blind_recognized_families_and_reports_the_raw_covariate
         pipeline.run_stats_llm(tmp_path / "other", confirm, path)
 
 
+def test_stats_llm_uses_the_adjudicated_final_list_and_keeps_inconclusive_families(run, extended, tmp_path):
+    """Regra B (03/11/2026): no confirmatório, só a lista final (llm-probes-finalize) vale; `inconclusiva` fica na H4."""
+    _, config = run
+    confirm = dataclasses.replace(config, sources=dataclasses.replace(config.sources, roles=["confirm"]))
+    rng = np.random.default_rng(2)
+    rows = [{"method": m, "family_id": f, "macro_recall": rng.uniform(0.3, 0.7)}
+            for m in ("llm_a1", "direct_hgb") for f in range(8)]  # fmt: skip
+    path = tmp_path / "per_family.parquet"
+    pd.DataFrame(rows).to_parquet(path, index=False)
+    statuses = {(0, "blind"): "reconhecida", (1, "blind"): "inconclusiva", (2, "raw"): "reconhecida"}
+    final = pd.DataFrame([{"family_id": f, "table": t, "status": "nao_reconhecida",
+                           "status_final": statuses.get((f, t), "nao_reconhecida")}
+                          for f in range(8) for t in ("raw", "blind")])  # fmt: skip
+    review = final.drop(columns="status_final").assign(status="revisar", recognized=False)
+    review.to_csv(tmp_path / "results.csv", index=False)
+    with pytest.raises(ValueError, match="lista final"):
+        pipeline.run_stats_llm(tmp_path / "a", confirm, path, tmp_path / "results.csv")
+    (tmp_path / "b").mkdir()
+    with pytest.raises(ValueError, match="revisar"):
+        pipeline.run_stats_llm(tmp_path / "b", config, path, tmp_path / "results.csv")
+    final.to_csv(tmp_path / "exclusions_final.csv", index=False)
+    run_dir = tmp_path / "c"
+    run_dir.mkdir()
+    pipeline.run_stats_llm(run_dir, confirm, path, tmp_path / "exclusions_final.csv")
+    assert pd.read_csv(run_dir / "stats_llm.csv").n_families.iloc[0] == 7  # só a família 0 sai
+    log = json.loads((run_dir / "run.stats-llm.json").read_text())
+    assert log["excluded_families_blind"] == [0] and log["inconclusive_families_blind"] == [1]
+    assert log["recognized_families_raw"] == [2]
+
+
 def test_secondary_extra_writes_the_amendment_analyses(run, extended, tmp_path):
     """C4 (emendas de 29/10): P6, P7, P8, P11, P12, P13 e P15 a partir das avaliações gravadas, de uma vez."""
     run_dir, config = run

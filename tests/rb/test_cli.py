@@ -8,6 +8,7 @@ import pytest
 from missdetect.rb import cli
 from missdetect.rb.cli import COMMANDS, main
 from missdetect.rb.llm.client import AuthorizationRequired
+from missdetect.rb.runs import LLM_COMMANDS
 
 
 def test_help_lists_all_commands():
@@ -77,3 +78,11 @@ def test_confirmatory_configs_go_through_the_guard(monkeypatch):
     assert calls == ["inject"]
     assert main(["inject", "--config", "configs/rb/rehearsal-dev.yaml"]) == 0
     assert calls == ["inject"]
+
+
+def test_probe_finalize_is_an_llm_step_behind_the_addendum_tag(capsys):
+    """Regra B (03/11/2026): a lista final das sondas é uma etapa própria, sob a trava do adendo LLM."""
+    assert "llm-probes-finalize" in COMMANDS and "llm-probes-finalize" in LLM_COMMANDS
+    with pytest.raises(SystemExit) as exc:
+        main(["llm-probes-finalize", "--config", "configs/rb/rehearsal-dev.yaml", "--run", "x"])
+    assert exc.value.code == 2 and "--model" in capsys.readouterr().err
