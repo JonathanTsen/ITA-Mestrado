@@ -72,6 +72,7 @@ MAX_OUTPUT_TOKENS = 32_768  # teto de segurança generoso; o adendo fixa o valor
 MODES = ("sync", "batch")
 OPENML_METADATA = Path("data_rb/openml_metadata_20261022.csv")
 OPENML_DESCRIPTIONS = Path("data_rb/openml_descriptions_20261030.csv")  # texto cru congelado para o A3
+FROZEN_EFFECTIVE = Path("data_rb/freeze_v1_addendum.json")  # as 50 famílias efetivas congeladas (painel de 30)
 ALIASES = Path("data_rb/llm_dataset_aliases.csv")  # apelidos da sonda de nome (lista fechada, antes das sondas)
 
 
@@ -84,10 +85,24 @@ def method_name(arm: str) -> str:
     return f"llm_{arm.lower()}"
 
 
+def frozen_effective_families() -> set[int]:
+    path = repo_root() / FROZEN_EFFECTIVE
+    return set(json.loads(path.read_text(encoding="utf-8"))["effective_families"]) if path.exists() else set()
+
+
 def build_panel(run_dir: Path, config: RunConfig) -> pd.DataFrame:
-    """Instâncias do painel com a repetição (replicate = 1 na subamostra de 10%), na ordem de execução."""
+    """Instâncias do painel com a repetição (replicate = 1 na subamostra de 10%), na ordem de execução.
+
+    Execução em duas etapas (emenda P25, 03/11/2026): num run com só parte das famílias efetivas congeladas, o painel é
+    a parte que cabe ao run do painel da produção completa (sorteado entre as 50), e não um sorteio novo entre as
+    famílias do run."""
     contexts = pd.read_parquet(run_dir / "contexts.parquet")
-    families = panel_families(contexts.family_id.unique().tolist(), config.root_seed)
+    present = {int(f) for f in contexts.family_id.unique()}
+    frozen = frozen_effective_families()
+    if present and present < frozen:
+        families = [f for f in panel_families(sorted(frozen), config.root_seed) if f in present]
+    else:
+        families = panel_families(sorted(present), config.root_seed)
     chosen = panel_contexts(contexts, pd.read_parquet(run_dir / "bases.parquet"), families)
     panel = panel_instances(
         pd.read_parquet(run_dir / "instances.parquet"), pd.read_parquet(run_dir / "oracle.parquet"), chosen

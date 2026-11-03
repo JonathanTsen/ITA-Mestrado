@@ -12,9 +12,11 @@ from google.genai import types
 from missdetect.rb.config import parse_config
 from missdetect.rb.ids import child_seed
 from missdetect.rb.inject import ObservedInstance
+from missdetect.rb.llm import run as llm_run
 from missdetect.rb.llm.budget import BudgetExceeded
 from missdetect.rb.llm.cache import ResponseCache
 from missdetect.rb.llm.client import PAID, AuthorizationRequired
+from missdetect.rb.llm.panel import panel_families
 from missdetect.rb.llm.probes import feature_chance, is_refusal, name_matches, name_types, probe_status
 from missdetect.rb.llm.render import render_a1
 from missdetect.rb.llm.run import SHEET_COLUMNS, build_panel, cache_root, finalize_probes, run_llm, run_probes
@@ -403,3 +405,17 @@ def test_probes_write_a_blind_review_sheet_and_finalize_needs_the_author_decisio
     assert summary["excluded_families_blind"] == [1] and summary["adjudication_sha256"]
     with pytest.raises(FileExistsError):
         finalize_probes(run_dir, FLASH)
+
+
+def test_a_partial_run_asks_only_its_share_of_the_full_panel(run, monkeypatch):
+    """P25 (duas etapas, 03/11/2026): num run com parte das famílias congeladas, o painel é a parte dele do painel da
+    produção completa; no run completo, nada muda."""
+    run_dir, config = run
+    full = set(range(1, 41))  # 40 famílias congeladas: o painel completo sorteia 30
+    monkeypatch.setattr(llm_run, "frozen_effective_families", lambda: full)
+    expected = [f for f in panel_families(sorted(full), config.root_seed) if f in {1, 2}]
+    assert set(build_panel(run_dir, config).family_id) == set(expected)
+    monkeypatch.setattr(llm_run, "frozen_effective_families", lambda: {1, 2})
+    assert set(build_panel(run_dir, config).family_id) == {1, 2}
+    monkeypatch.setattr(llm_run, "frozen_effective_families", set)
+    assert set(build_panel(run_dir, config).family_id) == {1, 2}
