@@ -1,6 +1,8 @@
 # Sondas de memória: proposta para revisão do autor (30/10/2026)
 
-**Rascunho, não aprovado nem ativado.** O pedido de implementar o plano autoriza preparar esta revisão. A lista usada pelo código permanece `data_rb/llm_dataset_aliases.csv` até o aceite explícito dos critérios e desta proposta. Nenhuma sonda confirmatória foi executada.
+**Aprovada pelo autor em 03/11/2026 e ativada no commit `6db8541`.** A regra recomendada abaixo (adjudicação cega, inconclusiva sem exclusão) está no adendo LLM, §5, e no código (`probes.RULE_VERSION` = 2, `llm-probes-finalize`). A lista proposta passou a ser `data_rb/llm_dataset_aliases.csv`, com a coluna `tipo` (`claro`/`ambiguo`; 22 ambíguos, incluindo nomes canônicos genéricos e versões relacionadas como `breast-w` para a `BNG(breast-w)`); a revisão dessa marcação está no pacote do lacre. O arquivo de 30/10 fica como registro. Nenhuma sonda confirmatória foi executada.
+
+_Texto original de 30/10:_ rascunho, não aprovado nem ativado; a lista usada pelo código permanecia `data_rb/llm_dataset_aliases.csv` até o aceite.
 
 ## Critérios propostos
 

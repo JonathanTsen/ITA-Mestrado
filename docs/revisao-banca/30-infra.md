@@ -91,6 +91,10 @@ inject-ampute   --config $C --run <run>   # P24: instâncias do ampute em <run>/
 #    de exclusão publicada com SHA-256 antes do evaluate:
 llm-probes      --config $C --run <run> --model <confirmatório> --mode batch --authorization "<texto do autor>"
 llm-probes      --config $C --run <run> --model gemini-3.8-flash --mode batch
+#    Adjudicação (regra do autor de 03/11/2026): o autor preenche <run>/llm/<modelo>/probes/adjudicacao.csv a partir
+#    de adjudicacao_pendente.csv (sem resultados da comparação; fica fora do git) e a lista final é gravada:
+llm-probes-finalize --config $C --run <run> --model <confirmatório>
+llm-probes-finalize --config $C --run <run> --model gemini-3.8-flash
 # 3. Com predição:
 baselines; evaluate --generators symmetric; evaluate; evaluate --generators mdatagen; evaluate --generators tab_err
 cross-generator --config $C --run <run>   # H5 (exige baselines.parquet)
@@ -109,7 +113,13 @@ llm             --config $C --run <run> --model <modelo> --arm A2 --mode batch [
 llm-sensitivity --config $C --run <run> --llm-predictions <run>/llm/<confirmatório>/A1/predictions.parquet
 llm-a2-ablation --config $C --run <run> --a2-predictions <run>/llm/<confirmatório>/A2/predictions.parquet
 stats-llm       --config $C --run <run> --llm-per-family <run>/llm/<confirmatório>/A1/per_family.parquet \
-                --probes <run>/llm/<confirmatório>/probes/results.csv   # H4 sem as famílias reconhecidas na cega
+                --probes <run>/llm/<confirmatório>/probes/exclusions_final.csv   # H4 sem as reconhecidas na cega
+# H7 (adendo LLM, §10; incluída pelo autor em 03/11/2026). Bases já geradas e versionadas (data_rb/contexto_h7/);
+#    o inject roda na worktree da tag prereg-v1, as perguntas e a análise no commit da prereg-v1-llm:
+inject          --config configs/rb/contexto-h7.yaml                     # worktree prereg-v1
+scripts/revisao_banca/llm/contexto_h7.py perguntar <run-h7> --model <confirmatório> --authorization "<texto>" [--budget-only]
+scripts/revisao_banca/llm/contexto_h7.py perguntar <run-h7> --model gemini-3.8-flash
+scripts/revisao_banca/llm/contexto_h7.py analisar  <run-h7> <saída> --model <confirmatório>
 # 5. Segundo depósito no Zenodo com os SHA-256 das saídas (P4)
 ```
 
@@ -118,7 +128,8 @@ stats-llm       --config $C --run <run> --llm-per-family <run>/llm/<confirmatór
 - **Gerar as instâncias:** `cli inject --config configs/rb/contexto-sintetico[-2].yaml`, que usa o apagamento do benchmark.
 - **Perguntar e analisar:** `contexto_sintetico.py perguntar <run> [--config ...] [--bracos ...]` e `contexto_sintetico.py analisar <run> <saída>`, com o Flash, em lote.
 - **Referência e poder:** `contexto_classificador.py` (o classificador congelado nos mesmos casos) e `contexto_poder.py`.
-- **Resultados:** no plano da tese, `execucao/38d-piloto-llm.md`. A proposta de H7 está no `adendo-llm.md`, §10.
+- **Resultados:** no plano da tese, `execucao/38d-piloto-llm.md`. A H7 confirmatória (incluída pelo autor em 03/11/2026) está no `adendo-llm.md`, §10, e na ordem acima; ela usa 30 bases novas (`contexto_h7.py`), não estas 16.
+- **Orçamento:** `projecao_orcamento.py` refaz a projeção global sem chamadas (`data_rb/decisoes/orcamento_llm_20261103.json`).
 
 **Piloto de LLM (30/10/2026; só desenvolvimento):** `llm` A1 síncrono e A2 em lote, `llm-probes`, `stats-llm --probes` e `llm-a2-ablation` rodaram no run de re-execução do ensaio (`results_rb/20261030-rehearsal-dev-b4ca243467d6`) com o `gemini-3.8-flash` (≈ US$ 6,30). Relatório no plano da tese (`execucao/38d-piloto-llm.md`).
 

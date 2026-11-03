@@ -1,9 +1,13 @@
-# Adendo LLM ao pré-registro v2 (`prereg-v1-llm`): RASCUNHO de 30/10/2026
+# Adendo LLM ao pré-registro v2 (`prereg-v1-llm`): RASCUNHO de 30/10/2026, atualizado em 03/11/2026
 
 > **Situação: rascunho, sem valor de registro.**
 >
 > **O que falta antes da tag:**
-> 1. A revisão final dos critérios e nomes das sondas marcados com **[AUTOR]**. Em 30/10, o autor pediu a implementação do plano: manter `medium`, manter A3 sujeito ao orçamento, propor H7 com 30 bases ao Vitor e executar somente o teste Argon de 30 perguntas de desenvolvimento.
+> **Quem decide (03/11/2026):** o autor informou que, segundo sua conversa com o orientador, ele próprio toma as decisões científicas, de escopo e de execução, e o Vitor revisa os resultados depois. As decisões abaixo são do autor; não são aprovações individuais do Vitor.
+>
+> **Decididas pelo autor em 03/11/2026:** (a) a H7 entra, com 30 bases inventadas novas e um único contraste S7 × S0, sem H7b (§10); (b) a regra das sondas: limiares mantidos, nomes claros automáticos, nomes ambíguos e respostas fora da lista para a adjudicação cega do autor, dúvida persistente como inconclusiva, sem exclusão automática (§5). Antes, em 30/10: `medium`, A3 sujeito ao orçamento e o teste Argon de 30 perguntas de desenvolvimento.
+>
+> 1. A revisão, pelo autor, do pacote final (`docs/revisao-banca/pacote-lacre-20261103.md`), incluindo a lista de nomes ambíguos das sondas.
 > 2. Teste Argon concluído em 30/10, autorizado pelo pedido de implementação: 30/30 válidas, US$ 0,212231 (§8). A produção ainda exige autorização própria.
 > 3. Reconferir, na data do adendo, qual é o modelo confirmatório pela regra do §4.
 > 4. Que o pré-registro principal tenha a tag `prereg-v1`.
@@ -84,19 +88,23 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
   - ou atributo ≥ 3 de 10 **e** acima do chute do valor mais frequente (binomial, p < 0,05);
   - ou nome correto.
 
-  **[AUTOR: aprovar os limiares]**
+  **Limiares aprovados pelo autor em 03/11/2026** (sem mudança).
 
   No piloto, a pc3 teve 4 de 10 valores exatos de um atributo cuja moda ocupa 3,1% da tabela (p ≈ 0): é memorização, não acaso.
-- **Nome correto:**
-  - a resposta contém o nome do OpenML (normalizado) **ou** um apelido de uma lista fechada (`data_rb/llm_dataset_aliases.csv`, com o motivo de cada apelido), montada **antes** de rodar as sondas confirmatórias;
-  - os casos não cobertos pela lista são adjudicados pelo autor, cego aos resultados da H4, e registrados.
+- **Nome (regra aprovada pelo autor em 03/11/2026; `probes.RULE_VERSION` = 2):**
+  - a lista fechada `data_rb/llm_dataset_aliases.csv`, montada **antes** das sondas confirmatórias, tem o nome do OpenML e os apelidos de cada representante, com o motivo e o `tipo`: `claro` ou `ambiguo` (nome genérico ou curto, só a família, versões relacionadas; o nome canônico também pode ser ambíguo, como `houses`);
+  - **reconhecida** automaticamente: um critério numérico acima ou um nome `claro` na resposta (normalizados);
+  - **revisar:** só um nome `ambiguo`, ou uma resposta de nome que não casa com a lista e não é uma recusa ("unknown", "I do not know"), pois pode identificar a família ou uma versão vizinha;
+  - **adjudicação:** o autor decide cada caso em `revisar` (`reconhecida`, `nao_reconhecida` ou `inconclusiva`), com motivo, data e responsável, **depois das sondas e antes do `evaluate`**, quando ainda não existe nenhum resultado da comparação LLM × classificador. A planilha (`adjudicacao_pendente.csv`) só traz a base, a resposta e o nome casado; as respostas fora da lista vêm pré-preenchidas como `nao_reconhecida`, para confirmar;
+  - **inconclusiva** não exclui: a família fica na H4 e é listada no log;
+  - `llm-probes-finalize` grava a lista final (`exclusions_final.csv`) e os SHA-256 da planilha e da lista. A planilha fica no run, fora do git, para não tirar o HEAD da tag, e o SHA-256 é publicado com a lista de exclusão.
 
-  **[AUTOR: aprovar a regra e a lista.]** A proposta completa está em [sondas-revisao-20261030.md](sondas-revisao-20261030.md), com 93 nomes cobrindo os 69 representantes, sem ativação no código. No piloto, sem a lista, a conferência deixou passar "Breast Cancer Wisconsin" para o `BNG(breast-w)` e "ipums-la-99" para o `kdd_ipums_la_97-small`. Com a lista de rascunho, a tabela crua foi reconhecida em 7 de 8 famílias, e a renderização cega em 0 de 8.
+  **Regra e lista aprovadas pelo autor em 03/11/2026; ativadas no código** (commit `6db8541`): 93 nomes cobrindo os 69 representantes, 22 marcados como ambíguos (lista para revisão no pacote do lacre). A proposta e sua evidência estão em [sondas-revisao-20261030.md](sondas-revisao-20261030.md). No piloto, sem a lista, a conferência deixou passar "Breast Cancer Wisconsin" para o `BNG(breast-w)` e "ipums-la-99" para o `kdd_ipums_la_97-small`. Com a lista de rascunho, a tabela crua foi reconhecida em 7 de 8 famílias, e a renderização cega em 0 de 8.
 - **Exclusão:**
-  - uma família reconhecida na renderização cega sai da análise principal da H4, sem reposição;
+  - uma família reconhecida na renderização cega (automaticamente ou na adjudicação) sai da análise principal da H4, sem reposição; uma inconclusiva fica;
   - o reconhecimento da tabela crua é covariável: a H4 restrita às famílias não reconhecidas na crua é reportada à parte (`stats_llm_covariate.csv`);
   - "LLM superior" só é afirmado se o sinal se mantiver nelas.
-- **Ordem:** as sondas rodam, e a lista de famílias excluídas é publicada com SHA-256, antes do `evaluate` da produção.
+- **Ordem:** as sondas rodam, o autor adjudica os casos em `revisar`, o `llm-probes-finalize` grava a lista final, e a lista de famílias excluídas é publicada com SHA-256, tudo antes do `evaluate` da produção. O `stats-llm` confirmatório só aceita a lista final.
 
 ## 6. Análise
 
@@ -131,6 +139,15 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 
 ## 8. Orçamento (emenda P22)
 
+### Atualização de 03/11 com a H7 incluída (prevalece sobre as projeções abaixo)
+
+- Conta reproduzível, sem chamadas: `scripts/revisao_banca/llm/projecao_orcamento.py`, saída em `data_rb/decisoes/orcamento_llm_20261103.json`. Gasto acumulado global: US$ 43,36 (sem chamadas novas desde 30/10).
+- A H7 usa a entrada e o raciocínio medidos no S0 e no S7 dos dois exploratórios: no Flash, ≈ 7.500 tokens de saída por chamada, o que leva a H7 no Flash a ≈ US$ 17,28 (não US$ 10). No Argon, conservador (com o raciocínio do Flash) ≈ US$ 46,08; com o raciocínio do teste A1 do Argon, ≈ US$ 8,10.
+- **Conservador até 30/11/2026:** futuro US$ 154,36; gasto + 1,5 × futuro = **US$ 274,90**, dentro do teto global de US$ 300.
+- Com o Argon medido no A1 (informativo): US$ 185,23.
+- **Em dezembro o Argon dobra:** conservador US$ 446,03, **não cabe**; com o Argon medido, US$ 266,69. Executar a produção Argon até 30/11 ou aplicar a ordem de cortes (P22) antes de qualquer resultado; não aumentar o teto.
+- Preços conferidos em 30/10; reconferir na data da execução, com o corpus e os prompts finais.
+
 ### Atualização de 30/10 após o teste autorizado (prevalece sobre a projeção histórica abaixo)
 
 - Teste A1 Argon em lote, `medium`, 30 perguntas distintas de desenvolvimento: 30 respostas válidas, 0 retentativas; custo calculado pelos tokens de **US$ 0,212231**, não uma conferência de fatura. Entrada média 4.345,37 tokens, raciocínio médio 498,3 (máximo 2.398), saída final média 47,5. Modelo informado: `gemini-4-argon`. Resultado em `data_rb/decisoes/argon_limit30_20261030.json`; execução no código `f9c230c`, árvore limpa ao início.
@@ -156,26 +173,27 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 ## 9. Ordem na produção
 
 1. tag `prereg-v1-llm` neste texto;
-2. `llm-probes` nas famílias do painel e publicação da lista de exclusão (SHA-256);
+2. `llm-probes` nas famílias do painel; adjudicação do autor dos casos em `revisar`; `llm-probes-finalize`; publicação da lista de exclusão e da planilha (SHA-256);
 3. `evaluate` da produção e as demais etapas do pipeline principal;
 4. `llm` A1 (confirmatório, depois secundário), A2 e A3;
-5. `llm-sensitivity`, `llm-a2-ablation` e `stats-llm --probes`.
+5. `llm-sensitivity`, `llm-a2-ablation` e `stats-llm --probes <exclusions_final.csv>`;
+6. H7 (§10): o `inject` de `configs/rb/contexto-h7.yaml` roda na worktree da tag `prereg-v1`; `contexto_h7.py perguntar` (S0 e S7, confirmatório e depois Flash) e `analisar`, no commit da `prereg-v1-llm`.
 
 Nenhuma chamada ao Argon roda sem a autorização explícita do autor, pedida antes de cada execução (regra de 29/10/2026; trava no código).
 
-## 10. PROPOSTA H7, efeito do contexto em bases inventadas (30/10/2026; **encaminhamento autorizado pelo autor; pendente do Vitor**; não vale como registro)
+## 10. H7, efeito do contexto em bases inventadas (proposta de 30/10/2026; **incluída por decisão do autor em 03/11/2026**)
 
 **De onde vem:** o experimento exploratório do autor (`scripts/revisao_banca/llm/contexto_sintetico.py`; relatório no plano da tese, `execucao/38d-piloto-llm.md`), feito em 16 bases inventadas de desenvolvimento.
 - A IA com contexto detalhado (faixas típicas aproximadas em ±25%) e valores originais (S7) acertou 0,622, contra 0,510 da tabela cega (S0): +11,1 p.p., em 12 de 16 bases, McNemar p < 0,0001.
 - Replicou em dois grupos de domínios.
 
-**Desenho proposto:**
+**Desenho:**
 - **Hipótese:** em bases inventadas com documentação, o macro-recall por base do LLM com contexto e valores originais (S7) difere do da tabela cega (S0). Família própria, α = 0,05, fora do Holm de H1–H6.
-  - A proposta encaminhada tem um único contraste confirmatório, S7 × S0; não acrescenta H7b. Uma eventual comparação com o classificador permanece descritiva, com a diferença de informação declarada.
-- **Dados:** 30 domínios inventados **novos**, sem reutilizar os 16 de desenvolvimento, com 1.000 linhas e 8 colunas cada. As definições, dados, contexto e sementes serão congelados antes de qualquer chamada confirmatória, seguindo o gerador, o molde de contexto e a regra das faixas aproximadas do exploratório (±25%, semente fixa). Usa o apagamento do benchmark no desenho do painel: 18 instâncias por base, 6 de cada tipo. O aceite de escopo do Vitor precede a preparação final e o lacre desse corpus.
+  - Um único contraste confirmatório, S7 × S0; não há H7b. Uma eventual comparação com o classificador permanece descritiva, com a diferença de informação declarada.
+- **Dados:** 30 domínios inventados **novos**, sem reutilizar os 16 de desenvolvimento, com 1.000 linhas e 8 colunas cada. Preparados em 03/11/2026, sem nenhuma chamada ao LLM, com o gerador, o molde de contexto e a regra das faixas aproximadas do exploratório (±25%, semente fixa): `scripts/revisao_banca/llm/contexto_h7_dominios.py` (IDs 990201–990230, temas fora dos 16 de desenvolvimento, colunas contínuas com ≥ 30 valores distintos, como lá) e `data_rb/contexto_h7/` (SHA-256 de `sources.csv` `b42203db…96c2b5`, de `contexts.json` `3d2bbb77…b14413`, do gerador `3b7c67ac…98bb4d`; todos os arquivos no `manifest.json`). Usa o apagamento do benchmark no desenho do painel (`configs/rb/contexto-h7.yaml`, papel `confirm`, `root_seed` 20261103): 18 instâncias por base, 6 de cada tipo, 540 por braço. As instâncias só são geradas no commit da tag `prereg-v1` (trava do `inject`); uma checagem de elegibilidade com papel `dev` e outra semente, fora do repositório, confirmou as 30 bases no painel com 18 instâncias cada.
 - **Informação:** S0 e S7 veem as mesmas até 200 linhas e as mesmas colunas; S0 anonimiza e escala, S7 recebe os valores originais e documentação com faixas aproximadas. A documentação é idêntica entre os três mecanismos e não menciona ausências. O contraste testa esse conjunto de informações, não o efeito isolado da descrição textual.
 - **Congelado neste adendo:**
-  - os prompts S0 e S7 por hash;
+  - os prompts S0 e S7, pelo código no commit da tag (`contexto_sintetico.prompts`, `RENDERER` = `contexto-sintetico-1`) e pelos SHA-256 das bases e dos contextos acima; as mensagens renderizadas dependem das instâncias, geradas só depois da tag;
   - o molde do contexto e a regra das faixas;
   - o modelo pela regra do §1 (mais o Flash secundário);
   - o raciocínio, o esquema e o lote;
@@ -187,9 +205,9 @@ Nenhuma chamada ao Argon roda sem a autorização explícita do autor, pedida an
   |---|---|---|
   | 24 | 86% | 98% |
   | 30 | 92% | ≈ 100% |
-- **Custo:** 30 bases × 18 × 2 braços = 1.080 chamadas, ≈ US$ 50 no Argon e ≈ US$ 10 no Flash, em lote. O Argon só com a autorização do autor.
+- **Custo:** 30 bases × 18 × 2 braços = 1.080 chamadas, em lote: ≈ US$ 46 no Argon (conservador; ≈ US$ 8 com o raciocínio medido no A1) e ≈ US$ 17 no Flash (§8, atualização de 03/11). O Argon só com a autorização do autor.
 - **Interpretação:** usar o teste bilateral por base; reportar HL, intervalo, sinal e recalls por classe. Ausência de diferença significativa significa evidência insuficiente, não equivalência. Não generalizar para bases reais nem atribuir causalmente o ganho apenas ao texto. Os p-valores por instância do exploratório não substituem a análise confirmatória por base.
-- **Execução:** esta autorização de encaminhamento não autoriza chamadas H7 nem a produção Argon. O custo H7 entra na projeção global e no teto P22; não se atribui um novo teto de US$ 300 a cada experimento.
+- **Execução:** `scripts/revisao_banca/llm/contexto_h7.py` (`perguntar` com a trava da tag `prereg-v1-llm`, a autorização do autor e a trava do orçamento; `analisar` com `analisar_h7`). A inclusão da H7 não autoriza as chamadas H7 nem a produção Argon: elas entram na autorização de execução. O custo H7 entra na projeção global e no teto P22; não se atribui um novo teto de US$ 300 a cada experimento.
 - **Limites a declarar:**
   - as bases inventadas são mais simples que as reais;
   - a imperfeição das faixas é simulada;

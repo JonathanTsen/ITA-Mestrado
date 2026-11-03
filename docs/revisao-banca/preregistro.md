@@ -1,14 +1,15 @@
 # Pré-registro das análises confirmatórias (passo 38) — versão 2
 
-> **Situação: versão 2, aprovada pelo orientador (Prof. Vitor Curtis) em 29/10/2026 na versão `444d1d8`, com as emendas de 29/10/2026 listadas na seção 0.4, que voltam a ele antes da tag.**
-> - A tag `prereg-v1` só é criada depois da aprovação das emendas. Até lá, nenhuma instância das famílias confirmatórias é gerada.
+> **Situação: versão 2, aprovada pelo orientador (Prof. Vitor Curtis) em 29/10/2026 na versão `444d1d8`, com as emendas de 29/10/2026 listadas na seção 0.4.**
+> - **03/11/2026:** o autor informou que, segundo sua conversa com o orientador, ele próprio toma as decisões científicas, de escopo e de execução, e o Vitor revisa os resultados depois. As emendas não voltam ao orientador antes da tag; isso não equivale a uma aprovação específica delas pelo Vitor.
+> - A tag `prereg-v1` só é criada depois que o autor revisar o pacote final e autorizar o registro. Até lá, nenhuma instância das famílias confirmatórias é gerada.
 > - A versão 1 (21–22/10) foi revista criticamente antes de qualquer dado confirmatório. O que mudou e por quê está na seção 0.3.
 > - Toda mudança depois da tag vai para `desvios.md` (seção 9).
 
 - **Configuração congelada:** tag `freeze-v1`, com `inject-v1.yaml`, os descritores 34b e as famílias. O adendo `data_rb/freeze_v1_addendum.json` registra o N efetivo.
 - **Corpus sintético:** tag `synth-v2`.
 - **Código da análise:** `src/missdetect/rb/stats.py` (decisão), `analyses.py` (AUC MAR × MNAR, testes por gerador) e `pipeline.py` (etapas `cross-generator`, `secondary` e `stats`). Entram no commit da tag.
-- **Decisões:** são do autor, preparadas com apoio e ratificadas pelo orientador; a evidência de cada uma está em `plano-revisao-banca/execucao/08-decisoes-tomadas.md`, no repositório da tese.
+- **Decisões:** são do autor, preparadas com apoio; até 29/10 foram ratificadas pelo orientador, e desde 03/11 o autor decide e o orientador revisa os resultados depois; a evidência de cada uma está em `plano-revisao-banca/execucao/08-decisoes-tomadas.md`, no repositório da tese.
 - **Versões:**
   - Python: scikit-learn 1.8.0, SciPy 1.17.1, NumPy 2.4.4, pandas 2.3.3, baycomp 1.0.3, mdatagen 0.2.0, tab-err 0.2.1;
   - R 4.6.1 com PKLMtest 1.0.1;
@@ -135,7 +136,7 @@ As emendas abaixo vêm dessa verificação e das decisões do autor. **Nenhuma m
 | P23 | Linhas da H4 na tabela de interpretação | §5.2 |
 | P24 | Secundária com um gerador externo estocástico: o ampute (Schouten, Lugtig e Vink, 2018) | §1; §6 |
 
-**Proposta adicional de 30/10, encaminhada a pedido do autor e pendente do orientador:** H7, efeito do conjunto de informações (valores originais e contexto com faixas típicas aproximadas) em 30 bases inventadas novas, comparado à tabela cega. O desenho está no [adendo LLM, §10](adendo-llm.md#10-proposta-h7-efeito-do-contexto-em-bases-inventadas-30102026-encaminhamento-autorizado-pelo-autor-pendente-do-vitor-não-vale-como-registro). É uma família própria com um contraste, sem alteração de H1–H6. Os 16 domínios exploratórios já vistos não serão usados como confirmatórios. A proposta ainda não está lacrada, e não autoriza execução confirmatória.
+**H7 (proposta em 30/10; incluída por decisão do autor em 03/11/2026):** efeito do conjunto de informações (valores originais e contexto com faixas típicas aproximadas) em 30 bases inventadas novas, comparado à tabela cega. O desenho está no [adendo LLM, §10](adendo-llm.md#10-proposta-h7-efeito-do-contexto-em-bases-inventadas-30102026-encaminhamento-autorizado-pelo-autor-pendente-do-vitor-não-vale-como-registro). É uma família própria com um contraste, sem alteração de H1–H6. Os 16 domínios exploratórios já vistos não serão usados como confirmatórios. A proposta ainda não está lacrada, e não autoriza execução confirmatória.
 
 ## 1. Dados
 
@@ -542,6 +543,6 @@ A tag no git sozinha não basta, porque uma tag pode ser apagada e recriada. Por
 3. **E-mail ao orientador:** com o SHA do commit e o SHA-256 de `preregistro.md` e de `stats.py`, para que a data de recebimento sirva de anterioridade independente.
 4. **Segundo depósito (emenda P4):** ao fim do `stats`, os SHA-256 de `stats_confirmatory.csv`, `stats_level.csv`, `oracle.parquet` e dos `run*.json` do run pré-registrado são publicados num segundo depósito no Zenodo, ligado ao primeiro. O mesmo vale para o `stats-llm` da H4.
 
-A aprovação do orientador (29/10/2026) e a aprovação das emendas são arquivadas com data em `plano-revisao-banca/execucao/08-reuniao-orientador.md`, no repositório da tese.
+A aprovação do orientador (29/10/2026) é arquivada com data em `plano-revisao-banca/execucao/08-reuniao-orientador.md`, no repositório da tese; a regra de 03/11 (o autor decide, o orientador revisa os resultados depois) e as decisões do autor estão em `plano-revisao-banca/execucao/HANDOFF-2026-11-03.md`.
 
 Os hashes e o link do registro entram em `plano-revisao-banca/execucao/38-preregistro.md`, no repositório da tese.
