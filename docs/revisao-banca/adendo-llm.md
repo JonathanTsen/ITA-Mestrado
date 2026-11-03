@@ -1,16 +1,16 @@
-# Adendo LLM ao pré-registro v2 (`prereg-v1-llm`): RASCUNHO de 30/10/2026, atualizado em 03/11/2026
+# Adendo LLM ao pré-registro v2 (`prereg-v1-llm`): versão final de 03/11/2026
 
-> **Situação: rascunho, sem valor de registro.**
+> **Situação: versão final, lacrada pela tag `prereg-v1-llm` em 03/11/2026, no mesmo commit da `prereg-v1`, com a autorização do autor (lacre e registro no Zenodo). O histórico abaixo fica como registro.**
 >
 > **O que falta antes da tag:**
 > **Quem decide (03/11/2026):** o autor informou que, segundo sua conversa com o orientador, ele próprio toma as decisões científicas, de escopo e de execução, e o Vitor revisa os resultados depois. As decisões abaixo são do autor; não são aprovações individuais do Vitor.
 >
 > **Decididas pelo autor em 03/11/2026:** (a) a H7 entra, com 30 bases inventadas novas e um único contraste S7 × S0, sem H7b (§10); (b) a regra das sondas: limiares mantidos, nomes claros automáticos, nomes ambíguos e respostas fora da lista para a adjudicação cega do autor, dúvida persistente como inconclusiva, sem exclusão automática (§5). Antes, em 30/10: `medium`, A3 sujeito ao orçamento e o teste Argon de 30 perguntas de desenvolvimento.
 >
-> 1. A revisão, pelo autor, do pacote final (`docs/revisao-banca/pacote-lacre-20261103.md`), incluindo a lista de nomes ambíguos das sondas.
+> 1. ~~A revisão, pelo autor, do pacote final~~: feita em 03/11; o autor aprovou a lista de nomes ambíguos como está e autorizou o lacre.
 > 2. Teste Argon concluído em 30/10, autorizado pelo pedido de implementação: 30/30 válidas, US$ 0,212231 (§8). A produção ainda exige autorização própria.
-> 3. Reconferir, na data do adendo, qual é o modelo confirmatório pela regra do §4.
-> 4. Que o pré-registro principal tenha a tag `prereg-v1`.
+> 3. ~~Reconferir o modelo confirmatório~~: feito em 03/11 (`gemini-4-argon`, §1).
+> 4. ~~Que o pré-registro principal tenha a tag `prereg-v1`~~: as duas tags ficam no mesmo commit.
 >
 > O adendo é lacrado **antes do `evaluate` da produção** (emenda P21).
 
@@ -21,7 +21,7 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 - **Provedor:** só o Google (Gemini), pela API pública, com o SDK `google-genai` 1.74.0.
 - **Confirmatório:** o modelo mais capaz, de uso geral e não-preview do provedor na data do adendo.
   - Em 29/10/2026 era o `gemini-4-argon`.
-  - **[A reconferir com `models.list` na data do adendo]**
+  - **Reconferido em 03/11/2026 com `models.list`:** continua sendo o `gemini-4-argon` (o mais capaz entre os modelos de uso geral, não-preview, que a chave lista).
 - **Secundário descritivo:** o `gemini-3.8-flash`.
 - **Registro por chamada:** a API não oferece snapshot datado; o `modelVersion` devolvido é o próprio alias. Cada resposta grava o alias, a data e hora (UTC), o `modelVersion`, o `responseId`, os tokens e o plano da chave (pago ou gratuito).
 - **Janela:** o A1 confirmatório roda numa janela contínua de até 72 h. Se a versão mudar, nada é refeito, e a mudança é reportada.
@@ -146,7 +146,8 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 - **Conservador até 30/11/2026:** futuro US$ 154,36; gasto + 1,5 × futuro = **US$ 274,90**, dentro do teto global de US$ 300.
 - Com o Argon medido no A1 (informativo): US$ 185,23.
 - **Em dezembro o Argon dobra:** conservador US$ 446,03, **não cabe**; com o Argon medido, US$ 266,69. Executar a produção Argon até 30/11 ou aplicar a ordem de cortes (P22) antes de qualquer resultado; não aumentar o teto.
-- Preços conferidos em 30/10; reconferir na data da execução, com o corpus e os prompts finais.
+- Preços reconferidos na página oficial em 03/11/2026: iguais aos do código (Argon 2/10 até 30/11 e 4/20 depois; Flash 0,75/3,75 até 31/12; lote com −50%).
+- **Execução em duas etapas (P25):** a etapa 1 custa cerca de metade do previsto (conservador ≈ US$ 77 até 30/11). O run completo reaproveita as respostas da etapa 1 pelo caderno; a etapa 2 paga a outra metade.
 
 ### Atualização de 30/10 após o teste autorizado (prevalece sobre a projeção histórica abaixo)
 
@@ -171,6 +172,9 @@ Este adendo congela o que o §4 do pré-registro (H4, RQ4) deixou para depois do
 - **Retomada:** o A1 confirmatório roda primeiro; se o orçamento acabar, a H4 usa as famílias completas.
 
 ## 9. Ordem na produção
+
+**Duas etapas (P25):** a ordem abaixo roda primeiro com as configurações da etapa 1 e depois com as da etapa 2; a análise confirmatória final usa as configurações completas, e as perguntas já respondidas saem do caderno. A adjudicação das sondas de cada etapa acontece antes do `evaluate` daquela etapa.
+
 
 1. tag `prereg-v1-llm` neste texto;
 2. `llm-probes` nas famílias do painel; adjudicação do autor dos casos em `revisar`; `llm-probes-finalize`; publicação da lista de exclusão e da planilha (SHA-256);

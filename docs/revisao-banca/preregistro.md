@@ -2,7 +2,7 @@
 
 > **Situação: versão 2, aprovada pelo orientador (Prof. Vitor Curtis) em 29/10/2026 na versão `444d1d8`, com as emendas de 29/10/2026 listadas na seção 0.4.**
 > - **03/11/2026:** o autor informou que, segundo sua conversa com o orientador, ele próprio toma as decisões científicas, de escopo e de execução, e o Vitor revisa os resultados depois. As emendas não voltam ao orientador antes da tag; isso não equivale a uma aprovação específica delas pelo Vitor.
-> - A tag `prereg-v1` só é criada depois que o autor revisar o pacote final e autorizar o registro. Até lá, nenhuma instância das famílias confirmatórias é gerada.
+> - **Lacre:** o autor revisou o pacote final e autorizou, em 03/11/2026, a tag `prereg-v1` e o registro no Zenodo. A tag do adendo (`prereg-v1-llm`) fica no mesmo commit. Nenhuma instância das famílias confirmatórias foi gerada antes da tag.
 > - A versão 1 (21–22/10) foi revista criticamente antes de qualquer dado confirmatório. O que mudou e por quê está na seção 0.3.
 > - Toda mudança depois da tag vai para `desvios.md` (seção 9).
 
@@ -135,6 +135,18 @@ As emendas abaixo vêm dessa verificação e das decisões do autor. **Nenhuma m
 | P22 | Regra de custo do LLM | §4 |
 | P23 | Linhas da H4 na tabela de interpretação | §5.2 |
 | P24 | Secundária com um gerador externo estocástico: o ampute (Schouten, Lugtig e Vink, 2018) | §1; §6 |
+| P25 | Execução em duas etapas sorteadas, com a segunda incondicional (decisão do autor de 03/11/2026) | §0.4; §9 |
+
+**P25 — execução em duas etapas (decisão do autor de 03/11/2026, antes da tag e de qualquer instância confirmatória):**
+- **Por quê:** o autor quer ver se a cadeia completa (inclusive o `evaluate` e os lotes do LLM) roda bem e quanto custa antes de pagar a segunda metade.
+- **Sorteio:** `scripts/revisao_banca/etapas.py`, semente fixa, estratificado e congelado em `data_rb/etapas/etapas.json` com o SHA-256 de cada arquivo:
+  - etapa 1: 15 das 30 famílias do painel de LLM e 10 das 20 restantes, ou seja, 25 das 50 efetivas;
+  - etapa 2: as outras 25;
+  - H7: 15 das 30 bases em cada etapa.
+- **A segunda etapa roda sempre**, qualquer que seja o resultado da primeira. O autor pode ver os números da etapa 1, mas nenhuma hipótese, comparador, teste, limiar, frase, lista ou código muda por causa deles. Uma mudança depois da tag continua indo para `desvios.md`, com a indicação de que os resultados da etapa 1 já eram conhecidos.
+- **Análise confirmatória:** a do **run completo**, `inject-v1.yaml` (inalterado, hash `52ed6f93a2a0`), sobre as 50 famílias, depois das duas etapas. As configurações das etapas (`inject-v1-etapa{1,2}.yaml`, `contexto-h7-etapa{1,2}.yaml`) só trocam a tabela-fonte. Elas mantêm `name` e `root_seed`, então as instâncias, as perguntas e o caderno de respostas são os mesmos, e o run completo reaproveita as respostas já pagas. Os runs das etapas são parciais e descritivos: não são uma análise interina com regra de parada, e nenhum resultado parcial é reportado como confirmatório.
+- **Painel de LLM numa etapa:** a parte que cabe à etapa do painel completo de 30 (`llm.run.build_panel`).
+- **Gasto:** o Argon da etapa 1 foi autorizado pelo autor em 03/11; o da etapa 2 depende de nova autorização, pedida antes, e não do resultado da etapa 1.
 
 **H7 (proposta em 30/10; incluída por decisão do autor em 03/11/2026):** efeito do conjunto de informações (valores originais e contexto com faixas típicas aproximadas) em 30 bases inventadas novas, comparado à tabela cega. O desenho está no [adendo LLM, §10](adendo-llm.md#10-proposta-h7-efeito-do-contexto-em-bases-inventadas-30102026-encaminhamento-autorizado-pelo-autor-pendente-do-vitor-não-vale-como-registro). É uma família própria com um contraste, sem alteração de H1–H6. Os 16 domínios exploratórios já vistos não serão usados como confirmatórios. A proposta ainda não está lacrada, e não autoriza execução confirmatória.
 
