@@ -29,3 +29,27 @@ Toda mudança feita depois da tag `prereg-v1` fica registrada aqui, com data, mo
   - testes novos (linhas repetidas, tabela larga) e suíte completa com `OMP_NUM_THREADS=1`: 302 de 302.
 - **Nova tag:** `prereg-v1.2` e `prereg-v1.2-llm`. As anteriores ficam como estão.
 - **Decisão:** do executor, sob a instrução do autor de 03/11 de continuar se algo acontecer. É registrada para revisão do autor.
+
+## D3 — PKLM: a mesma colisão da coluna `y` da D1, em outro lugar (04/11/2026)
+
+- **O que aconteceu:**
+  - A etapa `baselines` da etapa 1, no commit `prereg-v1.2`, terminou o MechDetect e o teste de Little (`baselines.parquet`, 5.214 instâncias, gravado às 13:01 UTC).
+  - Em seguida, o PKLM abortou: `pklm_r.run_pklm` ainda gravava o CSV de entrada com a coluna `y`, que colide com a auxiliar `y` da família 44059.
+  - A correção da D1 tinha coberto o arquivo observado, mas não esse segundo ponto.
+  - A fumaça da D2 não pegou o problema: a instância sorteada da 44059 não tinha a auxiliar `y`.
+- **O que se sabia:** nenhuma resposta da IA, predição do classificador ou métrica. O `baselines.parquet` contém só os p-valores e decisões dos comparadores, que ninguém inspecionou.
+- **Correção:**
+  - `pklm_r.write_instance_csv` grava Y com o nome reservado `OBSERVED_TARGET`.
+  - O `pklm.R` lê a matriz por posição, então o p-valor não depende do nome. Um teste novo mostra p idêntico com e sem a auxiliar chamada `y`.
+  - Uma busca em `src/missdetect/rb` não achou outro lugar que junte Y e as auxiliares sob o nome `y`.
+- **`baselines.parquet` mantido:**
+  - Foi produzido no commit `2e30247`, cujo código do MechDetect e do Little é idêntico ao da correção.
+  - Verificação: 20 instâncias, 6 delas da 44059 com auxiliar `y`, recalculadas com o código corrigido deram valores idênticos nas 25 colunas.
+  - O log `run.baselines.json` não foi gravado, porque o comando abortou no PKLM. O PKLM roda à parte com `baselines --only-pklm`, que grava `run.baselines-pklm.json`.
+  - SHA-256 do `baselines.parquet` registrado no HANDOFF.
+- **Verificação antes da nova tag:**
+  - entrada do PKLM gravada para as 1.200 instâncias do subconjunto (15 com auxiliar `y`);
+  - R rodado numa amostra de 8 instâncias, 8 de 8 ok;
+  - suíte completa de testes com `OMP_NUM_THREADS=1`: 303 de 303.
+- **Nova tag:** `prereg-v1.3` e `prereg-v1.3-llm`. As anteriores ficam como estão.
+- **Decisão:** do executor, sob a instrução do autor de continuar se algo acontecer. É registrada para revisão do autor.

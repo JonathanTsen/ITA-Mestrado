@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from missdetect.rb.runs import read_observed
+from missdetect.rb.runs import OBSERVED_TARGET, read_observed
 
 R_SCRIPT = Path(__file__).with_name("pklm.R")
 
@@ -27,6 +27,14 @@ def rscript() -> str:
     return path
 
 
+def write_instance_csv(instance, path: Path) -> None:
+    """Y (com NA) na primeira coluna e as auxiliares depois; o pklm.R lê por posição. A coluna de Y tem o nome reservado
+    `OBSERVED_TARGET`, porque uma auxiliar pode se chamar "y" (família 44059; desvios D1 e D3)."""
+    frame = instance.z.copy()
+    frame.insert(0, OBSERVED_TARGET, instance.y)
+    frame.to_csv(path, index=False, na_rep="NA")
+
+
 def run_pklm(run_dir: Path, sample_ids: list[str], num_proj: int, nrep: int, seed: int, n_jobs: int) -> pd.DataFrame:
     """p-valores do PKLM para `sample_ids`, em `n_jobs` processos R."""
     if not sample_ids:
@@ -35,11 +43,8 @@ def run_pklm(run_dir: Path, sample_ids: list[str], num_proj: int, nrep: int, see
         tmp_dir = Path(tmp)
         paths = []
         for sample_id in sample_ids:
-            instance = read_observed(run_dir, sample_id)
-            frame = instance.z.copy()
-            frame.insert(0, "y", instance.y)
             path = tmp_dir / f"{sample_id}.csv"
-            frame.to_csv(path, index=False, na_rep="NA")
+            write_instance_csv(read_observed(run_dir, sample_id), path)
             paths.append(str(path))
         items = pd.DataFrame({"sample_id": sample_ids, "path": paths})
         procs = []

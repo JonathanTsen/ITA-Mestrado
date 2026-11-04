@@ -75,3 +75,15 @@ def test_pklm_via_rscript(tmp_path):
     assert (out.status == "ok").all()
     assert out.pklm_p.between(0, 1).all()
     assert out.set_index("sample_id").loc["s5", "pklm_p"] < 0.05
+
+
+@pytest.mark.skipif(shutil.which("Rscript") is None, reason="R não instalado")
+def test_pklm_accepts_an_auxiliary_named_y_and_reads_by_position(tmp_path):
+    """Desvio D3 (04/11/2026): a família 44059 tem uma auxiliar chamada "y"; o p-valor não depende do nome."""
+    instance, _ = _instance("MAR", n=300, seed=5)
+    renamed = ObservedInstance("s5y", instance.y, instance.z.rename(columns={"a": "y"}))
+    for item in (instance, renamed):
+        write_observed(tmp_path, item)
+    out = run_pklm(tmp_path, ["s5", "s5y"], num_proj=10, nrep=20, seed=1, n_jobs=1).set_index("sample_id")
+    assert (out.status == "ok").all()
+    assert out.loc["s5", "pklm_p"] == out.loc["s5y", "pklm_p"]

@@ -65,8 +65,9 @@ def git_state(repo: Path) -> dict:
 # 98c01d7) abortava o inject na família 44059 por um erro de implementação; a correção vai na `prereg-v1.1`. As tags
 # originais ficam como estão (nunca apagadas nem movidas).
 # Desvio D2 (04/11/2026): sondas que abortavam nas famílias 310 e 44148 (tabmemcheck); a correção vai na `prereg-v1.2`.
-PREREG_TAG = "prereg-v1.2"
-LLM_ADDENDUM_TAG = "prereg-v1.2-llm"
+# Desvio D3 (04/11/2026): o PKLM ainda gravava Y como "y" (família 44059); a correção vai na `prereg-v1.3`.
+PREREG_TAG = "prereg-v1.3"
+LLM_ADDENDUM_TAG = "prereg-v1.3-llm"
 NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features", "inject-ampute"})
 LLM_COMMANDS = frozenset({"llm", "llm-probes", "llm-probes-finalize", "stats-llm"})
 
