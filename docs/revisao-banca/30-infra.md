@@ -78,7 +78,7 @@ uv run --frozen python -m missdetect.rb.cli evaluate        --config configs/rb/
 
 O PKLM pode rodar à parte com `baselines --only-pklm` (ou ser pulado com `--skip-pklm`). O piloto usou a mesma sequência com `configs/rb/pilot-dev.yaml`.
 
-**Tags em vigor (desvio D1, 03/11/2026):** `prereg-v1.1` e `prereg-v1.1-llm`, que corrigem o erro de implementação do `inject` na família 44059. As tags `prereg-v1` e `prereg-v1-llm` (`98c01d7`) ficam como registro original; a trava exige as novas (`desvios.md`).
+**Tags em vigor (desvios D1 e D2, 03–04/11/2026):** `prereg-v1.2` e `prereg-v1.2-llm` (D2: sondas nas famílias 310 e 44148), depois de `prereg-v1.1`, que corrigem o erro de implementação do `inject` na família 44059. As tags `prereg-v1` e `prereg-v1-llm` (`98c01d7`) ficam como registro original; a trava exige as novas (`desvios.md`).
 
 **Execução em duas etapas (P25; decisão do autor de 03/11/2026).**
 - A sequência abaixo roda primeiro com `C=configs/rb/inject-v1-etapa1.yaml` (25 famílias) e, para a H7, com `configs/rb/contexto-h7-etapa1.yaml`; depois com as configurações da etapa 2; por fim, com as completas (`inject-v1.yaml`, `contexto-h7.yaml`) para a análise confirmatória.

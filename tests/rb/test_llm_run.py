@@ -1,5 +1,6 @@
 """Teste ponta a ponta da etapa `llm` num run mínimo, com backend falso (nenhuma chamada à API)."""
 
+import io
 import json
 import shutil
 from pathlib import Path
@@ -17,7 +18,15 @@ from missdetect.rb.llm.budget import BudgetExceeded
 from missdetect.rb.llm.cache import ResponseCache
 from missdetect.rb.llm.client import PAID, AuthorizationRequired
 from missdetect.rb.llm.panel import panel_families
-from missdetect.rb.llm.probes import feature_chance, is_refusal, name_matches, name_types, probe_status
+from missdetect.rb.llm.probes import (
+    ProbeLLM,
+    feature_chance,
+    is_refusal,
+    name_matches,
+    name_types,
+    probe_status,
+    run_battery,
+)
 from missdetect.rb.llm.render import render_a1
 from missdetect.rb.llm.run import SHEET_COLUMNS, build_panel, cache_root, finalize_probes, run_llm, run_probes
 from missdetect.rb.runs import read_observed, write_observed
@@ -419,3 +428,24 @@ def test_a_partial_run_asks_only_its_share_of_the_full_panel(run, monkeypatch):
     assert set(build_panel(run_dir, config).family_id) == {1, 2}
     monkeypatch.setattr(llm_run, "frozen_effective_families", set)
     assert set(build_panel(run_dir, config).family_id) == {1, 2}
+
+
+def test_row_probe_is_unavailable_not_fatal_on_tables_of_repeated_rows(tmp_path):
+    """Desvio D2 (04/11/2026): com linhas repetidas (família 310), o teste de linhas fica indisponível e o resto roda."""
+    csv = tmp_path / "rep.csv"
+    pd.DataFrame([[1, 2, 3], [4, 5, 6]] * 150, columns=["a", "b", "c"]).to_csv(csv, index=False)
+    llm = ProbeLLM(ResponseCache(tmp_path / "cache"), FLASH)
+    out = run_battery(csv, llm, 3, ["rep"], io.StringIO())
+    assert out["row_test"] == "indisponivel_linhas_repetidas" and out["row_matches"] == 0
+    assert out["status"] == "nao_reconhecida" and "header_chars" in out
+
+
+def test_wide_tables_do_not_break_the_delimiter_guess(tmp_path):
+    """Desvio D2: tabela larga (como a 44148, 82 colunas) — o separador é a vírgula, sem adivinhação em 5.000 caracteres."""
+    rng = np.random.default_rng(0)
+    csv = tmp_path / "wide.csv"
+    pd.DataFrame(rng.normal(size=(200, 90)) * 1e3, columns=[f"feature_number_{i}" for i in range(90)]).to_csv(
+        csv, index=False, float_format="%.12f"
+    )
+    out = run_battery(csv, ProbeLLM(ResponseCache(tmp_path / "cache"), FLASH), 5, ["wide"], io.StringIO())
+    assert out["row_test"] == "ok" and out["status"] == "nao_reconhecida"

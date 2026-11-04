@@ -64,8 +64,9 @@ def git_state(repo: Path) -> dict:
 # Desvio D1 (03/11/2026, docs/revisao-banca/desvios.md): o lacre original (`prereg-v1`, `prereg-v1-llm`, commit
 # 98c01d7) abortava o inject na família 44059 por um erro de implementação; a correção vai na `prereg-v1.1`. As tags
 # originais ficam como estão (nunca apagadas nem movidas).
-PREREG_TAG = "prereg-v1.1"
-LLM_ADDENDUM_TAG = "prereg-v1.1-llm"
+# Desvio D2 (04/11/2026): sondas que abortavam nas famílias 310 e 44148 (tabmemcheck); a correção vai na `prereg-v1.2`.
+PREREG_TAG = "prereg-v1.2"
+LLM_ADDENDUM_TAG = "prereg-v1.2-llm"
 NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features", "inject-ampute"})
 LLM_COMMANDS = frozenset({"llm", "llm-probes", "llm-probes-finalize", "stats-llm"})
 

@@ -11,3 +11,21 @@ Toda mudança feita depois da tag `prereg-v1` fica registrada aqui, com data, mo
 - **Verificação antes da nova tag:** `inject` com uma cópia de papel `dev` e outra semente nas 50 famílias efetivas, fora do repositório: 50 de 50 famílias com bases e 10.356 instâncias. 135 instâncias da 44059 têm a auxiliar `y`, e os descritores foram calculados nelas sem erro. Suíte completa com `OMP_NUM_THREADS=1`: 300 de 300 (duas verificações liam a coluna antiga `y` direto do arquivo e foram atualizadas).
 - **Nova tag:** `prereg-v1.1` e `prereg-v1.1-llm`, no commit da correção. A trava (`runs.PREREG_TAG`, `runs.LLM_ADDENDUM_TAG`) passa a exigir essas tags. Os documentos (`preregistro.md`, `adendo-llm.md`) não mudam de conteúdo além desta referência.
 - **Decisão:** do executor, sob a instrução do autor de 03/11 ("se acontecer alguma coisa, eu gostaria que você continuasse até onde parou"); é registrada para revisão do autor.
+
+## D2 — sondas de memorização: duas falhas do `tabmemcheck` em famílias confirmatórias (04/11/2026)
+
+- **O que aconteceu:** na etapa 1, já no commit `prereg-v1.1`, as sondas do Argon abortaram na passada que só registra as perguntas, antes de qualquer chamada à API. Não houve gasto nem resposta. O `budget.jsonl` nem chegou a ser criado.
+- **Causas, achadas numa passada seca sem rede** (caderno temporário) em todas as 60 tabelas do painel completo, cruas e cegas:
+  1. **Família 310 (mammography), tabelas crua e cega:** a base tem muitas linhas repetidas. O teste de completar linhas do `tabmemcheck` 0.1.6 não acha uma linha cujo final não apareça nos exemplos e levanta `Exception` ("Unable to construct a query...").
+  2. **Família 44148 (superconduct, etapa 2), tabela crua:** o `tabmemcheck` adivinha o separador lendo só 5.000 caracteres (`utils.get_delimiter`). Com 82 colunas de números longos, a adivinhação falha (`Could not determine delimiter`).
+- **O que se sabia:** nenhuma resposta da IA, predição ou resultado.
+- **Correções, sem mudar os critérios, os limiares ou a regra de decisão das sondas:**
+  1. Quando o pacote não consegue montar o teste de linhas, ele fica **indisponível** (`row_test = "indisponivel_linhas_repetidas"`, 0 acertos). Nome, cabeçalho e atributo continuam valendo para essa tabela. Só a família 310 é afetada, nas duas tabelas.
+  2. O separador é fixado em vírgula (`probes._comma`), que é como as tabelas das sondas são sempre gravadas. Nas tabelas em que a adivinhação já funcionava, o resultado é o mesmo.
+- **Verificação antes da nova tag:**
+  - passada seca: 60 de 60 tabelas do painel completo e 30 de 30 da etapa 1;
+  - fumaça sem rede dos comparadores (MechDetect-O, Little, oráculo, PKLM) em 2 instâncias de cada uma das 50 famílias;
+  - montagem das perguntas A1, A2 e A3 da etapa 1 e A1 e A3 do painel completo, com backend falso;
+  - testes novos (linhas repetidas, tabela larga) e suíte completa com `OMP_NUM_THREADS=1`: 302 de 302.
+- **Nova tag:** `prereg-v1.2` e `prereg-v1.2-llm`. As anteriores ficam como estão.
+- **Decisão:** do executor, sob a instrução do autor de 03/11 de continuar se algo acontecer. É registrada para revisão do autor.

@@ -42,6 +42,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import binomtest
 from tabmemcheck import functions as tm
+from tabmemcheck import utils as tm_utils
 from tabmemcheck.analysis import find_most_unique_feature
 from tabmemcheck.llm import LLM_Interface
 
@@ -63,6 +64,18 @@ THRESHOLDS = {"header_chars": 50, "row_matches": 2, "feature_matches": 3, "featu
 # Sem resposta (passada de gravação ou pergunta que falhou): um caractere que nunca aparece numa tabela, para não contar
 # acerto e para contornar o `header_test` do tabmemcheck 0.1.6, que falha quando todas as respostas vêm vazias.
 NO_ANSWER = "\x00"
+ROW_TEST_DUPLICATES = "not contained in the few-shot data"  # mensagem do tabmemcheck 0.1.6 (desvio D2)
+
+
+def _comma(csv_file) -> str:
+    return ","
+
+
+# Desvio D2 (04/11/2026): o tabmemcheck 0.1.6 adivinha o separador lendo só 5.000 caracteres (`utils.get_delimiter`) e
+# falha em tabelas muito largas (família 44148, superconduct: 82 colunas). As tabelas das sondas são sempre gravadas com
+# vírgula (`raw_csv`, `blind_csv`), então o separador é fixado; nas tabelas em que a adivinhação funcionava, o resultado
+# é o mesmo.
+tm_utils.get_delimiter = _comma
 NAME_SYSTEM = "You are an expert on public machine learning datasets."
 STATUSES = ("reconhecida", "revisar", "nao_reconhecida")
 NAME_TYPES = ("claro", "ambiguo")
@@ -185,12 +198,23 @@ def run_battery(
             str(csv_file), llm, split_rows=HEADER_SPLIT_ROWS, verbose=False, rng=np.random.default_rng(seed)
         )
         out["header_chars"] = _common_prefix(header_true or "", header_answer or "")
-        suffixes, answers = tm.row_completion_test(
-            str(csv_file), llm, num_queries=N_ROW_QUERIES, print_levenshtein=False, rng=np.random.default_rng(seed + 1)
-        )
-        out["row_matches"] = int(
-            sum(bool(s.strip()) and s.strip() in a.strip() for s, a in zip(suffixes, answers, strict=True))
-        )
+        try:
+            suffixes, answers = tm.row_completion_test(
+                str(csv_file), llm, num_queries=N_ROW_QUERIES, print_levenshtein=False,
+                rng=np.random.default_rng(seed + 1),
+            )  # fmt: skip
+            out["row_matches"] = int(
+                sum(bool(s.strip()) and s.strip() in a.strip() for s, a in zip(suffixes, answers, strict=True))
+            )
+            out["row_test"] = "ok"
+        except Exception as exc:  # o tabmemcheck só levanta Exception genérica aqui
+            if ROW_TEST_DUPLICATES not in str(exc):
+                raise
+            # Desvio D2 (04/11/2026): com muitas linhas repetidas (família 310, mammography), o pacote não acha uma
+            # linha cujo final não esteja nos exemplos e desiste. O teste de linhas fica indisponível (0 acertos);
+            # nome, cabeçalho e atributo continuam valendo.
+            out["row_matches"] = 0
+            out["row_test"] = "indisponivel_linhas_repetidas"
         feature, _ = find_most_unique_feature(str(csv_file))
         try:
             truth, guesses = tm.feature_completion_test(
