@@ -62,12 +62,26 @@ def test_no_label_in_observed(tmp_path):
     rel = write_observed(tmp_path, instance)
     assert not any(label in rel.upper() for label in ("MCAR", "MAR", "MNAR"))
     frame = pd.read_parquet(tmp_path / rel)
-    assert list(frame.columns) == ["y", "z1", "z2"]
+    assert list(frame.columns) == ["__y__", "z1", "z2"]
     back = read_observed(tmp_path, "abc123")
     np.testing.assert_array_equal(np.isnan(back.y), np.isnan(y))
     assert set(vars(back)) == {"sample_id", "y", "z"}
     with pytest.raises(ValueError):
         observed_path("MNAR-1")
+
+
+def test_an_auxiliary_named_y_survives_and_old_files_still_read(tmp_path):
+    """Desvio D1 (03/11/2026): a família 44059 (diamonds) tem uma auxiliar chamada "y"; o alvo fica em "__y__"."""
+    rng = np.random.default_rng(1)
+    y, aux = rng.normal(size=30), pd.DataFrame({"x": rng.normal(size=30), "y": rng.normal(size=30)})
+    write_observed(tmp_path, ObservedInstance("d1", y, aux))
+    back = read_observed(tmp_path, "d1")
+    np.testing.assert_array_equal(back.y, y)
+    pd.testing.assert_frame_equal(back.z, aux)
+    legacy = tmp_path / observed_path("old")
+    pd.DataFrame({"y": y, "z1": aux.x}).to_parquet(legacy)  # formato até a v1.0
+    old = read_observed(tmp_path, "old")
+    np.testing.assert_array_equal(old.y, y) and list(old.z.columns) == ["z1"]
 
 
 class _Boom:

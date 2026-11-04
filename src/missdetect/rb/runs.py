@@ -60,9 +60,12 @@ def git_state(repo: Path) -> dict:
 
 # Trava das etapas confirmatórias (pré-registro §9, emenda P3; ordem do LLM, P21). O pipeline principal roda no commit
 # da tag do pré-registro; as etapas do LLM, no commit da tag do adendo. Antes do adendo, só rodam as etapas que não
-# calculam predições. Na produção, o pipeline principal roda numa worktree fixada em `prereg-v1`.
-PREREG_TAG = "prereg-v1"
-LLM_ADDENDUM_TAG = "prereg-v1-llm"
+# calculam predições. Na produção, o pipeline principal roda numa worktree fixada na tag.
+# Desvio D1 (03/11/2026, docs/revisao-banca/desvios.md): o lacre original (`prereg-v1`, `prereg-v1-llm`, commit
+# 98c01d7) abortava o inject na família 44059 por um erro de implementação; a correção vai na `prereg-v1.1`. As tags
+# originais ficam como estão (nunca apagadas nem movidas).
+PREREG_TAG = "prereg-v1.1"
+LLM_ADDENDUM_TAG = "prereg-v1.1-llm"
 NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features", "inject-ampute"})
 LLM_COMMANDS = frozenset({"llm", "llm-probes", "llm-probes-finalize", "stats-llm"})
 
@@ -193,20 +196,28 @@ def observed_path(sample_id: str) -> str:
     return path
 
 
+# Nome reservado da coluna-alvo no arquivo observado. Até a v1.0 era "y", o que colidia com uma auxiliar chamada "y"
+# (família 44059, diamonds: colunas x, y, z) e abortava o inject; desvio D1 de 03/11/2026 (docs/revisao-banca/desvios.md).
+# A leitura aceita os dois formatos; só o nome no arquivo muda, não os dados.
+OBSERVED_TARGET = "__y__"
+LEGACY_TARGET = "y"
+
+
 def write_observed(run_dir: Path, instance: ObservedInstance) -> str:
     rel = observed_path(instance.sample_id)
     frame = instance.z.copy()
     frame.columns = [str(c) for c in frame.columns]
-    if "y" in frame.columns:
-        raise ValueError("auxiliar chamada 'y' colide com a coluna observada")
-    frame.insert(0, "y", instance.y)
+    if OBSERVED_TARGET in frame.columns:
+        raise ValueError(f"auxiliar chamada {OBSERVED_TARGET!r} colide com a coluna observada")
+    frame.insert(0, OBSERVED_TARGET, instance.y)
     write_parquet(frame, run_dir / rel)
     return rel
 
 
 def read_observed(run_dir: Path, sample_id: str) -> ObservedInstance:
     frame = pd.read_parquet(run_dir / observed_path(sample_id))
-    return ObservedInstance(sample_id=sample_id, y=frame["y"].to_numpy(dtype=float), z=frame.drop(columns="y"))
+    target = OBSERVED_TARGET if OBSERVED_TARGET in frame.columns else LEGACY_TARGET
+    return ObservedInstance(sample_id=sample_id, y=frame[target].to_numpy(dtype=float), z=frame.drop(columns=target))
 
 
 def write_complete(run_dir: Path, context_id: str, y_complete: np.ndarray) -> None:

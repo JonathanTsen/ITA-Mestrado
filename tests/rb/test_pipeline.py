@@ -17,6 +17,7 @@ from missdetect.rb import pipeline, robustness
 from missdetect.rb.bench import generate_family, load_sentinel_exclusions
 from missdetect.rb.config import parse_config
 from missdetect.rb.evaluate import check_pairing
+from missdetect.rb.runs import OBSERVED_TARGET
 
 N_FAMILIES = 8
 
@@ -71,7 +72,7 @@ def test_generation_layout(run):
     assert set(oracle.sample_id) == set(instances.sample_id)
     for path in instances.observed_path:
         assert not any(label in path.upper() for label in ("MCAR", "MAR", "MNAR"))
-        assert list(pd.read_parquet(run_dir / path).columns[:1]) == ["y"]
+        assert list(pd.read_parquet(run_dir / path).columns[:1]) == [OBSERVED_TARGET]
     assert (run_dir / "run.json").exists()
 
 
@@ -79,7 +80,7 @@ def test_complete_y_agrees_with_observed(run):
     run_dir, _ = run
     instances = pd.read_parquet(run_dir / "instances.parquet")
     for row in instances.itertuples():
-        y_obs = pd.read_parquet(run_dir / row.observed_path).y.to_numpy()
+        y_obs = pd.read_parquet(run_dir / row.observed_path)[OBSERVED_TARGET].to_numpy()
         y_complete = pd.read_parquet(run_dir / "oracle_complete" / f"{row.context_id}.parquet").y_complete.to_numpy()
         observed = ~np.isnan(y_obs)
         np.testing.assert_allclose(y_obs[observed], y_complete[observed])

@@ -5,7 +5,7 @@ Uso (no ITA-Mestrado):
 
 - CSV-fonte do MechDetect: o `/tmp` é apagado quando o Mac reinicia. Se faltar algum, reextrai de
   `~/work/MechDetect/src/auc_roc_scores/datasets.tar.gz` e confere o SHA-256 de cada arquivo contra o registro das fontes.
-- Estado do código: HEAD, árvore limpa ou suja e as tags do pré-registro (`prereg-v1`, `prereg-v1-llm`).
+- Estado do código: HEAD, árvore limpa ou suja e as tags do pré-registro em vigor (`runs.PREREG_TAG`, `runs.LLM_ADDENDUM_TAG`; desvio D1).
 - Processos do pipeline em andamento, que disputam a CPU com uma etapa nova.
 
 Sai com código 1 se os CSV não puderem ser garantidos.
