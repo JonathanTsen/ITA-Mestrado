@@ -66,8 +66,9 @@ def git_state(repo: Path) -> dict:
 # originais ficam como estão (nunca apagadas nem movidas).
 # Desvio D2 (04/11/2026): sondas que abortavam nas famílias 310 e 44148 (tabmemcheck); a correção vai na `prereg-v1.2`.
 # Desvio D3 (04/11/2026): o PKLM ainda gravava Y como "y" (família 44059); a correção vai na `prereg-v1.3`.
-PREREG_TAG = "prereg-v1.3"
-LLM_ADDENDUM_TAG = "prereg-v1.3-llm"
+# Desvio D4 (05/11/2026): diferenças pareadas sem resíduo de ponto flutuante; a correção vai na `prereg-v1.4`.
+PREREG_TAG = "prereg-v1.4"
+LLM_ADDENDUM_TAG = "prereg-v1.4-llm"
 NO_PREDICTION_COMMANDS = frozenset({"inject", "features", "oracle-features", "inject-ampute"})
 LLM_COMMANDS = frozenset({"llm", "llm-probes", "llm-probes-finalize", "stats-llm"})
 

@@ -53,3 +53,27 @@ Toda mudança feita depois da tag `prereg-v1` fica registrada aqui, com data, mo
   - suíte completa de testes com `OMP_NUM_THREADS=1`: 303 de 303.
 - **Nova tag:** `prereg-v1.3` e `prereg-v1.3-llm`. As anteriores ficam como estão.
 - **Decisão:** do executor, sob a instrução do autor de continuar se algo acontecer. É registrada para revisão do autor.
+
+## D4 — resíduo de ponto flutuante nas diferenças pareadas (05/11/2026; correção autorizada pelo autor)
+
+- **O que se viu:** ao documentar os resultados parciais, uma base da H7 com acerto idêntico nos dois braços (8/18 − 8/18) apareceu com diferença de ±1e-17 em vez de 0.
+  - O Wilcoxon-Pratt tratava esse resíduo como diferença real, e não como zero.
+  - As contagens de melhor/pior/empate da H7 ficavam erradas: Argon etapa 2, 13/2/0 em vez de 12/1/2.
+  - O mesmo acontecia nas diferenças entre métodos da família principal, que vêm de médias de macro-recall.
+- **Correção:** `stats.clean_differences` arredonda as diferenças a 12 casas antes de qualquer teste. Ela é usada em:
+  - `paired_differences`, `_describe`, `wilcoxon_p`, `wilcoxon_tost` e `rank_biserial`;
+  - `contexto_h7.analisar_h7`.
+  - Os escores são médias de acertos em dezenas ou centenas de instâncias, então nenhuma diferença real fica abaixo de 1e-12.
+  - Testes novos: o resíduo conta como empate no teste, no TOST, no rank-biserial, nas diferenças pareadas e nas contagens da H7.
+- **Efeito medido nos resultados parciais da etapa 1** (recalculados à parte com o código corrigido, sem regravar o run). **Nenhuma decisão muda e os HLs ficam idênticos.** Os p-valores mudam pouco:
+  - H2: 0,872 → 0,850;
+  - H2e: 0,000246 → 0,000245;
+  - H3: 3,22e-5 → 3,21e-5;
+  - H5: 0,1388 → 0,1387;
+  - H1 e H6: iguais;
+  - H4: 0,00072 → 0,00071;
+  - H7, Argon etapa 1: 0,0081 → 0,0075.
+- **O que se sabia:** os resultados parciais e descritivos da etapa 1 (P25) e a H7 das duas etapas. A correção não depende de nenhum resultado: só faz a conta tratar empate como empate. Os critérios, testes, limiares e frases não mudam.
+- **Autorização:** o autor, em 05/11/2026, depois da explicação: "Pode corrigir".
+- **Verificação:** suíte completa com `OMP_NUM_THREADS=1`: 305 de 305.
+- **Nova tag:** `prereg-v1.4` e `prereg-v1.4-llm`. A etapa 2 continua nela, e o run completo (a análise oficial) usa este código. Os resultados já gravados da etapa 1 ficam como estão, descritivos, e o run completo recalcula tudo.

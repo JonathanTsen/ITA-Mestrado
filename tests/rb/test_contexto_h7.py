@@ -119,3 +119,13 @@ def test_analysis_is_the_per_base_wilcoxon_pratt_with_hl_and_reads_null_results_
     assert same["p_wilcoxon_pratt"] == 1.0 and same["leitura"].startswith("evidência insuficiente")
     with pytest.raises(ValueError, match="mesmas instâncias"):
         h7.analisar_h7(s0, s7.iloc[1:])
+
+
+def test_h7_counts_floating_point_residue_as_a_tie():
+    """Desvio D4: base com o mesmo acerto nos dois braços é empate, mesmo com resíduo de ponto flutuante."""
+    rng = np.random.default_rng(1)
+    s0 = _predictions(rng, dict.fromkeys(range(990201, 990211), 0.5), "S0")
+    s7 = s0.assign(method="llm_s7")
+    summary, by_family = h7.analisar_h7(s0, s7)
+    assert (by_family.d == 0).all() and summary["bases_empate"] == 10
+    assert summary["bases_S7_melhor"] == summary["bases_S7_pior"] == 0

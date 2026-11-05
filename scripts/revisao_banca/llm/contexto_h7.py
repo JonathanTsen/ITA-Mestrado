@@ -34,7 +34,7 @@ from missdetect.rb.llm.cache import CLASSES, ResponseCache
 from missdetect.rb.llm.client import GeminiBackend, Runner, load_api_keys, require_authorization
 from missdetect.rb.llm.run import budget_gate, cache_root, predictions_from_cache
 from missdetect.rb.runs import confirmatory_guard, repo_root
-from missdetect.rb.stats import bootstrap_hl_ci, hodges_lehmann, rank_biserial, wilcoxon_p
+from missdetect.rb.stats import bootstrap_hl_ci, clean_differences, hodges_lehmann, rank_biserial, wilcoxon_p
 
 ARMS = ("S0", "S7")
 ALPHA = 0.05
@@ -81,7 +81,7 @@ def analisar_h7(s0: pd.DataFrame, s7: pd.DataFrame) -> tuple[dict, pd.DataFrame]
         per_family, _ = summarize_by_family(pred)
         per[arm] = per_family.set_index("family_id").macro_recall
     by_family = pd.DataFrame({"macro_recall_S0": per["S0"], "macro_recall_S7": per["S7"]})
-    by_family["d"] = by_family.macro_recall_S7 - by_family.macro_recall_S0
+    by_family["d"] = clean_differences(by_family.macro_recall_S7 - by_family.macro_recall_S0)  # desvio D4
     d = by_family.d.to_numpy()
     low, high = bootstrap_hl_ci(d)
     p_value = wilcoxon_p(d)

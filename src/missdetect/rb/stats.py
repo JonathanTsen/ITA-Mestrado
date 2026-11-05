@@ -70,12 +70,25 @@ class Comparison:
     decision: str
 
 
+# Desvio D4 (05/11/2026): diferenças de escores entre métodos às vezes saem como ±1e-17 em vez de 0 (ponto flutuante),
+# e o Wilcoxon-Pratt e as contagens tratavam esse resíduo como diferença real. As diferenças são arredondadas a 12 casas
+# antes de qualquer teste: os escores são médias de acertos em dezenas ou centenas de instâncias, então nenhuma diferença
+# real fica abaixo de 1e-12.
+DIFF_DECIMALS = 12
+
+
+def clean_differences(d) -> np.ndarray:
+    """Diferenças pareadas sem resíduo de ponto flutuante (desvio D4)."""
+    return np.round(np.asarray(d, dtype=float), DIFF_DECIMALS)
+
+
 def paired_differences(
     per_family: pd.DataFrame, method: str, comparator: str, metric: str = "macro_recall"
 ) -> pd.Series:
     """d_f = método − comparador, por família, a partir da tabela longa (method, family_id, métrica)."""
     wide = per_family.pivot(index="family_id", columns="method", values=metric)
-    return (wide[method] - wide[comparator]).dropna()
+    d = (wide[method] - wide[comparator]).dropna()
+    return pd.Series(clean_differences(d), index=d.index)
 
 
 def hodges_lehmann(d: np.ndarray) -> float:
@@ -103,7 +116,7 @@ def bootstrap_mean_ci(values: np.ndarray, n_boot: int = N_BOOT, seed: int = SEED
 
 
 def rank_biserial(d: np.ndarray) -> float:
-    d = np.asarray(d, dtype=float)
+    d = clean_differences(d)
     d = d[d != 0]
     if len(d) == 0:
         return 0.0
@@ -112,7 +125,7 @@ def rank_biserial(d: np.ndarray) -> float:
 
 
 def wilcoxon_p(d: np.ndarray) -> float:
-    d = np.asarray(d, dtype=float)
+    d = clean_differences(d)
     if np.all(d == 0):
         return 1.0
     res = stats.wilcoxon(d, zero_method="pratt", correction=False, alternative="two-sided", method="asymptotic")
@@ -121,7 +134,7 @@ def wilcoxon_p(d: np.ndarray) -> float:
 
 def wilcoxon_tost(d: np.ndarray, delta: float = DELTA) -> float:
     """p do TOST de Wilcoxon: equivalência dentro de ±delta quando as duas nulas unilaterais são rejeitadas."""
-    d = np.asarray(d, dtype=float)
+    d = clean_differences(d)
     options = {"zero_method": "pratt", "correction": False, "method": "asymptotic"}
     lower = stats.wilcoxon(d + delta, alternative="greater", **options).pvalue  # H0: mediana ≤ −δ
     upper = stats.wilcoxon(d - delta, alternative="less", **options).pvalue  # H0: mediana ≥ δ
@@ -194,7 +207,7 @@ def _pair(per_family: pd.DataFrame | None, method: str, comparator: str, metric:
 
 
 def _describe(name: str, method: str, comparator: str, test: str, a: np.ndarray, b: np.ndarray, p: float) -> dict:
-    d = a - b
+    d = clean_differences(a - b)
     low, high = bootstrap_hl_ci(d)
     left, rope, right = bayes_signed_rank(a, b)
     return {

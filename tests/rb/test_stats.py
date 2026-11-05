@@ -7,6 +7,7 @@ import pytest
 from missdetect.rb.stats import (
     DELTA,
     bayes_signed_rank,
+    clean_differences,
     confirmatory,
     decide,
     decide_equivalence,
@@ -14,6 +15,7 @@ from missdetect.rb.stats import (
     holm,
     level_estimate,
     llm_hypothesis,
+    paired_differences,
     rank_biserial,
     wilcoxon_p,
     wilcoxon_tost,
@@ -166,3 +168,18 @@ def test_llm_hypothesis_without_the_llm_method_does_not_crash():
     res = llm_hypothesis(_per_family({"direct_hgb": 0.0}, n=30)).set_index("hypothesis")
     assert list(res.index) == ["H4"] and res.loc["H4", "p_value"] == 1.0
     assert res.loc["H4", "decision"].startswith("não rodou")
+
+
+def test_floating_point_residue_counts_as_a_tie_not_a_difference():
+    """Desvio D4 (05/11/2026): 8/18 − 8/18 calculado por caminhos diferentes pode dar ±1e-17; é empate, não diferença."""
+    residue = (0.1 + 0.2) - 0.3  # 5,55e-17
+    assert residue != 0 and clean_differences([residue])[0] == 0
+    d = np.array([0.2, 0.1, 0.15, 0.05, -0.05, 0.12, 0.3, 0.07])
+    with_residue = np.append(d, -residue)
+    with_zero = np.append(d, 0.0)
+    assert wilcoxon_p(with_residue) == wilcoxon_p(with_zero)
+    assert wilcoxon_tost(with_residue) == wilcoxon_tost(with_zero)
+    assert rank_biserial(with_residue) == rank_biserial(with_zero)
+    long = pd.DataFrame({"family_id": [1, 1, 2, 2], "method": ["a", "b", "a", "b"],
+                         "macro_recall": [0.1 + 0.2, 0.3, 0.5, 0.25]})  # fmt: skip
+    assert paired_differences(long, "a", "b").tolist() == [0.0, 0.25]
