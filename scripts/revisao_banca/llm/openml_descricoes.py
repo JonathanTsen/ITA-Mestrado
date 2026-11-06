@@ -32,12 +32,25 @@ def fetch(i: int) -> dict:
             err = repr(exc)
             time.sleep(2)
     else:
-        return {"openml_id": i, "status": f"failed: {err}", "name": "", "version": "", "description": "",
-                "description_sha256": "", "fetched_at": datetime.now(UTC).isoformat(timespec="seconds")}
+        return {
+            "openml_id": i,
+            "status": f"failed: {err}",
+            "name": "",
+            "version": "",
+            "description": "",
+            "description_sha256": "",
+            "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        }
     text = d.get("description") or ""
-    return {"openml_id": i, "status": "ok", "name": d.get("name", ""), "version": d.get("version", ""),
-            "description": text, "description_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-            "fetched_at": datetime.now(UTC).isoformat(timespec="seconds")}
+    return {
+        "openml_id": i,
+        "status": "ok",
+        "name": d.get("name", ""),
+        "version": d.get("version", ""),
+        "description": text,
+        "description_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
 
 
 with ThreadPoolExecutor(max_workers=8) as pool:  # a API levou ≈ 26 s por pedido em 30/10/2026

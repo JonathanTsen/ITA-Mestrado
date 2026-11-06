@@ -24,7 +24,9 @@ def family_report(row: pd.Series, config) -> dict:
     numeric = [c for c in str(row.numeric_columns).split(";") if c not in excluded]
     table = load_table(Path(config.sources.csv_dir), int(row.openml_id), numeric)
     with threadpool_limits(1):
-        bases, reports = design_bases(table, numeric, int(row.family_id), int(row.openml_id), config.inject, config.root_seed)
+        bases, reports = design_bases(
+            table, numeric, int(row.family_id), int(row.openml_id), config.inject, config.root_seed
+        )
     tried = [t for r in reports for t in r["tried"]]
     return {
         "family_id": int(row.family_id),
@@ -51,7 +53,20 @@ def main() -> None:
     for role in ("confirm", "dev"):
         sub = out[out.role == role]
         print(f"{role}: {len(sub)} famílias; com bases aceitas: {(sub.bases_accepted > 0).sum()}")
-    print(out[out.bases_accepted == 0][["family_id", "openml_id", "role", "n_numeric", "n_eligible_columns", "targets_tried", "rejected_r2", "rejected_spearman"]].to_string(index=False))
+    print(
+        out[out.bases_accepted == 0][
+            [
+                "family_id",
+                "openml_id",
+                "role",
+                "n_numeric",
+                "n_eligible_columns",
+                "targets_tried",
+                "rejected_r2",
+                "rejected_spearman",
+            ]
+        ].to_string(index=False)
+    )
 
 
 if __name__ == "__main__":
