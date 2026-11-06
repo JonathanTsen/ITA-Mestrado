@@ -97,3 +97,14 @@ Desktop.ini
 Output/
 # Per-run intermediate outputs we explicitly archive
 results/_archive/
+
+# =============================================================================
+# Revisão da banca (missdetect.rb): runs e corpus sintético são artefatos
+# regeneráveis; versionar só manifestos com hashes (data_rb/*_manifest.*)
+# =============================================================================
+results_rb/
+data_rb/synth/
+# Estudo de caso (passo 45): brutos e tabelas padronizadas ficam fora do git (licenças variadas);
+# versiona-se só data_rb/case_study_manifest.csv, com URL, SHA-256 e licença de cada fonte
+data_rb/case_study_raw/
+data_rb/case_study_tables/

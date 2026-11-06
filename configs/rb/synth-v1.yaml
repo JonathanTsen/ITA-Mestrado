@@ -1,0 +1,21 @@
+# Corpus sintético do passo 33, congelado com a tag synth-v1 antes do piloto (37) e sem dados confirmatórios. Um teste de
+# fumaça do pipeline já tinha rodado nas famílias de desenvolvimento. Reproduzível a partir da tag synth-v1 (o código
+# atual sorteia a ordem das colunas observadas, então os arquivos observados de uma regeneração seriam outros).
+# Mesmos geradores e grade de β do passo 32. A grade foi recalibrada no piloto, e o corpus da produção é o synth-v2.
+name: synth-v1
+root_seed: 20261023
+output_root: data_rb/synth
+plan_repo: ~/conductor/workspaces/modeloteseppgpo-v1/baghdad-v1
+synth:
+  n_bases: 1800
+  n_grid: [500, 1000, 2000]
+  k_grid: [2, 4, 8]
+  rate_grid: [0.1, 0.2, 0.3, 0.4, 0.5]
+  beta_grid: [0.5, 1, 2, 4, .inf]
+  directions: [lower, upper, both]
+  latent_r2_max: 0.9
+  marginals: [normal, lognormal, exponential, beta, uniform, mixture, discrete]
+  generator_shares: {symmetric: 4, mdatagen: 1, tab_err: 1}
+  max_attempts_per_base: 20
+features:
+  n_jobs: 8

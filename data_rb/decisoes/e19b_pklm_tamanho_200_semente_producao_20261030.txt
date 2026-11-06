@@ -1,0 +1,22 @@
+# R4 do plano 38c (30/10/2026): o E19 repetido com a semente de produção do PKLM
+# Script: scripts/revisao_banca/decisoes/d4_pklm_tamanho.py, com o 6º argumento (semente do PKLM) = 20261101, a
+# root_seed que o pipeline passa ao PKLM na produção. O E19 (29/10) usou a semente 7. As tabelas são as mesmas
+# (dados com sementes 1000 + s): 200 tabelas, n = 1000, k = 4, 30% de ausência MCAR em y; num.proj = 100, nrep = 200.
+# Código: ITA-Mestrado@573b306 (árvore limpa); R e PKLMtest os mesmos do E7/E19.
+# Comando (OMP_NUM_THREADS=1, nohup, 8 processos R):
+#   uv run --frozen python scripts/revisao_banca/decisoes/d4_pklm_tamanho.py results_rb/_audit/e19-pklm-200-seed20261101 \
+#       200 100 200 results_rb/_audit/e19-pklm-200-seed20261101.csv 20261101
+#   inicio 2026-10-30T02:25:36Z HEAD=573b306 dirty=0
+#   num.proj=100 nrep=200: rejeição a 5% = 0.090 (18/200)
+#   fim 2026-10-30T02:46:14Z
+# p-valores por tabela: results_rb/_audit/e19-pklm-200-seed20261101.csv
+#
+# Conclusão: o tamanho empírico do PKLM nesta configuração fica em ≈ 9–10% com as duas sementes (nominal 5%).
+# A opção (a) da decisão (manter a configuração e reportar o tamanho medido) se sustenta.
+#
+status: {'ok': 200} | colunas: ['sample_id', 'pklm_p', 'seconds', 'status', 'num_proj', 'nrep']
+E19 (semente 7): 20/200 = 0.100; IC95% (Clopper–Pearson) [0.062; 0.150]; binomial unilateral contra 5%: p = 0.0027
+R4 (semente 20261101): 18/200 = 0.090; IC95% (Clopper–Pearson) [0.054; 0.139]; binomial unilateral contra 5%: p = 0.0121
+mesmas tabelas: 200; rejeitam nas duas sementes: 12; só com 7: 8; só com a de produção: 6
+correlação de Spearman dos p-valores entre sementes: 0.898
+as duas sementes juntas (400 testes, não independentes por tabela): 38/400 = 0.095

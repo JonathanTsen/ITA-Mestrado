@@ -1,0 +1,125 @@
+{
+  "addendum_to": "freeze-v1",
+  "date": "2026-10-21",
+  "what": "N efetivo das famílias confirmatórias com as regras congeladas (sem alterar regras, config nem código do freeze-v1)",
+  "how": "scripts/revisao_banca/decisoes/freeze_elegibilidade_familias.py: só design_bases (elegibilidade nas tabelas completas, antes de qualquer máscara); nenhuma instância gerada",
+  "n_confirmatory_listed": 61,
+  "n_confirmatory_effective": 50,
+  "excluded_by_rule": [
+    {
+      "family_id": 6,
+      "openml_id": 6,
+      "reason": "no máximo 1 coluna elegível (0): não há par Y/driver"
+    },
+    {
+      "family_id": 23,
+      "openml_id": 23,
+      "reason": "no máximo 1 coluna elegível (1): não há par Y/driver"
+    },
+    {
+      "family_id": 4534,
+      "openml_id": 4534,
+      "reason": "no máximo 1 coluna elegível (0): não há par Y/driver"
+    },
+    {
+      "family_id": 44055,
+      "openml_id": 44055,
+      "reason": "no máximo 1 coluna elegível (1): não há par Y/driver"
+    },
+    {
+      "family_id": 44061,
+      "openml_id": 44061,
+      "reason": "no máximo 1 coluna elegível (0): não há par Y/driver"
+    },
+    {
+      "family_id": 44958,
+      "openml_id": 44958,
+      "reason": "no máximo 1 coluna elegível (1): não há par Y/driver"
+    },
+    {
+      "family_id": 44960,
+      "openml_id": 44960,
+      "reason": "no máximo 1 coluna elegível (0): não há par Y/driver"
+    },
+    {
+      "family_id": 44966,
+      "openml_id": 44966,
+      "reason": "no máximo 1 coluna elegível (0): não há par Y/driver"
+    },
+    {
+      "family_id": 44967,
+      "openml_id": 44967,
+      "reason": "no máximo 1 coluna elegível (1): não há par Y/driver"
+    },
+    {
+      "family_id": 44969,
+      "openml_id": 44969,
+      "reason": "R² de CV > 0,95 e/ou |Spearman| > 0,95 em todos os alvos testados"
+    },
+    {
+      "family_id": 44994,
+      "openml_id": 44994,
+      "reason": "no máximo 1 coluna elegível (1): não há par Y/driver"
+    }
+  ],
+  "effective_families": [
+    31,
+    44,
+    54,
+    310,
+    725,
+    823,
+    1046,
+    1461,
+    1464,
+    1480,
+    1494,
+    1510,
+    4135,
+    23517,
+    40701,
+    40994,
+    42493,
+    44026,
+    44054,
+    44056,
+    44059,
+    44062,
+    44063,
+    44064,
+    44066,
+    44091,
+    44122,
+    44123,
+    44125,
+    44127,
+    44130,
+    44131,
+    44132,
+    44134,
+    44147,
+    44148,
+    44158,
+    44160,
+    44162,
+    44956,
+    44957,
+    44959,
+    44962,
+    44963,
+    44970,
+    44974,
+    44976,
+    44981,
+    44993,
+    45402
+  ],
+  "eligibility_file": "data_rb/eligibility_freeze_v1.csv",
+  "eligibility_sha256": "2581f8e9ab883d151846a4f35b49e6b0be6a31e6b57e805d3d4f266cf735014e",
+  "consequences": {
+    "pklm_subset": "floor(1200 / (3 × 50)) = 8 contextos inteiros por família → 1.200 instâncias",
+    "mde_worst_case_pp": "≈ 4,2 (sd_Δ 0,089 do piloto r2, Holm m = 4, poder 0,8, N = 50)",
+    "llm_panel": "30 famílias sorteadas entre as 50 efetivas",
+    "note_inject_v1_comment": "o comentário de inject-v1.yaml ('1.098 instâncias com 61 famílias') está superado por este adendo; o arquivo não foi alterado para manter o SHA-256 do freeze"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "version": "34b",
+  "features": [
+    {
+      "name": "g0_missing_rate",
+      "group": "G0",
+      "version": "34b"
+    },
+    {
+      "name": "g1_skewness",
+      "group": "G1",
+      "version": "34b"
+    },
+    {
+      "name": "g1_excess_kurtosis",
+      "group": "G1",
+      "version": "34b"
+    },
+    {
+      "name": "g1_iqr_over_sd",
+      "group": "G1",
+      "version": "34b"
+    },
+    {
+      "name": "g1_repeated_fraction",
+      "group": "G1",
+      "version": "34b"
+    },
+    {
+      "name": "g1_median_position",
+      "group": "G1",
+      "version": "34b"
+    },
+    {
+      "name": "g1_bimodality",
+      "group": "G1",
+      "version": "34b"
+    },
+    {
+      "name": "g2_cv_auc_logistic",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_cv_auc_boosting",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_univariate_auc_dev_max",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_univariate_auc_dev_mean",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_univariate_auc_dev_second",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_ks_max",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_ks_mean",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_ks_second",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_mutual_information_max",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_mutual_information_mean",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g2_mutual_information_second",
+      "group": "G2",
+      "version": "34b"
+    },
+    {
+      "name": "g3_r2_observed",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_auc_mask_from_yhat_dev",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_auc_yhat_minus_z",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_yhat_std_mean_diff",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_yhat_ks",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_residual_skewness",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_residual_excess_kurtosis",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g3_residual_heteroscedasticity",
+      "group": "G3",
+      "version": "34b"
+    },
+    {
+      "name": "g4_auc_true_minus_permuted",
+      "group": "G4",
+      "version": "34b"
+    },
+    {
+      "name": "g4_mann_whitney_p",
+      "group": "G4",
+      "version": "34b"
+    }
+  ]
+}

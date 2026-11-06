@@ -22,6 +22,7 @@ Uso:
 
 import io
 import os
+import ssl
 import warnings
 
 import numpy as np
@@ -29,10 +30,6 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-# Fix SSL para macOS (certificados não instalados)
-import ssl
-
-ssl._create_default_https_context = ssl._create_unverified_context
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(os.path.dirname(BASE_DIR), "Dataset", "real_data")
@@ -120,12 +117,8 @@ def process_and_save(df: pd.DataFrame, mechanism: str, name: str, jitter_cols: l
 
 
 def _ssl_context():
-    import ssl
-
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    # Verificação TLS ligada (antes era desligada; ver plano-revisao-banca/10).
+    return ssl.create_default_context()
 
 
 def download_csv(url: str) -> pd.DataFrame:

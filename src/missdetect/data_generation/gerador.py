@@ -72,9 +72,7 @@ def _generate_with_mdatagen(X: pd.DataFrame, y: np.ndarray, mech: str, missing_r
     return out.drop(columns=["target"], errors="ignore")
 
 
-def _apply_fallback_manual(
-    X: pd.DataFrame, mech: str, missing_rate_pct: int, rng: np.random.Generator
-) -> pd.DataFrame:
+def _apply_fallback_manual(X: pd.DataFrame, mech: str, missing_rate_pct: int, rng: np.random.Generator) -> pd.DataFrame:
     """
     Fallback manual (NumPy) usado apenas se a mdatagen não estiver disponível ou
     falhar. Garante missing APENAS em X0. missing_rate_pct: 1..10 (percentual).
@@ -160,7 +158,10 @@ def generate(n_datasets: int, out_dir: str, clean: bool = False) -> dict:
                 except Exception as exc:
                     logger.warning(
                         "mdatagen falhou (%s, seed=%d, mr=%d): %s -> fallback manual",
-                        mech, seed, missing_rate, exc,
+                        mech,
+                        seed,
+                        missing_rate,
+                        exc,
                     )
                     X_miss = None
 
@@ -178,15 +179,18 @@ def generate(n_datasets: int, out_dir: str, clean: bool = False) -> dict:
             fname = f"{mech}_seed{seed}_mr{missing_rate}.txt"
             X_miss.to_csv(os.path.join(paths[mech], fname), sep="\t", index=False)
             manifest.append(
-                {"file": fname, "mechanism": mech, "seed": seed,
-                 "missing_rate": missing_rate, "source": source}
+                {"file": fname, "mechanism": mech, "seed": seed, "missing_rate": missing_rate, "source": source}
             )
 
     with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as fh:
         json.dump({"counters": counters, "datasets": manifest}, fh, indent=2)
 
-    logger.info("Geração concluída: mdatagen=%d, fallback=%d (manifest em %s/manifest.json)",
-                counters["mdatagen"], counters["fallback"], out_dir)
+    logger.info(
+        "Geração concluída: mdatagen=%d, fallback=%d (manifest em %s/manifest.json)",
+        counters["mdatagen"],
+        counters["fallback"],
+        out_dir,
+    )
     return counters
 
 
@@ -194,14 +198,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Gera datasets sintéticos (MCAR/MAR/MNAR) via mdatagen, com fallback manual contabilizado."
     )
-    parser.add_argument("--n-datasets", type=int, default=1000,
-                        help="datasets por mecanismo (default: 1000)")
-    parser.add_argument("--sample", type=int, default=None,
-                        help="atalho de prova de conceito: gera N datasets por mecanismo")
+    parser.add_argument("--n-datasets", type=int, default=1000, help="datasets por mecanismo (default: 1000)")
+    parser.add_argument(
+        "--sample", type=int, default=None, help="atalho de prova de conceito: gera N datasets por mecanismo"
+    )
     default_out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "synthetic_mdatagen")
     parser.add_argument("--out", default=default_out, help="diretório de saída")
-    parser.add_argument("--clean", action="store_true",
-                        help="limpa as pastas de saída antes de gerar (DESTRUTIVO)")
+    parser.add_argument("--clean", action="store_true", help="limpa as pastas de saída antes de gerar (DESTRUTIVO)")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")

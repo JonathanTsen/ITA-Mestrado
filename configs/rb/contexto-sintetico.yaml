@@ -1,0 +1,22 @@
+# Experimento exploratório pedido pelo autor em 30/10/2026: oito bases sintéticas inventadas, com contexto detalhado
+# (data_rb/contexto_sintetico/, gerado por scripts/revisao_banca/llm/contexto_sintetico.py), para medir se o contexto do
+# domínio ajuda o LLM. O apagamento é o do benchmark (gerador simétrico, trios com a mesma contagem de ausências), só nos
+# contextos do painel de LLM: r ∈ {0,1; 0,3; 0,5} × k ∈ {2, máx.} com n = 1000. Papel `dev`: nada confirmatório.
+name: contexto-sintetico
+root_seed: 20261101
+output_root: results_rb
+sources:
+  table: data_rb/contexto_sintetico/sources.csv
+  csv_dir: data_rb/contexto_sintetico/csv
+  roles: [dev]
+  sentinel_exclusions: data_rb/sentinel_exclusions.csv
+inject:
+  n_grid: [1000]
+  k_grid: [2, 8]
+  rate_grid: [0.1, 0.3, 0.5]
+  beta_grid: [1, 2, 4, 8, .inf]
+  directions: [lower, upper, both]
+  driver_rules: [maxcorr, random]
+  max_base_attempts: 20
+features:
+  n_jobs: 8

@@ -1,0 +1,23 @@
+{
+  "freeze": "freeze-v1",
+  "date": "2026-10-21",
+  "inject_config": "configs/rb/inject-v1.yaml",
+  "inject_config_hash": "52ed6f93a2a0",
+  "inject_config_sha256": "7e1c3a1bfb6ffcf6eb1c96b132f862c0e5a127869e2fe0a38cc705290d7cfb95",
+  "feature_schema": "configs/rb/feature_schema_34b.json",
+  "feature_schema_version": "34b",
+  "feature_schema_sha256": "d513af8f06f8352c1f9d437bce96447d2ef328c31ff252b997d18ac9a6ec2b95",
+  "n_features": 28,
+  "families_file": "data_rb/families_freeze_v1.csv",
+  "families_sha256": "316aec5d7ed001edecfb48504a051c5bd2c02aa5ee45e73fb398d8cd2d3b9d75",
+  "n_confirmatory_families": 61,
+  "n_development_families": 8,
+  "sentinel_exclusions_sha256": "c9312f475b9a8b7a9047aae4426fbb00e60fd3fb5502ed6b1b8cbacaa1707035",
+  "sources_local_sha256": "784ba551ca9b0001bc63edf7560d708acb072b73f397d7aea4948b35d4ae884d",
+  "family_overrides_sha256": "50f64743abe8c4afddc8e872a28ad88f5e9bc72a5a846f07489d12fc8933eb33",
+  "synth_corpus_tag": "synth-v2",
+  "synth_corpus_commit": "c5789821240e8e91c5c879cb371383285e8fef00",
+  "uv_lock_sha256": "11be0f4f2f02ec44dacebc1cc545c4413e2eae29beb571eeab25dd0331c8ef69",
+  "freeze_check_run": "results_rb/20261022-freeze-check-dev-cc3e7e671881 (8 famílias dev: 1.632 instâncias, 34b, pipeline ok)",
+  "decisions": "plano-revisao-banca/execucao/08-decisoes-tomadas.md (repositório da tese)"
+}

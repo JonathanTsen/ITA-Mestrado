@@ -1,0 +1,127 @@
+{
+  "data": "2026-11-03",
+  "fonte_precos": "https://ai.google.dev/gemini-api/docs/pricing (conferido em 30/10/2026; reconferir antes da execução)",
+  "precos_usd_por_milhao": {
+    "gemini-4-argon": [
+      [
+        "2026-11-30",
+        2.0,
+        10.0
+      ],
+      [
+        null,
+        4.0,
+        20.0
+      ]
+    ],
+    "gemini-3.8-flash": [
+      [
+        "2026-12-31",
+        0.75,
+        3.75
+      ],
+      [
+        null,
+        1.5,
+        7.5
+      ]
+    ]
+  },
+  "teto_usd": 300.0,
+  "margem": 1.5,
+  "gasto_usd_todas_configs": 43.359538250000014,
+  "h7": {
+    "chamadas_por_modelo": 1080,
+    "entrada_media_tokens": {
+      "ctx-S0": 4357.204861111111,
+      "ctx-S7": 5183.996527777777
+    },
+    "saida_media_flash_tokens": {
+      "ctx-S0": 7637.409722222223,
+      "ctx-S7": 7521.586805555556
+    },
+    "saida_media_argon_A1_medida_tokens": 545.8
+  },
+  "cenarios": [
+    {
+      "cenario": "conservador_ate_20261130",
+      "data_precos": "2026-11-30",
+      "argon_futuro_usd": {
+        "A1": 26.0,
+        "A2": 3.0,
+        "A3": 27.0,
+        "sondas": 12.0,
+        "H7": 46.081539375
+      },
+      "flash_futuro_usd": {
+        "base": 23.0,
+        "H7": 17.280577265625
+      },
+      "futuro_usd": 154.362116640625,
+      "gasto_mais_margem_usd": 274.9027132109375,
+      "cabe_no_teto": true
+    },
+    {
+      "cenario": "argon_medido_ate_20261130",
+      "data_precos": "2026-11-30",
+      "argon_futuro_usd": {
+        "A1": 4.2021738,
+        "A2": 3.0,
+        "A3": 27.0,
+        "sondas": 12.0,
+        "H7": 8.09956875
+      },
+      "flash_futuro_usd": {
+        "base": 23.0,
+        "H7": 17.280577265625
+      },
+      "futuro_usd": 94.582319815625,
+      "gasto_mais_margem_usd": 185.2330179734375,
+      "cabe_no_teto": true
+    },
+    {
+      "cenario": "conservador_dezembro_2026",
+      "data_precos": "2026-12-01",
+      "argon_futuro_usd": {
+        "A1": 52.0,
+        "A2": 6.0,
+        "A3": 54.0,
+        "sondas": 24.0,
+        "H7": 92.16307875
+      },
+      "flash_futuro_usd": {
+        "base": 23.0,
+        "H7": 17.280577265625
+      },
+      "futuro_usd": 268.44365601562504,
+      "gasto_mais_margem_usd": 446.02502227343757,
+      "cabe_no_teto": false
+    },
+    {
+      "cenario": "argon_medido_dezembro_2026",
+      "data_precos": "2026-12-01",
+      "argon_futuro_usd": {
+        "A1": 8.4043476,
+        "A2": 6.0,
+        "A3": 54.0,
+        "sondas": 24.0,
+        "H7": 16.1991375
+      },
+      "flash_futuro_usd": {
+        "base": 23.0,
+        "H7": 17.280577265625
+      },
+      "futuro_usd": 148.884062365625,
+      "gasto_mais_margem_usd": 266.6856317984375,
+      "cabe_no_teto": true
+    }
+  ],
+  "premissas": [
+    "Sem chamadas: custo por tokens, não fatura.",
+    "Produção sem a H7: estimativas de 30/10 do adendo, §8 (Argon 68 = A1 26 + A2 3 + A3 27 + sondas 12; Flash 23); recontar com o corpus e os prompts finais antes da execução.",
+    "H7: entrada e saída do Flash medidas nos dois exploratórios (S0, S7); Argon conservador com a saída do Flash, medido com a saída do teste A1 do Argon.",
+    "Em dezembro o Argon dobra de preço; o Flash não muda até 31/12/2026.",
+    "Executar os lotes pagos em sequência: a trava não reserva o custo de jobs pendentes.",
+    "Ordem de cortes já registrada (P22) se não couber: A3, depois o modelo secundário, depois o A2."
+  ]
+}

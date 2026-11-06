@@ -1,0 +1,222 @@
+"""Testes do passo 45: estudo de caso com ausência natural, sem fabricar mecanismo (IND-22) e sem métrica de acerto."""
+
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from missdetect.rb.bench import load_sentinel_exclusions
+from missdetect.rb.case_study import (
+    N_SUBSAMPLES,
+    SUBSAMPLE_N,
+    auxiliary_columns,
+    build_case,
+    mask_predictability,
+    mask_predictability_hgb,
+    parse_registry,
+    subsample_instance,
+)
+from missdetect.rb.inject import ObservedInstance
+
+
+def _table(n: int = 200, seed: int = 0) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    frame = pd.DataFrame(
+        {
+            "patient_id": np.arange(n),  # identificador
+            "age": rng.normal(50, 10, n).round(1),
+            "sex": rng.choice(["F", "M"], n),  # binária
+            "stage": rng.choice(["I", "II", "III"], n),  # categórica com mais de 2 níveis
+            "const": 1.0,
+            "lab": rng.normal(size=n),
+            "partial": rng.normal(size=n),
+            "y": rng.normal(10, 2, n),
+        }
+    )
+    frame.loc[rng.choice(n, 30, replace=False), "y"] = np.nan
+    frame.loc[rng.choice(n, 10, replace=False), "partial"] = np.nan
+    return frame
+
+
+def _spec(**kw) -> dict:
+    base = {"case_id": "t", "source": "t", "target": "y", "missing_rule": "natural", "z_include": "",
+            "z_exclude": "", "hypothesis": "MAR", "evidence": "x", "citation": "x", "include": True,
+            "exclusion_reason": ""}  # fmt: skip
+    return base | kw
+
+
+def test_auxiliaries_are_complete_numeric_or_binary_columns():
+    cols = auxiliary_columns(_table(), "y", exclude=[])
+    assert cols == ["age", "sex", "lab"]  # sem id, constante, categórica de 3 níveis, coluna com NaN e o alvo
+
+
+def test_auxiliaries_respect_exclusions():
+    assert auxiliary_columns(_table(), "y", exclude=["lab"]) == ["age", "sex"]
+
+
+def test_natural_case_keeps_every_observed_value_and_every_missing_one():
+    table = _table()
+    instance, meta = build_case(table, _spec())
+    source = table["y"].to_numpy()
+    assert np.array_equal(np.isnan(instance.y), np.isnan(source))
+    assert np.array_equal(instance.y[~np.isnan(source)], source[~np.isnan(source)])
+    assert list(instance.z.columns) == ["age", "sex", "lab"]
+    assert not instance.z.isna().any().any()
+    np.testing.assert_array_equal(instance.z["age"].to_numpy(), table["age"].to_numpy())
+    assert set(instance.z["sex"].unique()) == {0.0, 1.0}
+    assert meta["n_missing_natural"] == 30 and meta["n_missing_rule"] == 0 and meta["k"] == 3
+
+
+def test_zero_rule_only_turns_zeros_into_missing():
+    table = _table()
+    table.loc[:4, "y"] = 0.0
+    instance, meta = build_case(table, _spec(missing_rule="zero_impossible"))
+    source = table["y"].to_numpy()
+    zero = source == 0
+    assert np.isnan(instance.y[zero]).all()
+    keep = ~zero & ~np.isnan(source)
+    assert np.array_equal(instance.y[keep], source[keep])
+    assert meta["n_missing_rule"] == int(zero.sum())
+
+
+def test_below_lod_rule_uses_the_source_comment_code():
+    table = _table()
+    table["y"] = table["y"].fillna(1.0)
+    table["y_code"] = 0.0
+    table.loc[:9, "y_code"] = 1.0  # abaixo do limite de detecção (valor de preenchimento na fonte)
+    table.loc[10:14, "y_code"] = np.nan  # sem resultado laboratorial: fora da população do estudo
+    instance, meta = build_case(table, _spec(missing_rule="below_lod:y_code", z_exclude="y_code"))
+    assert len(instance.y) == len(table) - 5
+    assert np.isnan(instance.y).sum() == 10
+    assert meta["n_rows_dropped"] == 5 and meta["n_missing_rule"] == 10
+
+
+def test_explicit_auxiliaries_must_be_complete():
+    table = _table()
+    instance, _ = build_case(table, _spec(z_include="age;lab"))
+    assert list(instance.z.columns) == ["age", "lab"]
+    with pytest.raises(ValueError, match="partial"):
+        build_case(table, _spec(z_include="age;partial"))
+
+
+def test_non_numeric_target_is_an_error():
+    table = _table()
+    with pytest.raises(ValueError, match="numérico"):
+        build_case(table, _spec(target="stage"))
+
+
+def test_registry_requires_a_reason_for_every_exclusion(tmp_path):
+    path = tmp_path / "registry.csv"
+    pd.DataFrame([_spec(case_id="a"), _spec(case_id="b", include=False, exclusion_reason="zero é valor real")]).to_csv(
+        path, index=False
+    )
+    specs = parse_registry(path)
+    assert [s["case_id"] for s in specs] == ["a", "b"]
+    assert specs[1]["include"] is False
+    pd.DataFrame([_spec(case_id="c", include=False)]).to_csv(path, index=False)
+    with pytest.raises(ValueError, match="motivo"):
+        parse_registry(path)
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda t: t.assign(y=t["y"].fillna(1.0)), "sem ausências"),
+        (lambda t: t.assign(y=np.where(np.arange(len(t)) < 5, 1.0, np.nan)), "observados"),
+        (lambda t: t[["patient_id", "stage", "y"]], "nenhuma auxiliar completa"),
+    ],
+)
+def test_unusable_cases_fail_with_the_specific_reason(change, message):
+    with pytest.raises(ValueError, match=message):
+        build_case(change(_table()), _spec())
+
+
+def test_versioned_registry_is_valid_and_matches_the_manifest():
+    root = Path(__file__).resolve().parents[2] / "data_rb"
+    specs = parse_registry(root / "case_study_sources.csv")
+    ids = [s["case_id"] for s in specs]
+    assert len(ids) == len(set(ids))
+    sources = set(pd.read_csv(root / "case_study_manifest.csv").source)
+    for spec in specs:
+        if spec["include"]:
+            assert spec["source"] in sources, spec["case_id"]
+            assert spec["missing_rule"] in ("natural", "zero_impossible") or spec["missing_rule"].startswith(
+                "below_lod:"
+            )
+            assert spec["hypothesis"] and spec["evidence"], spec["case_id"]
+
+
+def test_mask_predictability_flags_auxiliaries_that_encode_the_mask():
+    rng = np.random.default_rng(0)
+    m = rng.random(400) < 0.3
+    noise_z = pd.DataFrame({"a": rng.normal(size=400), "b": rng.normal(size=400)})
+    assert mask_predictability(noise_z, m) < 0.65
+    leaky = noise_z.assign(c=noise_z.a + 5.0 * m)  # uma combinação de Z separa a máscara
+    assert mask_predictability(leaky, m) > 0.99
+
+
+def test_build_case_reports_how_well_z_predicts_the_mask():
+    _, meta = build_case(_table(), _spec())
+    assert 0.0 <= meta["mask_auc_from_z"] <= 1.0
+
+
+def test_versioned_registry_follows_the_d4_sentinel_rule():
+    """A D4 tira as colunas sentinela de uma tabela como alvo e como auxiliar: num caso, elas só podem ser o próprio
+    alvo (com a regra de zero impossível) ou estar fora de Z."""
+    root = Path(__file__).resolve().parents[2] / "data_rb"
+    sentinels = load_sentinel_exclusions(str(root / "sentinel_exclusions.csv"))
+    for spec in parse_registry(root / "case_study_sources.csv"):
+        if not spec["include"] or not spec["source"].startswith("openml_"):
+            continue
+        cols = sentinels.get(int(spec["source"].split("_")[1]), set())
+        excluded = set(spec["z_exclude"].split(";"))
+        for col in cols - {spec["target"]}:
+            assert col in excluded, (spec["case_id"], col)
+        if spec["target"] in cols:
+            assert spec["missing_rule"] == "zero_impossible", spec["case_id"]
+
+
+def test_hgb_mask_predictability_catches_a_nonlinear_encoding():
+    """C5 (a-L1 da auditoria): uma codificação não linear da máscara em Z escapa da logística, mas não do HGB."""
+    rng = np.random.default_rng(0)
+    m = rng.random(600) < 0.3
+    z = pd.DataFrame({"a": rng.normal(size=600), "b": rng.normal(size=600)})
+    leaky = z.assign(c=np.where(m, np.sign(z.a), 0.0))  # |c| separa a máscara; c, linearmente, não
+    assert mask_predictability(leaky, m) < 0.8
+    assert mask_predictability_hgb(leaky, m) > 0.95
+    assert mask_predictability_hgb(z, m) < 0.65
+
+
+def test_build_case_reports_both_mask_diagnostics():
+    _, meta = build_case(_table(), _spec())
+    assert 0.0 <= meta["mask_auc_from_z_hgb"] <= 1.0
+
+
+def test_subsample_keeps_rows_together_and_is_reproducible():
+    """D3 (29/10): a NHANES entra em 10 subamostras de n = 2.000, dentro da faixa de treino, com sementes fixas."""
+    assert (SUBSAMPLE_N, N_SUBSAMPLES) == (2000, 10)
+    rng = np.random.default_rng(0)
+    y = rng.normal(size=5000)
+    y[rng.random(5000) < 0.2] = np.nan
+    z = pd.DataFrame({"row": np.arange(5000.0), "b": rng.normal(size=5000)})
+    instance = ObservedInstance("caso", y, z)
+    a, b = subsample_instance(instance, 2000, seed=7), subsample_instance(instance, 2000, seed=7)
+    assert len(a.y) == 2000 and a.z.shape == (2000, 2)
+    np.testing.assert_array_equal(a.z.row, b.z.row)
+    rows = a.z.row.to_numpy().astype(int)  # a linha i de Y continua com a linha i de Z
+    np.testing.assert_array_equal(np.isnan(a.y), np.isnan(y[rows]))
+    assert len(set(rows)) == 2000
+    assert subsample_instance(instance, 2000, seed=8).z.row.tolist() != a.z.row.tolist()
+    assert subsample_instance(ObservedInstance("p", y[:300], z.iloc[:300]), 2000, seed=1).z.shape[0] == 300
+
+
+def test_versioned_registry_keeps_only_cases_documented_by_the_source():
+    """D3 (decisão do autor, 29/10): só a NHANES, cujo mecanismo (limite de detecção) é documentado pela fonte."""
+    root = Path(__file__).resolve().parents[2] / "data_rb"
+    specs = parse_registry(root / "case_study_sources.csv")
+    included = [s["case_id"] for s in specs if s["include"]]
+    assert sorted(included) == ["nhanes_cadmium", "nhanes_cotinine", "nhanes_mercury"]
+    for spec in specs:
+        if spec["case_id"].startswith(("hepatitis", "mroz", "pima")):
+            assert not spec["include"] and "D3" in spec["exclusion_reason"], spec["case_id"]

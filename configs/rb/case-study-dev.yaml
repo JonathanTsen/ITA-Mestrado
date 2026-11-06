@@ -1,0 +1,7 @@
+# Estudo de caso (passo 45) — teste de fumaça com o modelo treinado nas famílias de desenvolvimento (rehearsal-dev).
+# NÃO é o resultado da tese: o estudo de caso final usa o modelo congelado da produção (fit-final no run confirmatório).
+name: case-study-dev
+root_seed: 20261101
+output_root: results_rb
+features:
+  n_jobs: 8

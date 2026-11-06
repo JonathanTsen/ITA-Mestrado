@@ -1,0 +1,94 @@
+openml_id,alias,tipo,motivo,motivo_tipo
+6,letter,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 6,palavra comum
+6,Letter Recognition,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/Letter+Recognition,
+23,cmc,claro,Nome canônico em openml_metadata_20261022.csv; família 23,
+23,Contraceptive Method Choice,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/Contraceptive+Method+Choice,
+31,credit-g,claro,Nome canônico em openml_metadata_20261022.csv; família 31,
+31,statlog (german credit data),claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data),
+37,diabetes,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 37,"palavra comum; existe outra base 'diabetes' (regressão, scikit-learn)"
+37,pima,claro,a base é conhecida pela população (Pima Indian heritage),
+37,pima indians diabetes,claro,nome da base no UCI (título da descrição do OpenML),
+44,spambase,claro,Nome canônico em openml_metadata_20261022.csv; família 44,
+54,Statlog (Vehicle Silhouettes),claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/Statlog+(Vehicle+Silhouettes),
+54,vehicle,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 54,palavra comum
+151,elec2,claro,"nome original, citado na descrição do OpenML",
+151,electricity,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 151,palavra comum; várias bases de consumo de energia
+251,BNG(breast-w),claro,Nome canônico em openml_metadata_20261022.csv; família 251,
+251,breast cancer wisconsin,ambiguo,nome da breast-w no UCI,"família Wisconsin: casa também com a WDBC (1510), base distinta"
+251,breast-w,ambiguo,a BNG(breast-w) é gerada a partir da breast-w,"base de origem da BNG(breast-w): versão relacionada, não a representante"
+251,wisconsin breast cancer,ambiguo,variante comum do mesmo nome,"família Wisconsin: casa também com a WDBC (1510), base distinta"
+310,mammography,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 310,palavra comum; várias bases de mamografia
+725,bank8FM,claro,Nome canônico em openml_metadata_20261022.csv; família 725,
+823,houses,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 823,palavra comum; também casa com Brazilian_houses e outras bases de imóveis
+1046,mozilla4,claro,Nome canônico em openml_metadata_20261022.csv; família 1046,
+1050,pc3,claro,Nome canônico em openml_metadata_20261022.csv; família 1049,
+1461,bank-marketing,claro,Nome canônico em openml_metadata_20261022.csv; família 1461,
+1464,blood-transfusion-service-center,claro,Nome canônico em openml_metadata_20261022.csv; família 1464,
+1480,ilpd,claro,Nome canônico em openml_metadata_20261022.csv; família 1480,
+1480,Indian Liver Patient Dataset,claro,Nome na descrição congelada do OpenML; SHA-256 cf1b45a69e250fa4e61a8e31ebe5e71c6e4a44882c3124993afc3e7e31c5ae90,
+1494,qsar-biodeg,claro,Nome canônico em openml_metadata_20261022.csv; família 1494,
+1494,QSAR biodegradation,claro,Nome na descrição congelada do OpenML; SHA-256 dee178ef35d091c5a60d0867cb8bf54c53e67c4ff3c0fdff3a3512a47d49782e,
+1510,Breast Cancer Wisconsin Diagnostic,claro,Nome na descrição congelada do OpenML; SHA-256 edb5d78b82d615e0150a0a197bc2b14d5dd474ce4fe93ddc6e437a41ac5e63af,
+1510,wdbc,claro,Nome canônico em openml_metadata_20261022.csv; família 1510,
+4135,Amazon_employee_access,claro,Nome canônico em openml_metadata_20261022.csv; família 4135,
+4534,PhishingWebsites,claro,Nome canônico em openml_metadata_20261022.csv; família 4534,
+23517,numerai28.6,claro,Nome canônico em openml_metadata_20261022.csv; família 23517,
+40701,churn,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 40701,palavra comum; várias bases de churn
+40994,climate-model-simulation-crashes,claro,Nome canônico em openml_metadata_20261022.csv; família 40994,
+42493,airlines,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 42493,palavra comum; várias bases de companhias aéreas
+44054,yprop_4_1,claro,Nome canônico em openml_metadata_20261022.csv; família 44054,
+44055,analcatdata_supreme,claro,Nome canônico em openml_metadata_20261022.csv; família 44055,
+44056,visualizing_soil,claro,Nome canônico em openml_metadata_20261022.csv; família 44056,
+44059,diamonds,claro,Nome canônico em openml_metadata_20261022.csv; família 44059,
+44061,Mercedes_Benz_Greener_Manufacturing,claro,Nome canônico em openml_metadata_20261022.csv; família 44061,
+44062,Brazilian_houses,claro,Nome canônico em openml_metadata_20261022.csv; família 44062,
+44063,Bike_Sharing_Demand,claro,Nome canônico em openml_metadata_20261022.csv; família 44063,
+44064,OnlineNewsPopularity,claro,Nome canônico em openml_metadata_20261022.csv; família 44064,
+44089,credit,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44089,palavra comum; casa com credit-g e outras bases de crédito
+44089,give me some credit,claro,competição do Kaggle de onde vem a base,
+44124,ipums,ambiguo,extrato do censo IPUMS de onde vem a base (kdd_ipums_la_97),"nome do censo IPUMS: identifica a família, não o extrato kdd_ipums_la_97-small"
+44124,kdd_ipums_la_97-small,claro,Nome canônico em openml_metadata_20261022.csv; família 44124,
+44125,magic gamma telescope,claro,Nome na descrição congelada do OpenML; SHA-256 f45f9f715ec67699c35f2145fa8d7b1e144b0750ccdbe6676052edfa4157cc04,
+44125,MagicTelescope,claro,Nome canônico em openml_metadata_20261022.csv; família 44125,
+44127,phoneme,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44127,palavra comum
+44131,jannis,claro,Nome canônico em openml_metadata_20261022.csv; família 44131,
+44132,cpu_act,claro,Nome canônico em openml_metadata_20261022.csv; família 44132,
+44133,pol,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44122,sigla curta
+44136,wine_quality,claro,Nome canônico em openml_metadata_20261022.csv; família 44091,
+44137,Ailerons,claro,Nome canônico em openml_metadata_20261022.csv; família 44134,
+44139,house_16H,claro,Nome canônico em openml_metadata_20261022.csv; família 44123,
+44145,sulfur,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44145,palavra comum
+44145,sulfur recovery unit,claro,processo industrial que nomeia a base (descrição do OpenML),
+44157,eye_movements,claro,Nome canônico em openml_metadata_20261022.csv; família 44130,
+44158,KDDCup09_upselling,claro,Nome canônico em openml_metadata_20261022.csv; família 44158,
+44160,rl,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44160,sigla curta
+44162,compas,claro,Nome na descrição congelada do OpenML; SHA-256 a72c15f79cde112fe9f248afdcf8b36137eb4649d09d20a362e2876655ae42e8,
+44162,compass,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44162,grafia alternativa e palavra comum
+44956,abalone,claro,Nome canônico em openml_metadata_20261022.csv; família 44956,
+44957,airfoil_self_noise,claro,Nome canônico em openml_metadata_20261022.csv; família 44957,
+44958,auction_verification,claro,Nome canônico em openml_metadata_20261022.csv; família 44958,
+44959,concrete_compressive_strength,claro,Nome canônico em openml_metadata_20261022.csv; família 44959,
+44960,energy_efficiency,claro,Nome canônico em openml_metadata_20261022.csv; família 44960,
+44962,forest_fires,claro,Nome canônico em openml_metadata_20261022.csv; família 44962,
+44963,Physicochemical Properties of Protein Tertiary Structure,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/Physicochemical+Properties+of+Protein+Tertiary+Structure,
+44963,physiochemical_protein,claro,Nome canônico em openml_metadata_20261022.csv; família 44963,
+44964,superconductivity,claro,Nome canônico em openml_metadata_20261022.csv; família 44148,
+44964,superconductivty data,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/superconductivty+data,
+44966,solar_flare,claro,Nome canônico em openml_metadata_20261022.csv; família 44966,
+44967,student performance,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/student+performance,
+44967,student_performance_por,claro,Nome canônico em openml_metadata_20261022.csv; família 44967,
+44969,condition based maintenance of naval propulsion plants,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/condition+based+maintenance+of+naval+propulsion+plants,
+44969,naval_propulsion_plant,claro,Nome canônico em openml_metadata_20261022.csv; família 44969,
+44970,QSAR_fish_toxicity,claro,Nome canônico em openml_metadata_20261022.csv; família 44970,
+44974,Online Video Characteristics and Transcoding Time Dataset,claro,Título no URL de origem congelado: https://archive.ics.uci.edu/ml/datasets/Online+Video+Characteristics+and+Transcoding+Time+Dataset#,
+44974,video_transcoding,claro,Nome canônico em openml_metadata_20261022.csv; família 44974,
+44976,sarcos,claro,Nome canônico em openml_metadata_20261022.csv; família 44976,
+44980,kin8,ambiguo,"família kin8 (kin8nm, kin8fh, ...) de simulações do braço robótico","família kin8 (kin8nm, kin8fh, ...): não identifica a versão"
+44980,kin8nm,claro,Nome canônico em openml_metadata_20261022.csv; família 44980,
+44981,pumadyn32nh,claro,Nome canônico em openml_metadata_20261022.csv; família 44981,
+44983,miami_housing,claro,Nome canônico em openml_metadata_20261022.csv; família 44147,
+44989,kings_county,claro,Nome canônico em openml_metadata_20261022.csv; família 44066,
+44993,health_insurance,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44993,várias bases de seguro de saúde
+44994,cars,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44994,palavra comum; várias bases de carros
+45012,fifa,ambiguo,Nome canônico em openml_metadata_20261022.csv; família 44026,várias bases da FIFA
+45402,space_ga,claro,Nome canônico em openml_metadata_20261022.csv; família 45402,

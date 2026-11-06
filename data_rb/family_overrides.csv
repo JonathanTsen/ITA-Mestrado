@@ -1,0 +1,11 @@
+# Decisões manuais de família (passo 31). action: merge (mesma família) | split (anula fusão automática).
+# Cada linha tem justificativa verificada nos nomes de colunas e nos números de linhas (CSV do MechDetect).
+id_a,id_b,action,reason
+1049,1050,merge,"NASA MDP (repositório PROMISE): mesmo esquema de 37 métricas de software (LOC_BLANK, BRANCH_COUNT...), projetos diferentes; agrupado de forma conservadora"
+1063,1067,merge,"NASA MDP (PROMISE): esquema de 21 métricas de Halstead/McCabe (loc, v(g), ev(g)...), projetos diferentes; agrupado de forma conservadora"
+1063,1068,merge,"NASA MDP (PROMISE): mesmo esquema de 21 métricas; agrupado de forma conservadora"
+1049,1063,merge,"NASA MDP (PROMISE): os dois esquemas de métricas vêm do mesmo repositório; uma única família"
+823,44025,merge,"California housing: os mesmos 20.640 grupos de quarteirões do censo de 1990, com atributos derivados diferentes (MedInc, AveRooms)"
+44062,44990,merge,"Brazilian houses: os mesmos 10.692 imóveis; versões com colunas diferentes"
+44026,45012,merge,"FIFA (atributos de jogadores): bases do mesmo jogo, possivelmente de edições diferentes; agrupado de forma conservadora"
+44134,44137,merge,"F-16 (elevators/ailerons): mesmo simulador e variáveis de estado (climbRate, Sgz, p, q, curRoll); tarefas diferentes; agrupado de forma conservadora"

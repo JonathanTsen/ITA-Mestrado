@@ -22,11 +22,13 @@ is **MCAR** (completely at random), **MAR** (depends on observed variables), or
 baseline against an LLM-augmented variant on 1,200 synthetic and 29 real
 datasets, using a hierarchical two-level classifier robust to label noise.
 
-**Key finding:** LLM features contribute marginally to real-world accuracy
-(+1.9pp with Gemini Pro, none with Flash). The hierarchical structure plus
-Cleanlab-weighted Naive Bayes is what moves the needle. We document a
-**provable ceiling** of ~60–65% (Rubin 1976 + measured 59.4% label noise) and
-discuss the gap explicitly.
+**Status (October 2026):** the numbers below come from the qualification
+version of the thesis and are under revision; see
+[`docs/revisao-banca/README.md`](docs/revisao-banca/README.md). The mechanism
+labels of the real datasets were not established by construction, so these
+results are kept for the record only. No accuracy ceiling is claimed: MAR and
+MNAR are not identifiable from observed data alone (Molenberghs et al. 2008),
+but this does not determine any numerical bound.
 
 ---
 
@@ -39,11 +41,12 @@ discuss the gap explicitly.
 | Step 1 V2 Neutral — Flash + statistical | 29 | 47.44% | 51.14% | ~$3 |
 | ML-only baseline (no LLM) | 29 | 47.47% | 53.92% | $0 |
 | Random-class baseline | — | 33.3% | 33.3% | $0 |
-| Theoretical ceiling (Rubin 1976 + measured noise) | — | ~60–65% | — | — |
 
-NaiveBayes consistently beats RandomForest, GradientBoosting, MLP and SVM by
-+6 to +13pp under cross-validation — calibration of uncertainty matters more
-than model capacity in this label-noisy regime.
+The 55.97% figure is Naive Bayes with Platt scaling, without Cleanlab
+weights, selected as the best of several models and routing strategies under
+leave-one-group-out CV; the majority-class baseline under the same protocol
+is about 48%. No paired test supports the comparison between classifiers, and
+the calibration of the probabilities was not measured.
 
 Start with [`docs/README.md`](docs/README.md) for the documentation map. See
 [`docs/HISTORICO.md`](docs/HISTORICO.md) for the full experimental log across
@@ -53,19 +56,18 @@ the project phases.
 
 ## Why this is interesting
 
-To our knowledge, this is the **first** study combining LLM-derived domain
-features with hierarchical classification for the MCAR / MAR / MNAR problem.
-Prior work either tests MCAR vs everything (PKLM, Little's test) or relies on
-purely statistical features (MechDetect). The negative result on LLM features
-in real noisy data — which we believe is publishable — and the documented
-gap between synthetic ceiling (~80%) and real-world ceiling (~60%) are both
-contributions worth reporting.
+Prior work either tests MCAR only (Little's test, PKLM), separates only
+MNAR from the other mechanisms (Dekermanjian et al. 2022), or uses the values
+that are missing (MechDetect, whose second test needs the clean target
+column). This project studies a three-class classifier that uses observed
+data only.
 
 A theoretical caveat: under the Molenberghs et al. (2008) impossibility
 result, every MNAR model has an MAR counterpart with identical observed-data
 fit. Perfect MAR/MNAR separation is therefore unachievable from observed data
-alone — our 49–56% range should be read against that ceiling, not against
-chance.
+alone. This does not determine any particular accuracy level: results are
+compared with trivial baselines and with the state of the art under the same
+protocol.
 
 ---
 
@@ -225,8 +227,7 @@ configurations recorded in `src/missdetect/metadata/synthetic_variants_metadata.
 This README and the accompanying thesis make four limitations explicit:
 
 1. **MAR / MNAR are theoretically inseparable** from observed data alone
-   (Molenberghs et al. 2008). The 49–56% range we report reflects this
-   information-theoretic ceiling — not a modelling failure.
+   (Molenberghs et al. 2008) without further assumptions.
 2. **Label noise** in our real benchmark is high: 59.4% of bootstrap samples
    are flagged by Cleanlab as potentially mislabelled. The labels are domain
    experts' best guess, not ground truth.
