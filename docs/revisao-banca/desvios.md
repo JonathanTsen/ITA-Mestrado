@@ -99,3 +99,12 @@ Toda mudança feita depois da tag `prereg-v1` fica registrada aqui, com data, mo
 - **Gasto do refazer:** US$ 59,98. O total estimado é ≈ US$ 163, de um teto de US$ 300. O valor oficial é o do faturamento do Google.
 - **Cópia de segurança:** depois do último lote pago, o run, a H7 e o caderno foram enviados ao repositório privado `ITA-dados-privado` (commit `c95183f58`).
 - **Nada mudou** em regras, hipóteses, comparadores, testes ou código. Não há nova tag; a produção continua em `prereg-v1.4`.
+- **Fim da produção (06/11/2026):** a fase de CPU terminou às 21:26 UTC sem erros, em `prereg-v1.4` e com a árvore limpa. Ela rodou baselines, `evaluate` (×4), PKLM (1.200 de 1.200 ok), `stats`, secundárias, robustez, ablação, LOGO, transferência, `report`, `noise` e `fit-final`. Depois rodaram o estudo de caso (`20261106-case-study-f826114aad4f`) e o controle sintético (`evaluate` no `synth-v2`).
+  - A pedido do autor, os processos ficaram congelados (`SIGSTOP`) das 14:53 às 17:25 UTC, no meio do PKLM, e continuaram do mesmo ponto. Nada foi recalculado.
+  - O PKLM levou ≈ 240 s por instância com 8 processos, contra ≈ 55 s na máquina antiga.
+- **PKLM com R 4.6.2:**
+  - rodado nas mesmas 24 primeiras tabelas do R4 de 30/10, com a semente de produção, deu **p-valores idênticos nas 24** (`results_rb/_audit/e19-r462-tabelas-antigas-24.csv`). A troca 4.6.1 → 4.6.2 não muda o PKLM.
+  - Uma ressalva encontrada nessa checagem: o script de decisão `d4_pklm_tamanho.py` gera as tabelas com `numpy.random.multivariate_normal` (método SVD), e nesta máquina elas saem diferentes. A causa provável é a biblioteca de álgebra linear. Com essas tabelas novas, os p-valores mudam, mas a rejeição é parecida: 2 de 24 (`e19-r462-24-seed20261101.csv`).
+  - A produção não depende disso. O `inject` não usa essa função, e o `synth-v2` (que usa `method="cholesky"`) foi copiado, não regerado.
+- **Suíte de testes nesta máquina:** 343 de 343, com `OMP_NUM_THREADS=1`, em `prereg-v1.4`.
+- **Cópias de segurança:** a cada marco no `ITA-dados-privado`. O último, depois do estudo de caso e do controle sintético, é o commit `11dc90c89`.
