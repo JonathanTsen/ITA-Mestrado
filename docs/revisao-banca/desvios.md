@@ -77,3 +77,25 @@ Toda mudança feita depois da tag `prereg-v1` fica registrada aqui, com data, mo
 - **Autorização:** o autor, em 05/11/2026, depois da explicação: "Pode corrigir".
 - **Verificação:** suíte completa com `OMP_NUM_THREADS=1`: 305 de 305.
 - **Nova tag:** `prereg-v1.4` e `prereg-v1.4-llm`. A etapa 2 continua nela, e o run completo (a análise oficial) usa este código. Os resultados já gravados da etapa 1 ficam como estão, descritivos, e o run completo recalcula tudo.
+
+## D5 — perda do computador da produção e run completo refeito direto (05–06/11/2026)
+
+- **O que aconteceu:** em 05/11/2026, o computador em que a produção rodava parou de funcionar. Junto com ele se perderam:
+  - `results_rb/` inteiro: os runs da etapa 1 (`20261104-inject-v1-738bdf7b5937`), da etapa 2 (`…-500f42cb6ef8`) e da H7 (`20261104-contexto-h7-…`);
+  - o caderno de respostas do Gemini de 03–05/11;
+  - as cópias de segurança de 04/11, que estavam só no mesmo disco.
+- **O que sobrou:** o git, as tags e releases `prereg-v1`…`prereg-v1.4`, os depósitos do Zenodo, os registros no plano da tese (`RESULTADOS-2026-11-04.md` e anexo, gerados dos arquivos antes da perda) e as cópias de 30/10 e 02/11 (Drive e repositório privado), anteriores à produção.
+- **Decisões do autor (05/11/2026, na conversa):**
+  1. ir **direto ao run completo** (`inject-v1.yaml`, 50 famílias; `contexto-h7.yaml`, 30 bases), sem refazer as etapas 1 e 2 como runs separados. Elas já cumpriram o papel da P25 (o autor viu a primeira metade antes de autorizar o resto). As etapas usam o mesmo `name` e a mesma `root_seed` do completo, então as instâncias são as mesmas;
+  2. **refazer as chamadas do Gemini** no escopo de 04/11 (Argon: sondas, H7, A1, A2, A3; Flash: sondas e H7). Depois, "total autorização para rodar tudo que for preciso" no Gemini;
+  3. manter o código lacrado e **conferir a trava do orçamento à mão**: o gasto perdido (US$ 59,65 = 98,74 − 43,36 do anexo, mais ≈ 4,27 do A1/A2/A3 da etapa 2 citado na PR #71 da tese) é somado ao do caderno antes de cada lote (`~/work/rb-producao/trava_manual.py`).
+- **Máquina nova:** MacBook Air, 8 núcleos; R 4.6.2 (antes 4.6.1) e PKLMtest 1.0.1; Python e pacotes pelo mesmo `uv.lock`. Os CSV-fonte foram reextraídos do MechDetect e conferidos pelo SHA-256 (101 de 101).
+- **Reprodutibilidade conferida:** o `inject` do completo descarta as mesmas 11 famílias por regra (50 efetivas), e as 25 famílias da etapa 1 geram exatamente as **5.214 instâncias** do `baselines.parquet` perdido. Run: `20261105-inject-v1-52ed6f93a2a0` (10.332 instâncias); H7: `20261105-contexto-h7-c635b9dbd73a`.
+- **O que muda nos números da IA:** o Gemini não responde igual a cada vez, então as respostas novas são uma nova amostra. Os números das etapas 1 e 2 registrados no plano da tese ficam como histórico descritivo. A análise oficial é a do run completo.
+- **Ordem:** as chamadas do Gemini foram feitas antes das etapas longas de CPU, a pedido do autor. O `llm` grava as respostas no caderno e só monta a comparação com a configuração primária depois do `evaluate`. Por isso a adjudicação das sondas (06/11/2026) foi feita sem nenhum resultado da comparação, como manda a regra.
+- **Sondas e adjudicação:** nas tabelas cegas, 0 de 30 famílias foram reconhecidas pelas duas IAs, e nenhuma foi excluída. O autor aprovou as sugestões em 06/11/2026.
+  - Argon: 4 reconhecidas, 3 inconclusivas e 35 não reconhecidas, todas na crua. SHA-256 da planilha `b0be01471e78eba09256454138f7fe8917c97ce44d3a045a1870c3cab44dc291`; da lista `506373f2558c687d960b97e11ceacbef5f832b7dedba517a479bc7e84eb5f17a`.
+  - Flash: 4, 2 e 37. Planilha `9c7158d29a005c240f14b49030dcc9e0071c500c1c3b5068802c05c112646e30`; lista `045290e208f7d11ca1436adfcd9c5863dabd2fe6ab12f5db898da64d5ff21b4e`.
+- **Gasto do refazer:** US$ 59,98. O total estimado é ≈ US$ 163, de um teto de US$ 300. O valor oficial é o do faturamento do Google.
+- **Cópia de segurança:** depois do último lote pago, o run, a H7 e o caderno foram enviados ao repositório privado `ITA-dados-privado` (commit `c95183f58`).
+- **Nada mudou** em regras, hipóteses, comparadores, testes ou código. Não há nova tag; a produção continua em `prereg-v1.4`.
