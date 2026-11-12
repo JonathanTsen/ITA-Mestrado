@@ -23,17 +23,66 @@ baseline puramente estatístico contra uma variante aumentada por LLM em
 1.200 datasets sintéticos e 29 datasets reais, usando um classificador
 hierárquico em dois níveis robusto a ruído de rótulo.
 
-**Situação (outubro de 2026):** os números abaixo vêm da versão de
-qualificação da dissertação e estão em revisão; veja
-[`docs/revisao-banca/README.md`](docs/revisao-banca/README.md). Os rótulos de
-mecanismo dos datasets reais não foram estabelecidos por construção, então
-estes resultados ficam apenas como registro. Nenhum teto de acurácia é
-afirmado: MAR e MNAR não são identificáveis só com dados observados
-(Molenberghs et al. 2008), mas isso não determina nenhum limite numérico.
+**Situação (novembro de 2026).** Os experimentos da dissertação foram refeitos
+depois da qualificação, sob um protocolo pré-registrado, e os resultados abaixo
+substituem os anteriores:
+
+- **Desenho:** a ausência é injetada por código em tabelas reais completas do
+  OpenML, de modo que todo rótulo de mecanismo é conhecido por construção. São
+  50 famílias de tabelas, 10.332 instâncias, três geradores (um gerador
+  simétrico, o `mdatagen` e o `tab_err`) e validação cruzada por família.
+- **Código:** o pacote [`src/missdetect/rb/`](src/missdetect/rb/), com testes
+  em `tests/rb/`. A análise confirmatória rodou na tag `prereg-v1.4`.
+- **Pré-registro e desvios:**
+  [`docs/revisao-banca/preregistro.md`](docs/revisao-banca/preregistro.md),
+  [`adendo-llm.md`](docs/revisao-banca/adendo-llm.md) e
+  [`desvios.md`](docs/revisao-banca/desvios.md); arquivados no Zenodo
+  (DOI do conceito [10.5281/zenodo.23933349](https://doi.org/10.5281/zenodo.23933349)).
+- **Registro dos resultados:** SHA-256 das saídas em
+  [`docs/revisao-banca/deposito-p4-resultados.md`](docs/revisao-banca/deposito-p4-resultados.md)
+  (tag `resultados-v1`, DOI [10.5281/zenodo.24024942](https://doi.org/10.5281/zenodo.24024942)).
+- **Como rodar:** [`docs/revisao-banca/30-infra.md`](docs/revisao-banca/30-infra.md)
+  traz os módulos e a ordem dos comandos
+  (`python -m missdetect.rb.cli <comando> --config configs/rb/<arquivo>.yaml`).
+
+Nenhum teto de acurácia é afirmado: MAR e MNAR não são identificáveis só com
+dados observados (Molenberghs et al. 2008), mas isso não determina nenhum
+limite numérico.
 
 ---
 
-## Resultados-chave
+## Resultados do run pré-registrado
+
+Macro-recall médio das 50 famílias, no gerador principal, para os métodos que
+usam só os dados observados (run `20261105-inject-v1-52ed6f93a2a0`, tag
+`prereg-v1.4`):
+
+| Método | Macro-recall | Recall MCAR / MAR / MNAR |
+|:--|:-:|:-:|
+| Classificador direto sobre 28 descritores observáveis (primário) | **0,733** (IC 95% 0,714–0,751) | 0,830 / 0,761 / 0,607 |
+| Classificador hierárquico (mesmos descritores) | 0,729 | 0,856 / 0,752 / 0,579 |
+| Modelo logístico mínimo (4 descritores) | 0,653 | 0,894 / 0,584 / 0,483 |
+| MechDetect adaptado aos dados observados | 0,530 | 0,941 / 0,645 / 0,005 |
+
+Hipóteses pré-registradas, com a família como unidade de análise: a
+configuração primária foi estatisticamente superior à adaptação do MechDetect
+(H1) e ao modelo mínimo (H3), também em geradores ausentes do treino (H5) e na
+separação entre MAR e MNAR (H6); os classificadores hierárquico e direto foram
+praticamente equivalentes dentro de dois pontos percentuais (H2); um modelo de
+linguagem usado como classificador direto de tabelas disfarçadas foi
+estatisticamente inferior ao classificador (H4). Esses resultados valem para as
+famílias, os geradores e as condições avaliadas; os dados com ausência natural
+são examinados só como estudo de caso, sem acurácia.
+
+---
+
+## Resultados legados (versão da qualificação, superados)
+
+Os números desta seção vêm da versão de qualificação da dissertação. Os
+rótulos de mecanismo dos datasets reais não foram estabelecidos por
+construção, então estes resultados ficam apenas como registro. As seções
+seguintes (estrutura do repositório, início rápido, metodologia, dados,
+limitações) também descrevem esse pipeline legado, fora de `src/missdetect/rb/`.
 
 | Configuração | Datasets reais | Acurácia CV (Group 5-Fold) | Holdout | Custo |
 |:--|:-:|:-:|:-:|:-:|
@@ -125,8 +174,8 @@ qualquer builder PEP 517 funciona.
 
 ```bash
 # 1. Clonar e entrar
-git clone https://github.com/JonathanTsen/missdetect.git
-cd missdetect
+git clone https://github.com/JonathanTsen/ITA-Mestrado.git
+cd ITA-Mestrado
 
 # 2. Instalar (uv)
 uv venv
@@ -224,7 +273,7 @@ tanto o software quanto a dissertação. O GitHub renderiza
   author = {Tsen, Jonathan},
   school = {Instituto Tecnológico de Aeronáutica (ITA)},
   year   = {2026},
-  url    = {https://github.com/JonathanTsen/missdetect}
+  url    = {https://github.com/JonathanTsen/ITA-Mestrado}
 }
 ```
 

@@ -5,7 +5,7 @@ type: software
 version: "0.1.0"
 date-released: "2026-05-03"
 license: MIT
-repository-code: "https://github.com/JonathanTsen/missdetect"
+repository-code: "https://github.com/JonathanTsen/ITA-Mestrado"
 authors:
   - family-names: Tsen
     given-names: Jonathan
@@ -22,12 +22,20 @@ keywords:
   - hierarchical-classification
 abstract: >-
   missdetect is a research codebase that classifies the missingness mechanism
-  (MCAR / MAR / MNAR) of a univariate column from a tabular dataset. It
-  combines statistical and discriminative features with LLM-augmented features
-  (judge, context-aware, self-consistency) and uses a two-level hierarchical
-  classifier (Level 1: MCAR vs non-MCAR; Level 2: MAR vs MNAR) with
-  Group-aware cross-validation and Cleanlab-weighted training for robustness
-  to label noise.
+  (MCAR / MAR / MNAR) of one incomplete numerical column of a table from the
+  observed data only. The package missdetect.rb contains the pre-registered
+  experiments of the thesis: controlled injection of missing values into
+  complete real tables, observable descriptors, direct and hierarchical
+  classifiers, reference methods, statistical analysis by dataset family and
+  an evaluation of large language models under leakage controls. The code
+  outside missdetect.rb is the legacy pipeline of the qualification version.
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23933349
+    description: "Zenodo concept DOI of the pre-registration and code"
+  - type: doi
+    value: 10.5281/zenodo.24024942
+    description: "Zenodo deposit resultados-v1 (hashes of the outputs of the pre-registered run)"
 preferred-citation:
   type: thesis
   title: "Hierarchical Classification of Missing Data Mechanisms: A Statistical Feature Engineering Approach with LLM Augmentation and Real-World Validation"
@@ -39,4 +47,4 @@ preferred-citation:
     name: "Instituto Tecnológico de Aeronáutica (ITA)"
     address: "São José dos Campos, Brazil"
   year: 2026
-  url: "https://github.com/JonathanTsen/missdetect"
+  url: "https://github.com/JonathanTsen/ITA-Mestrado"

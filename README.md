@@ -22,17 +22,66 @@ is **MCAR** (completely at random), **MAR** (depends on observed variables), or
 baseline against an LLM-augmented variant on 1,200 synthetic and 29 real
 datasets, using a hierarchical two-level classifier robust to label noise.
 
-**Status (October 2026):** the numbers below come from the qualification
-version of the thesis and are under revision; see
-[`docs/revisao-banca/README.md`](docs/revisao-banca/README.md). The mechanism
-labels of the real datasets were not established by construction, so these
-results are kept for the record only. No accuracy ceiling is claimed: MAR and
-MNAR are not identifiable from observed data alone (Molenberghs et al. 2008),
-but this does not determine any numerical bound.
+**Status (November 2026).** The experiments of the thesis were redone after
+the qualification examination under a pre-registered protocol, and the results
+below replace the earlier ones:
+
+- **Design:** missing values are injected by code into complete real tables
+  from OpenML, so every mechanism label is known by construction. 50 dataset
+  families, 10,332 instances, three generators (a symmetric generator,
+  `mdatagen` and `tab_err`), cross-validation by family.
+- **Code:** the package [`src/missdetect/rb/`](src/missdetect/rb/), with tests
+  in `tests/rb/`. The confirmatory analysis ran on the tag `prereg-v1.4`.
+- **Pre-registration and deviations:**
+  [`docs/revisao-banca/preregistro.md`](docs/revisao-banca/preregistro.md),
+  [`adendo-llm.md`](docs/revisao-banca/adendo-llm.md) and
+  [`desvios.md`](docs/revisao-banca/desvios.md); archived on Zenodo
+  (concept DOI [10.5281/zenodo.23933349](https://doi.org/10.5281/zenodo.23933349)).
+- **Results record:** SHA-256 of the outputs in
+  [`docs/revisao-banca/deposito-p4-resultados.md`](docs/revisao-banca/deposito-p4-resultados.md)
+  (tag `resultados-v1`, DOI [10.5281/zenodo.24024942](https://doi.org/10.5281/zenodo.24024942)).
+- **How to run:** [`docs/revisao-banca/30-infra.md`](docs/revisao-banca/30-infra.md)
+  lists the modules and the order of the commands
+  (`python -m missdetect.rb.cli <command> --config configs/rb/<file>.yaml`).
+
+No accuracy ceiling is claimed: MAR and MNAR are not identifiable from observed
+data alone (Molenberghs et al. 2008), but this does not determine any numerical
+bound.
 
 ---
 
-## Headline results
+## Results of the pre-registered run
+
+Macro-recall averaged over the 50 families, on the primary generator, for
+methods that use the observed data only (run `20261105-inject-v1-52ed6f93a2a0`,
+tag `prereg-v1.4`):
+
+| Method | Macro-recall | Recall MCAR / MAR / MNAR |
+|:--|:-:|:-:|
+| Direct classifier on 28 observable descriptors (primary) | **0.733** (95% CI 0.714–0.751) | 0.830 / 0.761 / 0.607 |
+| Hierarchical classifier (same descriptors) | 0.729 | 0.856 / 0.752 / 0.579 |
+| Minimal logistic model (4 descriptors) | 0.653 | 0.894 / 0.584 / 0.483 |
+| MechDetect adapted to observed data | 0.530 | 0.941 / 0.645 / 0.005 |
+
+Pre-registered hypotheses, with the family as the unit of analysis: the primary
+configuration was statistically superior to the adaptation of MechDetect (H1)
+and to the minimal model (H3), also on generators absent from training (H5) and
+in the separation of MAR from MNAR (H6); the hierarchical and the direct
+classifiers were practically equivalent within two percentage points (H2); a
+large language model used as a direct classifier on blinded tables was
+statistically inferior to the classifier (H4). These results hold for the
+families, generators and conditions evaluated; data with natural missingness
+are examined only as a case study, without accuracy.
+
+---
+
+## Legacy results (qualification version, superseded)
+
+The numbers in this section come from the qualification version of the thesis.
+The mechanism labels of the real datasets were not established by construction,
+so these results are kept for the record only. The sections below (repository
+layout, quickstart, methodology diagram, data, limitations) also describe this
+legacy pipeline, outside `src/missdetect/rb/`.
 
 | Configuration | Real datasets | CV accuracy (Group 5-Fold) | Holdout | Cost |
 |:--|:-:|:-:|:-:|:-:|
@@ -124,8 +173,8 @@ PEP 517 builder works.
 
 ```bash
 # 1. Clone & enter
-git clone https://github.com/JonathanTsen/missdetect.git
-cd missdetect
+git clone https://github.com/JonathanTsen/ITA-Mestrado.git
+cd ITA-Mestrado
 
 # 2. Install (uv)
 uv venv
@@ -254,7 +303,7 @@ file directly; for BibTeX:
   author = {Tsen, Jonathan},
   school = {Instituto Tecnológico de Aeronáutica (ITA)},
   year   = {2026},
-  url    = {https://github.com/JonathanTsen/missdetect}
+  url    = {https://github.com/JonathanTsen/ITA-Mestrado}
 }
 
 @software{tsen2026missdetect_software,
@@ -262,7 +311,7 @@ file directly; for BibTeX:
   title   = {missdetect: Hierarchical Classification of Missing-Data Mechanisms},
   year    = {2026},
   version = {0.1.0},
-  url     = {https://github.com/JonathanTsen/missdetect}
+  url     = {https://github.com/JonathanTsen/ITA-Mestrado}
 }
 ```
 

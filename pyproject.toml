@@ -84,10 +84,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/JonathanTsen/missdetect"
-Repository = "https://github.com/JonathanTsen/missdetect"
-Documentation = "https://github.com/JonathanTsen/missdetect/tree/main/docs"
-Issues = "https://github.com/JonathanTsen/missdetect/issues"
+Homepage = "https://github.com/JonathanTsen/ITA-Mestrado"
+Repository = "https://github.com/JonathanTsen/ITA-Mestrado"
+Documentation = "https://github.com/JonathanTsen/ITA-Mestrado/tree/main/docs"
+Issues = "https://github.com/JonathanTsen/ITA-Mestrado/issues"
 
 # Note: console-script entry points are intentionally not declared yet.
 # The legacy scripts in src/missdetect/ rely on a sys.path hack that
