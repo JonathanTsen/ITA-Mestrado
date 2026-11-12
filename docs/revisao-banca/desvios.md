@@ -108,3 +108,14 @@ Toda mudança feita depois da tag `prereg-v1` fica registrada aqui, com data, mo
   - A produção não depende disso. O `inject` não usa essa função, e o `synth-v2` (que usa `method="cholesky"`) foi copiado, não regerado.
 - **Suíte de testes nesta máquina:** 343 de 343, com `OMP_NUM_THREADS=1`, em `prereg-v1.4`.
 - **Cópias de segurança:** a cada marco no `ITA-dados-privado`. O último, depois do estudo de caso e do controle sintético, é o commit `11dc90c89`.
+
+## Nota de reprodutibilidade — desempate nos geradores externos (revisão de 11–12/11/2026)
+
+Não é um desvio: nada mudou em regras, hipóteses, código ou resultados. É uma limitação da reprodução, achada na revisão do código depois da produção.
+
+- **O que se viu:** os adaptadores do `mdatagen` e do `tab_err` (`src/missdetect/rb/inject.py`) passam às bibliotecas uma ordenação cujo desempate entre valores iguais não é estável. As linhas empatadas no limiar, ou na borda da janela, podem ser escolhidas de forma diferente conforme a rotina de ordenação da plataforma.
+- **Medida feita na revisão:** regenerando as máscaras em Linux x86-64 com as versões do `uv.lock`, a partir dos arquivos gravados e das sementes, as do gerador simétrico saíram idênticas às da produção (feita em ARM), e as dos geradores externos saíram idênticas em 39% a 45% das instâncias MAR e MNAR conferidas. Todas as diferenças estão em linhas empatadas num valor de fronteira, e a contagem de ausências é sempre a mesma. Esta medida é da revisão e não foi repetida por um segundo conferente.
+- **O que não muda:** os rótulos continuam válidos, porque a máscara depende só do driver (MAR) ou só de Y (MNAR), a menos dos empates.
+- **Consequência:** a H5 e as avaliações nos geradores externos só se reproduzem bit a bit com as instâncias gravadas (identificadas pelo `mask_sha256`) ou na mesma arquitetura. As instâncias gravadas são a referência.
+- **Para execuções futuras:** passar à biblioteca um posto com desempate estável pela ordem da permutação.
+
