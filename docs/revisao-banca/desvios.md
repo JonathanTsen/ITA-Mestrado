@@ -119,3 +119,7 @@ Não é um desvio: nada mudou em regras, hipóteses, código ou resultados. É u
 - **Consequência:** a H5 e as avaliações nos geradores externos só se reproduzem bit a bit com as instâncias gravadas (identificadas pelo `mask_sha256`) ou na mesma arquitetura. As instâncias gravadas são a referência.
 - **Para execuções futuras:** passar à biblioteca um posto com desempate estável pela ordem da permutação.
 
+## Nota — SHAP calculado depois da produção (12/11/2026)
+
+O pré-registro prevê o SHAP só como complemento descritivo da ablação da RQ2 ("O SHAP é só descritivo"), e o run de 05–06/11 não o calculou. Em 12/11/2026 ele foi calculado a partir do modelo final congelado (`final_model/model.joblib` do run `20261105-inject-v1-52ed6f93a2a0`), nas 6.090 instâncias do gerador principal em que o modelo foi treinado, sobre a saída bruta do gradient boosting (antes da calibração), com `shap` 0.51.0. O script está no repositório da dissertação (`scripts/figuras_rb/gerar_figuras.py`) e os valores em `figuras/rb/shap_importancia.csv`. Nenhuma hipótese, teste ou decisão depende desse cálculo, e a dissertação o apresenta como descritivo e posterior à análise confirmatória.
+
