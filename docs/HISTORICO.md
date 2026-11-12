@@ -1,5 +1,7 @@
 # HISTORICO do Projeto — Classificacao de Mecanismos de Missing Data (ITA-Mestrado)
 
+> **Documento histórico (versão da qualificação, até maio de 2026).** Os números e as afirmações abaixo, inclusive o "limite teórico" de 60–65% e os 55,97%, foram superados: os rótulos dos dados reais não eram conhecidos por construção, e nenhum teto de acurácia é afirmado. Os experimentos atuais são os do pacote `src/missdetect/rb/`, descritos em [`revisao-banca/README.md`](revisao-banca/README.md).
+
 **Linha do tempo completa:** 2026-04-05 a 2026-05-06 (32 dias, 12 fases)
 **Pergunta de pesquisa:** Como classificar automaticamente MCAR/MAR/MNAR em datasets reais?
 **Resultado pico (23 datasets):** **55.97% LOGO CV** (V3+ hierarquico + CAAFE + Cleanlab, fase 4)

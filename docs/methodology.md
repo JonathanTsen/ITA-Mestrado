@@ -1,5 +1,7 @@
 # Methodology
 
+> **Historical document (qualification version, up to May 2026).** The numbers and claims below were superseded: the mechanism labels of the real datasets were not known by construction, and no accuracy ceiling is claimed. The current experiments are those of the package `src/missdetect/rb/`, described in [`revisao-banca/README.md`](revisao-banca/README.md); the order of the commands of the current pipeline is in [`revisao-banca/30-infra.md`](revisao-banca/30-infra.md).
+
 This document gives a self-contained overview of the missdetect methodology.
 For the chronological narrative, see [`HISTORICO.md`](HISTORICO.md). For
 detailed phase-by-phase decisions, see [`archive/`](archive/).

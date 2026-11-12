@@ -1,5 +1,7 @@
 # Achados consolidados — Testes estatísticos pareados ML × Gemini Flash × Gemini Pro
 
+> **Documento histórico (versão da qualificação, até maio de 2026).** Os números e as afirmações abaixo, inclusive o "limite teórico" de 60–65% e os 55,97%, foram superados: os rótulos dos dados reais não eram conhecidos por construção, e nenhum teto de acurácia é afirmado. Os experimentos atuais são os do pacote `src/missdetect/rb/`, descritos em [`revisao-banca/README.md`](revisao-banca/README.md).
+
 **Contexto:** Esta análise responde à exigência levantada na reunião de orientação de
 07/05/2026 (Vitor Curtis), onde o orientador apontou que 5-fold cross-validation é
 amostragem, não significância — toda comparação ML × LLM precisa de teste estatístico

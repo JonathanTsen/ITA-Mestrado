@@ -1,5 +1,7 @@
 # Reproducibility guide
 
+> **Historical document (qualification version, up to May 2026).** The numbers and claims below were superseded: the mechanism labels of the real datasets were not known by construction, and no accuracy ceiling is claimed. The current experiments are those of the package `src/missdetect/rb/`, described in [`revisao-banca/README.md`](revisao-banca/README.md); the order of the commands of the current pipeline is in [`revisao-banca/30-infra.md`](revisao-banca/30-infra.md).
+
 This document is the operational replay of the experiments reported in the
 README and the thesis. Every command assumes you are at the repository
 root with the package installed (`uv pip install -e ".[boosting,llm]"`).

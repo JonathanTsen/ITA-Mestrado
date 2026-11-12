@@ -3,9 +3,13 @@
 Comece por este arquivo. Ele aponta para a documentacao mais atual e evita
 confundir resultados historicos do `archive/` com a versao atual do projeto.
 
-## Leitura recomendada
+## Situação em novembro de 2026
 
-1. [`methodology.md`](methodology.md) — metodologia atual: problema, features,
+Os experimentos da dissertação foram refeitos sob um protocolo pré-registrado. A documentação atual está em [`revisao-banca/`](revisao-banca/README.md): pré-registro, adendo da IA, desvios, depósito dos resultados e a ordem de execução (`30-infra.md`). Os arquivos listados abaixo descrevem o pipeline da versão de qualificação e ficam como histórico.
+
+## Leitura recomendada (histórico)
+
+1. [`methodology.md`](methodology.md) — metodologia da versão de qualificação: problema, features,
    modelos, validacao e resultados principais.
 2. [`caafe_mnar.md`](caafe_mnar.md) — explicacao correta do CAAFE neste
    repositorio. Este e o arquivo principal para entender a diferenca entre o

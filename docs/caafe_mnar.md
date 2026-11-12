@@ -1,5 +1,7 @@
 # CAAFE-MNAR neste repositorio
 
+> **Documento histórico (versão da qualificação, até maio de 2026).** Os números e as afirmações abaixo, inclusive o "limite teórico" de 60–65% e os 55,97%, foram superados: os rótulos dos dados reais não eram conhecidos por construção, e nenhum teto de acurácia é afirmado. Os experimentos atuais são os do pacote `src/missdetect/rb/`, descritos em [`revisao-banca/README.md`](revisao-banca/README.md).
+
 Este arquivo corrige a terminologia sobre CAAFE no projeto.
 
 ## Resumo simples
